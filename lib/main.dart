@@ -20,6 +20,7 @@ import 'package:particle_music/portrait_view/custom_page_transition_builder.dart
 import 'package:particle_music/view_entry.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
+import 'package:screen_corner_radius/screen_corner_radius.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
 
   if (isMobile) {
     await logger.init();
+    screenRadius = await ScreenCornerRadius.get();
   } else {
     await windowManager.ensureInitialized();
     final windowController = await WindowController.fromCurrentEngine();

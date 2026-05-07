@@ -12,6 +12,7 @@ import 'package:particle_music/common_widgets/lyrics.dart';
 import 'package:particle_music/my_audio_metadata.dart';
 import 'package:particle_music/playlists.dart';
 import 'package:particle_music/setting_manager.dart';
+import 'package:screen_corner_radius/screen_corner_radius.dart';
 import 'package:webdav_client/webdav_client.dart';
 
 const String versionNumber = '2.2.1';
@@ -27,6 +28,8 @@ late final Directory cacheConfigDir;
 
 final isMobile = Platform.isAndroid || Platform.isIOS;
 const isTV = bool.fromEnvironment('TV', defaultValue: false);
+
+late final ScreenRadius? screenRadius;
 
 // ===================================== Library =====================================
 

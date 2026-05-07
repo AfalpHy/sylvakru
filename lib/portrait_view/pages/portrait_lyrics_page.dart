@@ -17,6 +17,7 @@ import 'package:particle_music/my_audio_metadata.dart';
 import 'package:particle_music/playlists.dart';
 import 'package:particle_music/common_widgets/seekbar.dart';
 import 'package:particle_music/utils.dart';
+import 'package:smooth_corner/smooth_corner.dart';
 
 class PortraitLyricsPage extends StatefulWidget {
   const PortraitLyricsPage({super.key});
@@ -72,38 +73,26 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
       builder: (context, currentSong, child) {
         return Material(
           color: Colors.transparent,
+          shape: SmoothRectangleBorder(
+            smoothness: 1,
+            borderRadius: .circular(
+              dragOffset > 0 ? screenRadius?.topLeft ?? 0 : 0,
+            ),
+          ),
+          clipBehavior: .antiAliasWithSaveLayer,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ValueListenableBuilder(
-                valueListenable: lyricsPageThemeNotifier,
-                builder: (context, value, child) {
-                  if (value != 0) {
-                    return SizedBox.shrink();
-                  }
-                  return CoverArtWidget(
-                    song: currentSong,
-                    color: colorManager
-                        .getSpecificLyricsPageCoverArtBaseColor(),
-                  );
-                },
-              ),
-              ValueListenableBuilder(
-                valueListenable: lyricsPageThemeNotifier,
-                builder: (context, value, child) {
-                  if (value != 0) {
-                    return SizedBox.shrink();
-                  }
-                  return ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                      child: Container(
-                        color: currentCoverArtColor.withAlpha(180),
-                      ),
-                    ),
-                  );
-                },
-              ),
+              if (lyricsPageThemeNotifier.value == 0) ...[
+                CoverArtWidget(
+                  song: currentSong,
+                  color: colorManager.getSpecificLyricsPageCoverArtBaseColor(),
+                ),
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(color: currentCoverArtColor.withAlpha(180)),
+                ),
+              ],
               ValueListenableBuilder(
                 valueListenable: lyricsPageBackgroundColor.valueNotifier,
                 builder: (context, value, child) {

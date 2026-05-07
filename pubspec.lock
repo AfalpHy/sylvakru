@@ -827,6 +827,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  screen_corner_radius:
+    dependency: "direct main"
+    description:
+      name: screen_corner_radius
+      sha256: "3e6465e9a0373852eb8af80bab2e972667b0302ed5b864366e5308158282e6f7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0"
   screen_retriever:
     dependency: transitive
     description:
