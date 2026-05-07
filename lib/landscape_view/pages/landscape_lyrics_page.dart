@@ -82,15 +82,15 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
                   song: currentSong,
                   color: colorManager.getSpecificLyricsPageCoverArtBaseColor(),
                 ),
-                ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: pageWidth * 0.03,
-                      sigmaY: pageHight * 0.03,
-                    ),
-                    child: Container(
-                      color: currentCoverArtColor.withAlpha(180),
-                    ),
+                BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: pageWidth * 0.03,
+                    sigmaY: pageHight * 0.03,
+                  ),
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOutCubic,
+                    color: currentCoverArtColor.withAlpha(180),
                   ),
                 ),
               ],

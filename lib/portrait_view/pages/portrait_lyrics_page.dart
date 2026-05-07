@@ -90,7 +90,11 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
                 ),
                 BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(color: currentCoverArtColor.withAlpha(180)),
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOutCubic,
+                    color: currentCoverArtColor.withAlpha(180),
+                  ),
                 ),
               ],
               ValueListenableBuilder(
