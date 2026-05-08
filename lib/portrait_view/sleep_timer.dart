@@ -40,6 +40,7 @@ void displayTimedPauseSetting(BuildContext context) {
                       trueText: l10n.pauseAfterCurrentTrack,
                       falseText: l10n.pauseAfterCurrentTrack,
                       valueNotifier: pauseAfterCompletedNotifier,
+                      inLyricsPage: displayLyricsPage,
                     ),
                   ],
                 ),

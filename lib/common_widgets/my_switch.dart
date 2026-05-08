@@ -8,6 +8,7 @@ class MySwitch extends StatelessWidget {
   final String? falseText;
   final ValueNotifier<bool> valueNotifier;
   final void Function()? onToggleCallBack;
+  final bool inLyricsPage;
 
   const MySwitch({
     super.key,
@@ -15,6 +16,7 @@ class MySwitch extends StatelessWidget {
     this.falseText,
     required this.valueNotifier,
     this.onToggleCallBack,
+    this.inLyricsPage = false,
   });
 
   @override
@@ -29,7 +31,9 @@ class MySwitch extends StatelessWidget {
           builder: (context, value, child) {
             return Text(
               value ? trueText! : falseText!,
-              style: TextStyle(color: colorManager.getSpecificTextColor()),
+              style: TextStyle(
+                color: inLyricsPage ? lyricsPageForegroundColor.value : null,
+              ),
             );
           },
         ),
