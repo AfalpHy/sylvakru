@@ -109,7 +109,7 @@ class _WebdavDirPickerState extends State<WebdavDirPicker> {
                 builder: (context, value, child) {
                   return ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context, "WebDAV:$currentPath");
+                      Navigator.pop(context, currentPath);
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: value),
                     child: Text(AppLocalizations.of(context).confirm),

@@ -29,7 +29,9 @@ class ManageMusicFolders extends StatefulWidget {
 }
 
 class _ManageMusicFoldersState extends State<ManageMusicFolders> {
-  late List<String> currentFolderIdList;
+  late List<String> currentLocalFolderIdList;
+  late List<String> currentWebdavFolderIdList;
+
   final updateNotifier = ValueNotifier(0);
   late ValueNotifier<bool> tmpRecursiveScanNotifier;
 
@@ -37,7 +39,12 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
   void initState() {
     super.initState();
 
-    currentFolderIdList = library.folderList.map((e) => e.id).toList();
+    currentLocalFolderIdList = library.localFolderList
+        .map((e) => e.id)
+        .toList();
+    currentWebdavFolderIdList = library.webdavFolderList
+        .map((e) => e.id)
+        .toList();
     tmpRecursiveScanNotifier = ValueNotifier(recursiveScanNotifier.value);
   }
 
@@ -141,29 +148,8 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
                         contentPadding: .fromLTRB(15, 0, 0, 0),
                         dense: true,
                         title: Text(l10n.confirm),
-                        onTap: () async {
-                          if (await showConfirmDialog(context, l10n.confirm)) {
-                            bool needReload =
-                                tmpRecursiveScanNotifier.value !=
-                                recursiveScanNotifier.value;
-                            recursiveScanNotifier.value =
-                                tmpRecursiveScanNotifier.value;
-
-                            setting.save();
-                            if (await library.updateFolders(
-                                  currentFolderIdList,
-                                ) ||
-                                needReload) {
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                              }
-                              await Loader.reload();
-                            } else {
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                              }
-                            }
-                          }
+                        onTap: () {
+                          confirmAction(context);
                         },
                       ),
                     ),
@@ -196,6 +182,31 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
     );
   }
 
+  void confirmAction(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+
+    if (await showConfirmDialog(context, l10n.confirm)) {
+      bool needReload =
+          tmpRecursiveScanNotifier.value != recursiveScanNotifier.value;
+      recursiveScanNotifier.value = tmpRecursiveScanNotifier.value;
+
+      setting.save();
+      if ((await library.updateFolders(currentLocalFolderIdList, true) |
+              await library.updateFolders(currentWebdavFolderIdList, false)) ||
+          needReload) {
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
+        await Loader.reload();
+      } else {
+        if (context.mounted) {
+          showCenterMessage(context, 'Nothing is changed', duration: 2000);
+          Navigator.pop(context);
+        }
+      }
+    }
+  }
+
   Widget confirmButton(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
@@ -203,30 +214,8 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
       valueListenable: buttonColor.valueNotifier,
       builder: (context, value, child) {
         return ElevatedButton(
-          onPressed: () async {
-            if (await showConfirmDialog(context, l10n.confirm)) {
-              bool needReload =
-                  tmpRecursiveScanNotifier.value != recursiveScanNotifier.value;
-              recursiveScanNotifier.value = tmpRecursiveScanNotifier.value;
-
-              setting.save();
-              if (await library.updateFolders(currentFolderIdList) ||
-                  needReload) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                }
-                await Loader.reload();
-              } else {
-                if (context.mounted) {
-                  showCenterMessage(
-                    context,
-                    'Nothing is changed',
-                    duration: 2000,
-                  );
-                  Navigator.pop(context);
-                }
-              }
-            }
+          onPressed: () {
+            confirmAction(context);
           },
           style: ElevatedButton.styleFrom(backgroundColor: value),
           child: Text(l10n.confirm),
@@ -334,20 +323,36 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
       valueListenable: updateNotifier,
       builder: (context, value, child) {
         return SliverList(
-          delegate: SliverChildBuilderDelegate((context, index) {
-            return ListTile(
-              dense: true,
-              contentPadding: .fromLTRB(15, 0, 0, 0),
-              title: Text(currentFolderIdList[index]),
-              trailing: IconButton(
-                onPressed: () {
-                  currentFolderIdList.removeAt(index);
-                  updateNotifier.value++;
-                },
-                icon: Icon(Icons.clear_rounded),
-              ),
-            );
-          }, childCount: currentFolderIdList.length),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              return ListTile(
+                dense: true,
+                contentPadding: .fromLTRB(15, 0, 0, 0),
+                title: Text(
+                  index < currentLocalFolderIdList.length
+                      ? currentLocalFolderIdList[index]
+                      : currentWebdavFolderIdList[index -
+                            currentLocalFolderIdList.length],
+                ),
+                trailing: IconButton(
+                  onPressed: () {
+                    if (index < currentLocalFolderIdList.length) {
+                      currentLocalFolderIdList.removeAt(index);
+                    } else {
+                      currentWebdavFolderIdList.removeAt(
+                        index - currentLocalFolderIdList.length,
+                      );
+                    }
+                    updateNotifier.value++;
+                  },
+                  icon: Icon(Icons.clear_rounded),
+                ),
+              );
+            },
+            childCount:
+                currentLocalFolderIdList.length +
+                currentWebdavFolderIdList.length,
+          ),
         );
       },
     );
@@ -362,17 +367,30 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
             return ListTile(
               dense: true,
               contentPadding: .fromLTRB(20, 0, 0, 0),
-              title: Text(currentFolderIdList[index]),
+              title: Text(
+                index < currentLocalFolderIdList.length
+                    ? currentLocalFolderIdList[index]
+                    : currentWebdavFolderIdList[index -
+                          currentLocalFolderIdList.length],
+              ),
               trailing: IconButton(
                 onPressed: () {
-                  currentFolderIdList.removeAt(index);
+                  if (index < currentLocalFolderIdList.length) {
+                    currentLocalFolderIdList.removeAt(index);
+                  } else {
+                    currentWebdavFolderIdList.removeAt(
+                      index - currentLocalFolderIdList.length,
+                    );
+                  }
                   updateNotifier.value++;
                 },
                 icon: Icon(Icons.clear_rounded),
               ),
             );
           },
-          itemCount: currentFolderIdList.length,
+          itemCount:
+              currentLocalFolderIdList.length +
+              currentWebdavFolderIdList.length,
         );
       },
     );
@@ -429,14 +447,14 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
       id = convertIOSPath(result);
     }
 
-    if (currentFolderIdList.contains(id)) {
+    if (currentLocalFolderIdList.contains(id)) {
       if (context.mounted) {
         showCenterMessage(context, 'The folder already exists', duration: 2000);
       }
       return;
     }
 
-    currentFolderIdList.add(id);
+    currentLocalFolderIdList.add(id);
     updateNotifier.value++;
   }
 
@@ -473,8 +491,8 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
       if (Platform.isIOS) {
         id = convertIOSPath(path);
       }
-      if (!currentFolderIdList.contains(id)) {
-        currentFolderIdList.add(id);
+      if (!currentLocalFolderIdList.contains(id)) {
+        currentLocalFolderIdList.add(id);
       }
     }
 
@@ -516,13 +534,13 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
     if (id == null) {
       return;
     }
-    if (currentFolderIdList.contains(id)) {
+    if (currentWebdavFolderIdList.contains(id)) {
       if (context.mounted) {
         showCenterMessage(context, 'The folder already exists', duration: 2000);
       }
       return;
     }
-    currentFolderIdList.add(id);
+    currentWebdavFolderIdList.add(id);
     updateNotifier.value++;
   }
 
@@ -541,18 +559,14 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
       return;
     }
     List<String> idList = [root];
-    final subDirectories = await webdavClient!.listSubDirectories(
-      root.substring(7),
-    );
-    for (final dir in subDirectories) {
-      idList.add('WebDAV:$dir');
-    }
+    final subDirectories = await webdavClient!.listSubDirectories(root);
+    idList.addAll(subDirectories);
 
     for (final id in idList) {
-      if (currentFolderIdList.contains(id)) {
+      if (currentWebdavFolderIdList.contains(id)) {
         continue;
       }
-      currentFolderIdList.add(id);
+      currentWebdavFolderIdList.add(id);
     }
     updateNotifier.value++;
   }

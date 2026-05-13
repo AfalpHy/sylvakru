@@ -459,6 +459,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connect2WebDAV => '连接到WebDAV';
 
   @override
+  String get connect2Emby => '连接到Emby';
+
+  @override
   String get username => '账号';
 
   @override

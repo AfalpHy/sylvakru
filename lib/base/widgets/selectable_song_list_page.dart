@@ -21,9 +21,8 @@ class SelectableSongListPage extends StatefulWidget {
 
   final Playlist? playlist;
   final Folder? folder;
-  final String? ranking;
-  final String? recently;
-
+  final bool isRanking;
+  final bool isRecently;
   final bool isLibrary;
 
   final bool reorderable;
@@ -33,9 +32,9 @@ class SelectableSongListPage extends StatefulWidget {
     required this.songList,
     this.playlist,
     this.folder,
-    this.ranking,
-    this.recently,
-    required this.isLibrary,
+    this.isRanking = false,
+    this.isRecently = false,
+    this.isLibrary = false,
     required this.reorderable,
   });
 
@@ -47,9 +46,8 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
   late List<MyAudioMetadata> songList;
   Playlist? playlist;
   Folder? folder;
-  String? ranking;
-  String? recently;
-
+  late bool isRanking;
+  late bool isRecently;
   late bool isLibrary;
 
   final textController = TextEditingController();
@@ -84,8 +82,8 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
     songList = widget.songList;
     playlist = widget.playlist;
     folder = widget.folder;
-    ranking = widget.ranking;
-    recently = widget.recently;
+    isRanking = widget.isRanking;
+    isRecently = widget.isRecently;
     isLibrary = widget.isLibrary;
 
     selectedNumNotifier.addListener(() {
@@ -145,7 +143,7 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
           ),
           MyDivider(thickness: 0.5, height: 1, color: dividerColor),
 
-          if (ranking == null && recently == null)
+          if (!isRanking && !isRecently)
             ListTile(
               leading: ImageIcon(sequenceImage, color: iconColor.value),
               title: Text(
@@ -174,7 +172,8 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
                       l10n.durationDescending,
                     ];
 
-                    if (isLibrary && songList == library.songList ||
+                    if (isLibrary &&
+                            songList == library.songListManager.localSongList ||
                         folder != null) {
                       orderText.add(l10n.modifiedTimeAscending);
                       orderText.add(l10n.modifiedTimedescending);
@@ -350,7 +349,7 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
                                   isSelected: isSelectedList[index],
                                   selectedNumNotifier: selectedNumNotifier,
                                   reorderable: reorderable,
-                                  isRanking: ranking != null,
+                                  isRanking: isRanking,
                                 ),
                               );
                             },

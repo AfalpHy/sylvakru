@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/widgets/local_navidrome_base.dart';
+import 'package:particle_music/base/widgets/switchable_song_list.dart';
 import 'package:particle_music/base/data/history.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
 
 class RecentlyPage extends StatelessWidget {
   const RecentlyPage({super.key});
   @override
   Widget build(BuildContext context) {
-    return LocalNavidromeBase(
-      displayNavidromeNotifier: history.displayNavidromeRecentlyNotifier,
-      localSongList: history.recentlySongList,
-      navidromeSongList: history.navidromeRecentlySongList,
-      recently: AppLocalizations.of(context).recently,
+    return SwitchableSongList(
+      songListManager: history.recentlySongListManager,
+      isRecently: true,
       isPanel: false,
     );
   }

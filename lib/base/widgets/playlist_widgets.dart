@@ -74,7 +74,7 @@ class _Add2PlaylistPanelState extends State<Add2PlaylistPanel> {
                 leading: CoverArtWidget(
                   size: 40,
                   borderRadius: 4,
-                  song: playlist.getDisplaySong(),
+                  song: playlist.getCoverSong(),
                 ),
                 title: Text(
                   index == 0 ? l10n.favorites : playlist.name,
@@ -250,14 +250,13 @@ Widget _playlistListTile(Playlist playlist) {
       leading: CoverArtWidget(
         size: 50,
         borderRadius: 5,
-        song: playlist.getDisplaySong(),
+        song: playlist.getCoverSong(),
       ),
       title: Text(playlist.name),
-      subtitle: ValueListenableBuilder(
-        valueListenable: playlist.updateNotifier,
-        builder: (context, _, _) {
+      subtitle: Builder(
+        builder: (context) {
           return Text(
-            AppLocalizations.of(context).songCount(playlist.getTotalCount()),
+            AppLocalizations.of(context).songCount(playlist.totalCount),
           );
         },
       ),

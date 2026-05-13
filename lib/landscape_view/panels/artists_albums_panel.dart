@@ -248,11 +248,12 @@ class _ArtistsAlbumsPanelState extends State<ArtistsAlbumsPanel> {
                                   highlightColor: Colors.transparent,
 
                                   child: ValueListenableBuilder(
-                                    valueListenable:
-                                        list[index].displayNavidromeNotifier,
+                                    valueListenable: list[index]
+                                        .songListManager
+                                        .sourceTypeNotifier,
                                     builder: (context, value, child) {
                                       final displaySong = list[index]
-                                          .getDisplaySong();
+                                          .getCoverSong();
                                       return ValueListenableBuilder(
                                         valueListenable:
                                             displaySong.updateNotifier,

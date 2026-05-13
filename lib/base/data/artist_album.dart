@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:particle_music/base/data/song_list_manager.dart';
 import 'package:particle_music/base/utils/interaction.dart';
 import 'package:particle_music/base/widgets/cover_art_widget.dart';
 import 'package:particle_music/layer/layers_manager.dart';
@@ -44,11 +45,19 @@ class ArtistAlbumManager {
   }
 
   void load() {
-    for (final song in library.songList) {
+    for (final song in library.songListManager.localSongList) {
       _processSong(song);
     }
 
-    for (final song in library.navidromeSongList) {
+    for (final song in library.songListManager.webdavSongList) {
+      _processSong(song);
+    }
+
+    for (final song in library.songListManager.navidromeSongList) {
+      _processSong(song);
+    }
+
+    for (final song in library.songListManager.embySongList) {
       _processSong(song);
     }
 
@@ -57,12 +66,12 @@ class ArtistAlbumManager {
 
     for (final album in albumList) {
       album.sort();
-      album.setDisplayNavidromeNotifier();
+      album.songListManager.resetSourceType();
     }
 
     for (final artist in artistList) {
       artist.combineAlbums();
-      artist.setDisplayNavidromeNotifier();
+      artist.songListManager.resetSourceType();
     }
   }
 
@@ -80,9 +89,7 @@ class ArtistAlbumManager {
       album.year = song.year;
     }
 
-    song.isNavidrome
-        ? album.navidromeSongList.add(song)
-        : album.songList.add(song);
+    album.songListManager.getSongList2(song.sourceType).add(song);
 
     for (String artistName in getArtists(getArtist(song))) {
       Artist? artist = name2Artist[artistName];
@@ -124,15 +131,15 @@ class ArtistAlbumManager {
     final currentAlbum = getAlbum(song);
 
     final oldAlbum = name2Album[originAlbum]!;
-    oldAlbum.songList.remove(song);
+    oldAlbum.songListManager.localSongList.remove(song);
 
     _processSong(song);
 
     oldAlbum.sort();
-    oldAlbum.updateNotifier.value++;
+    oldAlbum.songListManager.localChangeNotifier.value++;
     // Reset when displaying local music; keep it when displaying Navidrome
-    if (!oldAlbum.displayNavidromeNotifier.value) {
-      oldAlbum.setDisplayNavidromeNotifier();
+    if (oldAlbum.songListManager.getSongList().isEmpty) {
+      oldAlbum.songListManager.resetSourceType();
     }
 
     if (currentAlbum != originAlbum) {
@@ -143,9 +150,9 @@ class ArtistAlbumManager {
       }
       final newAlbum = name2Album[currentAlbum]!;
       newAlbum.sort();
-      newAlbum.updateNotifier.value++;
-      if (!newAlbum.displayNavidromeNotifier.value) {
-        newAlbum.setDisplayNavidromeNotifier();
+      newAlbum.songListManager.localChangeNotifier.value++;
+      if (newAlbum.songListManager.getSongList().isEmpty) {
+        newAlbum.songListManager.resetSourceType();
       }
     }
 
@@ -165,11 +172,11 @@ class ArtistAlbumManager {
 
     for (final artist in needProcess) {
       artist.combineAlbums();
-      artist.updateNotifier.value++;
+      artist.songListManager.localChangeNotifier.value++;
 
       // Reset when displaying local music; keep it when displaying Navidrome
-      if (!artist.displayNavidromeNotifier.value) {
-        artist.setDisplayNavidromeNotifier();
+      if (artist.songListManager.getSongList().isEmpty) {
+        artist.songListManager.resetSourceType();
       }
 
       if (artist.isEmpty) {
@@ -224,35 +231,19 @@ class ArtistAlbumManager {
 
 abstract class ArtistAlbumBase {
   final String name;
-  final displayNavidromeNotifier = ValueNotifier(false);
-  final updateNotifier = ValueNotifier(0);
 
-  final List<MyAudioMetadata> songList = [];
-  final List<MyAudioMetadata> navidromeSongList = [];
+  SongListManager songListManager = SongListManager();
 
   final bool isArtist;
   ArtistAlbumBase(this.name, this.isArtist);
 
-  bool get isEmpty => songList.isEmpty && navidromeSongList.isEmpty;
+  bool get isEmpty => songListManager.isEmpty;
 
-  void setDisplayNavidromeNotifier() {
-    displayNavidromeNotifier.value =
-        songList.isEmpty & navidromeSongList.isNotEmpty;
+  MyAudioMetadata getCoverSong() {
+    return songListManager.getSongList().first;
   }
 
-  List<MyAudioMetadata> getSongList(bool isNavidrome) {
-    return isNavidrome ? navidromeSongList : songList;
-  }
-
-  MyAudioMetadata getDisplaySong() {
-    return displayNavidromeNotifier.value
-        ? navidromeSongList.first
-        : songList.first;
-  }
-
-  int getTotalCount() {
-    return songList.length + navidromeSongList.length;
-  }
+  int get totalCount => songListManager.totalCount;
 }
 
 class Artist extends ArtistAlbumBase {
@@ -260,9 +251,22 @@ class Artist extends ArtistAlbumBase {
 
   Set<Album> albumSet = {};
 
+  void fetchSongs(
+    List<MyAudioMetadata> fromSongList,
+    List<MyAudioMetadata> toSongList,
+  ) {
+    for (final song in fromSongList) {
+      for (String artistName in getArtists(getArtist(song))) {
+        if (artistName == name) {
+          toSongList.add(song);
+          break;
+        }
+      }
+    }
+  }
+
   void combineAlbums() {
-    songList.clear();
-    navidromeSongList.clear();
+    songListManager.clear();
     albumSet.removeWhere((album) => album.isEmpty);
     final albumList = albumSet.toList();
     albumList.sort((a, b) {
@@ -273,23 +277,25 @@ class Artist extends ArtistAlbumBase {
     });
 
     for (final album in albumList) {
-      for (final song in album.songList) {
-        for (String artistName in getArtists(getArtist(song))) {
-          if (artistName == name) {
-            songList.add(song);
-            break;
-          }
-        }
-      }
-      for (final song in album.navidromeSongList) {
-        for (String artistName in getArtists(getArtist(song))) {
-          if (artistName == name) {
-            navidromeSongList.add(song);
+      fetchSongs(
+        album.songListManager.localSongList,
+        songListManager.localSongList,
+      );
 
-            break;
-          }
-        }
-      }
+      fetchSongs(
+        album.songListManager.webdavSongList,
+        songListManager.webdavSongList,
+      );
+
+      fetchSongs(
+        album.songListManager.navidromeSongList,
+        songListManager.navidromeSongList,
+      );
+
+      fetchSongs(
+        album.songListManager.embySongList,
+        songListManager.embySongList,
+      );
     }
   }
 }
@@ -313,8 +319,10 @@ class Album extends ArtistAlbumBase {
   }
 
   void sort() {
-    songList.sort((a, b) => _sort(a, b));
-    navidromeSongList.sort((a, b) => _sort(a, b));
+    songListManager.localSongList.sort((a, b) => _sort(a, b));
+    songListManager.webdavSongList.sort((a, b) => _sort(a, b));
+    songListManager.navidromeSongList.sort((a, b) => _sort(a, b));
+    songListManager.embySongList.sort((a, b) => _sort(a, b));
   }
 }
 
@@ -336,7 +344,7 @@ void showArtistEntries(BuildContext context, List<String> artists) {
                 leading: CoverArtWidget(
                   size: 50,
                   borderRadius: 5,
-                  song: artistAlbumManager.name2Artist[name]!.getDisplaySong(),
+                  song: artistAlbumManager.name2Artist[name]!.getCoverSong(),
                 ),
                 title: Text(name),
                 onTap: () async {

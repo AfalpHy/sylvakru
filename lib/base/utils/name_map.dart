@@ -1,0 +1,15 @@
+import 'package:particle_music/base/app.dart';
+import 'package:particle_music/l10n/generated/app_localizations.dart';
+
+String getSourceTypeName(AppLocalizations l10n, SourceType sourceType) {
+  switch (sourceType) {
+    case .local:
+      return l10n.local;
+    case .webdav:
+      return 'WebDAV';
+    case .navidrome:
+      return 'Navidrome';
+    default:
+      return 'Emby';
+  }
+}

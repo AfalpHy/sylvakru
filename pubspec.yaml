@@ -87,6 +87,8 @@ dependencies:
   pool: ^1.5.2
   screen_corner_radius: ^3.0.0
   xml: ^6.6.1
+  drift: ^2.33.0
+  drift_flutter: ^0.3.0
 
 dependency_overrides:
   media_kit_libs_windows_audio:
@@ -122,6 +124,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   icons_launcher: ^3.0.3
 
+  drift_dev: ^2.33.0
+  build_runner: ^2.15.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/asset_images.dart';
 import 'package:particle_music/base/utils/interaction.dart';
+import 'package:particle_music/base/utils/name_map.dart';
 import 'package:particle_music/base/widgets/my_auto_size_text.dart';
 import 'package:particle_music/base/widgets/my_divider.dart';
 import 'package:particle_music/base/widgets/selectable_song_list_page.dart';
@@ -28,9 +29,9 @@ class SongListPage extends BaseSongListWidget {
     super.artist,
     super.album,
     super.folder,
-    super.ranking,
-    super.recently,
-    super.isNavidrome,
+    super.isRanking,
+    super.isRecently,
+    super.sourceType,
     super.switchCallBack,
   });
 
@@ -125,11 +126,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
 
                   Expanded(
                     child: MyAutoSizeText(
-                      isLibrary
-                          ? AppLocalizations.of(context).songs
-                          : playlist?.isFavorite == true
-                          ? l10n.favorites
-                          : title,
+                      getTitleText(l10n),
                       maxLines: 1,
                       textStyle: TextStyle(fontSize: 15),
                     ),
@@ -154,8 +151,8 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
                     songList: songList,
                     playlist: playlist,
                     folder: folder,
-                    ranking: ranking,
-                    recently: recently,
+                    isRanking: isRanking,
+                    isRecently: isRecently,
                     isLibrary: isLibrary,
                     reorderable: reorderable,
                   ),
@@ -163,7 +160,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
               );
             },
           ),
-          if (ranking == null && recently == null)
+          if (!isRanking && !isRecently)
             ListTile(
               leading: ImageIcon(sequenceImage),
               title: Text(
@@ -189,7 +186,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
                       l10n.durationAscending,
                       l10n.durationDescending,
                     ];
-                    if (isLibrary && !isNavidrome || folder != null) {
+                    if (isLibrary && sourceType == .local || folder != null) {
                       orderText.add(l10n.modifiedTimeAscending);
                       orderText.add(l10n.modifiedTimedescending);
                       orderText.add(l10n.randomizeTemp);
@@ -271,7 +268,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
               visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
               onTap: () async {
                 Navigator.of(context).pop();
-                widget.switchCallBack?.call();
+                widget.switchCallBack!(context);
               },
             ),
           if (playlist != null && playlist!.isNotFavorite)
@@ -374,11 +371,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
             Expanded(
               child: ListTile(
                 title: AutoSizeText(
-                  isLibrary
-                      ? l10n.songs
-                      : playlist == playlistManager.playlists[0]
-                      ? l10n.favorites
-                      : title,
+                  getTitleText(l10n),
                   maxLines: 1,
                   minFontSize: 20,
                   maxFontSize: 20,
@@ -388,7 +381,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
                 subtitle: ValueListenableBuilder(
                   valueListenable: currentSongListNotifier,
                   builder: (context, currentSongList, child) {
-                    String prefix = isNavidrome ? "Navidrome" : l10n.local;
+                    String prefix = getSourceTypeName(l10n, sourceType);
                     return Text(
                       "$prefix: ${l10n.songCount(currentSongList.length)}",
                     );
@@ -421,7 +414,7 @@ class _SongListPageState extends BaseSongListState<SongListPage> {
                     songList: currentSongList,
                     folder: folder,
                     playlist: playlist,
-                    isRanking: ranking != null,
+                    isRanking: isRanking,
                     isLibrary: isLibrary,
                     reorderable:
                         reorderable &&

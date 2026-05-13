@@ -148,7 +148,7 @@ class LayersManager {
       }
       return SingleFolderLayer(
         key: GlobalKey(),
-        folder: library.getFolderById(content),
+        folder: library.getFolderById(content)!,
       );
     });
   }
@@ -267,25 +267,20 @@ class LayersManager {
 
   MyAudioMetadata? _getBackgroundSong(Widget layer) {
     if (layer is SingleArtistLayer) {
-      return layer.artist.getDisplaySong();
+      return layer.artist.getCoverSong();
     } else if (layer is SingleAlbumLayer) {
-      return layer.album.getDisplaySong();
+      return layer.album.getCoverSong();
     } else if (layer is SingleFolderLayer) {
       final songList = layer.folder.songList;
       return getFirstSong(songList);
     } else if (layer is SongsLayer) {
-      bool isNavidrome = library.displayNavidromeNotifier.value;
-      return getFirstSong(
-        isNavidrome ? library.navidromeSongList : library.songList,
-      );
+      return getFirstSong(library.songListManager.getSongList());
     } else if (layer is RankingLayer) {
-      bool isNavidrome = history.displayNavidromeRankingNotifier.value;
-      return getFirstSong(history.getRankingSongList(isNavidrome));
+      return getFirstSong(history.rankingSongListManager.getSongList());
     } else if (layer is RecentlyLayer) {
-      bool isNavidrome = history.displayNavidromeRecentlyNotifier.value;
-      return getFirstSong(history.getRecentlySongList(isNavidrome));
+      return getFirstSong(history.recentlySongListManager.getSongList());
     } else if (layer is SinglePlaylistLayer) {
-      return layer.playlist.getDisplaySong();
+      return layer.playlist.getCoverSong();
     } else {
       return currentSongNotifier.value;
     }

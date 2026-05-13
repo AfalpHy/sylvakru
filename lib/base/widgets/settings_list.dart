@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:particle_music/base/audio_handler.dart';
 import 'package:particle_music/base/data/config.dart';
+import 'package:particle_music/base/services/emby_client.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/asset_images.dart';
@@ -104,6 +105,7 @@ class SettingsList extends StatelessWidget {
         ),
         sliverBox(paddingIfNeed(isLandscape, navidromeListTile(context, l10n))),
         sliverBox(paddingIfNeed(isLandscape, webdavListTile(context, l10n))),
+        sliverBox(paddingIfNeed(isLandscape, embyListTile(context, l10n))),
 
         sliverBox(paddingIfNeed(isLandscape, reloadListTile(context, l10n))),
 
@@ -415,6 +417,131 @@ class SettingsList extends StatelessWidget {
                                     showCenterMessage(
                                       context,
                                       'Successfully connect to WebDAV',
+                                      duration: 2000,
+                                    );
+                                  }
+                                  config.save();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: value,
+                                ),
+                                child: Text(l10n.confirm),
+                              ),
+                              Spacer(),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  Spacer(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget embyListTile(BuildContext context, AppLocalizations l10n) {
+    return ListTile(
+      leading: ImageIcon(navidromeImage, size: iconSize),
+      title: Text(l10n.connect2Emby),
+      onTap: () {
+        final baseUrlTmp = TextEditingController(
+          text: embyClient?.baseUrl ?? '',
+        );
+        final usernameTmp = TextEditingController(
+          text: embyClient?.username ?? '',
+        );
+        final passwordTmp = TextEditingController(
+          text: embyClient?.password ?? '',
+        );
+
+        showAnimationDialog(
+          context: context,
+
+          child: SizedBox(
+            height: 300,
+            width: 300,
+            child: Padding(
+              padding: .fromLTRB(20, 15, 20, 15),
+              child: Column(
+                children: [
+                  Spacer(),
+                  SizedBox(
+                    child: Text(
+                      'Emby',
+                      style: .new(fontWeight: .bold, fontSize: 18),
+                    ),
+                  ),
+
+                  SizedBox(height: 10),
+                  CustomTextField('Url', baseUrlTmp),
+
+                  SizedBox(height: 10),
+                  CustomTextField(l10n.username, usernameTmp),
+
+                  SizedBox(height: 10),
+                  CustomTextField(l10n.password, passwordTmp),
+
+                  SizedBox(height: isMobile ? 10 : 20),
+                  Builder(
+                    builder: (context) {
+                      return ValueListenableBuilder(
+                        valueListenable: buttonColor.valueNotifier,
+                        builder: (context, value, child) {
+                          return Row(
+                            children: [
+                              Spacer(),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  if (!await showConfirmDialog(
+                                    context,
+                                    l10n.clear,
+                                  )) {
+                                    return;
+                                  }
+                                  embyClient = null;
+                                  setting.save();
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                  Loader.reload();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: value,
+                                ),
+                                child: Text(l10n.clear),
+                              ),
+                              SizedBox(width: 20),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  embyClient = EmbyClient(
+                                    baseUrl: baseUrlTmp.text,
+                                    username: usernameTmp.text,
+                                    password: passwordTmp.text,
+                                  );
+                                  await embyClient!.login();
+                                  if (!await embyClient!.ping()) {
+                                    embyClient = null;
+                                    if (context.mounted) {
+                                      showCenterMessage(
+                                        context,
+                                        'Can not connect to Emby',
+                                        duration: 2000,
+                                      );
+                                    }
+                                    return;
+                                  }
+
+                                  // print(meta.toString());
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    showCenterMessage(
+                                      context,
+                                      'Successfully connect to Emby',
                                       duration: 2000,
                                     );
                                   }

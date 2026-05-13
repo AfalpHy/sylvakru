@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:particle_music/base/app.dart';
+import 'package:particle_music/base/services/emby_client.dart';
 import 'package:particle_music/base/services/navidrome_client.dart';
 import 'package:particle_music/base/services/webdav_client.dart';
 
@@ -21,6 +22,15 @@ class Config {
     final Map<String, dynamic> map =
         jsonDecode(content) as Map<String, dynamic>;
 
+    final webdavMap = map['webdav'] as Map<String, dynamic>?;
+    if (webdavMap != null) {
+      webdavClient = WebDavClient(
+        baseUrl: webdavMap['baseUrl'],
+        username: webdavMap['username'],
+        password: webdavMap['password'],
+      );
+    }
+
     final navidromeMap = map['navidrome'] as Map<String, dynamic>?;
     if (navidromeMap != null) {
       navidromeClient = NavidromeClient(
@@ -30,19 +40,27 @@ class Config {
       );
     }
 
-    final webdavMap = map['webdav'] as Map<String, dynamic>?;
-    if (webdavMap != null) {
-      webdavClient = WebDavClient(
-        baseUrl: webdavMap['baseUrl'],
-        username: webdavMap['username'],
-        password: webdavMap['password'],
+    final embyMap = map['emby'] as Map<String, dynamic>?;
+    if (embyMap != null) {
+      embyClient = EmbyClient(
+        baseUrl: embyMap['baseUrl'],
+        username: embyMap['username'],
+        password: embyMap['password'],
       );
+      await embyClient!.login();
     }
   }
 
   void save() {
     file.writeAsStringSync(
       jsonEncode({
+        if (webdavClient != null)
+          'webdav': {
+            'baseUrl': webdavClient!.baseUrl,
+            'username': webdavClient!.username,
+            'password': webdavClient!.password,
+          },
+
         if (navidromeClient != null)
           'navidrome': {
             'baseUrl': navidromeClient!.baseUrl,
@@ -50,11 +68,11 @@ class Config {
             'password': navidromeClient!.password,
           },
 
-        if (webdavClient != null)
-          'webdav': {
-            'baseUrl': webdavClient!.baseUrl,
-            'username': webdavClient!.username,
-            'password': webdavClient!.password,
+        if (embyClient != null)
+          'emby': {
+            'baseUrl': embyClient!.baseUrl,
+            'username': embyClient!.username,
+            'password': embyClient!.password,
           },
       }),
     );

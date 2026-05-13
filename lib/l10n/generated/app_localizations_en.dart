@@ -42,7 +42,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ranking => 'Ranking';
 
   @override
-  String get recently => 'Recently';
+  String get recently => 'Recents';
 
   @override
   String get artists => 'Artists';
@@ -457,6 +457,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connect2WebDAV => 'Connect to WebDAV';
+
+  @override
+  String get connect2Emby => 'Connect to Emby';
 
   @override
   String get username => 'Username';

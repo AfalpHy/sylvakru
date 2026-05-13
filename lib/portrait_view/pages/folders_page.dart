@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:particle_music/base/data/folder.dart';
 import 'package:particle_music/base/widgets/cover_art_widget.dart';
 import 'package:particle_music/l10n/generated/app_localizations.dart';
 import 'package:particle_music/layer/layers_manager.dart';
@@ -26,9 +27,16 @@ class FoldersPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: ListView.builder(
-        itemCount: library.folderList.length,
+        itemCount:
+            library.localFolderList.length + library.webdavFolderList.length,
         itemBuilder: (_, index) {
-          final folder = library.folderList[index];
+          late Folder folder;
+          if (index < library.localFolderList.length) {
+            folder = library.localFolderList[index];
+          } else {
+            folder = library
+                .webdavFolderList[index - library.localFolderList.length];
+          }
           return ListTile(
             leading: ValueListenableBuilder(
               valueListenable: folder.updateNotifier,

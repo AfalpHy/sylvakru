@@ -96,6 +96,9 @@ class WebDavClient {
   }
 
   Future<List<WebDavFile>> list(String remotePath) async {
+    if (!remotePath.endsWith('/')) {
+      remotePath += '/';
+    }
     final response = await dio.request(
       remotePath,
       data: '''

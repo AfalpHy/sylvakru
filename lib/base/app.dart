@@ -8,8 +8,10 @@ const String versionNumber = '2.3.0';
 late final Directory appDocsDir;
 late final Directory appSupportDir;
 late final Directory tmpDir;
-late final Directory folderConfigDir;
-late final Directory playlistConfigDir;
+late final Directory localFolderConfigDir;
+late final Directory localPlaylistConfigDir;
+late final Directory webdavFolderConfigDir;
+late final Directory webdavPlaylistConfigDir;
 late final Directory cacheConfigDir;
 
 final isMobile = Platform.isAndroid || Platform.isIOS;
@@ -23,3 +25,5 @@ final mainPageThemeNotifier = ValueNotifier(ThemeType.vivid);
 final lyricsPageThemeNotifier = ValueNotifier(ThemeType.vivid);
 
 final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
+
+enum SourceType { local, webdav, navidrome, emby }

@@ -167,7 +167,7 @@ abstract class AppLocalizations {
   /// No description provided for @recently.
   ///
   /// In en, this message translates to:
-  /// **'Recently'**
+  /// **'Recents'**
   String get recently;
 
   /// No description provided for @artists.
@@ -973,6 +973,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect to WebDAV'**
   String get connect2WebDAV;
+
+  /// No description provided for @connect2Emby.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to Emby'**
+  String get connect2Emby;
 
   /// No description provided for @username.
   ///

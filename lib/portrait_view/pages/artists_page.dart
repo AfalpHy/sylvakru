@@ -256,18 +256,18 @@ class _ArtistsPageState extends State<ArtistsPage> {
             contentPadding: EdgeInsets.symmetric(horizontal: 20),
 
             leading: ValueListenableBuilder(
-              valueListenable: artist.displayNavidromeNotifier,
+              valueListenable: artist.songListManager.sourceTypeNotifier,
               builder: (context, value, child) {
                 return CoverArtWidget(
                   size: 50,
                   borderRadius: 25,
-                  song: artist.getDisplaySong(),
+                  song: artist.getCoverSong(),
                 );
               },
             ),
             title: Text(artist.name),
             trailing: Text(
-              AppLocalizations.of(context).songCount(artist.getTotalCount()),
+              AppLocalizations.of(context).songCount(artist.totalCount),
             ),
             onTap: () {
               layersManager.pushLayer('artists', content: artist.name);
@@ -307,12 +307,12 @@ class _ArtistsPageState extends State<ArtistsPage> {
               children: [
                 GestureDetector(
                   child: ValueListenableBuilder(
-                    valueListenable: artist.displayNavidromeNotifier,
+                    valueListenable: artist.songListManager.sourceTypeNotifier,
                     builder: (context, value, child) {
                       return CoverArtWidget(
                         size: coverArtWidth,
                         borderRadius: radius,
-                        song: artist.getDisplaySong(),
+                        song: artist.getCoverSong(),
                       );
                     },
                   ),
@@ -333,7 +333,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
                       Text(
                         AppLocalizations.of(
                           context,
-                        ).songCount(artist.getTotalCount()),
+                        ).songCount(artist.totalCount),
                         style: TextStyle(fontSize: 12),
                       ),
                     ],

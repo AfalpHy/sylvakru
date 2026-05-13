@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as image;
 import 'package:lpinyin/lpinyin.dart';
+import 'package:particle_music/base/services/emby_client.dart';
 import 'package:particle_music/base/services/webdav_client.dart';
 import 'package:particle_music/base/utils/logger.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
@@ -195,13 +196,13 @@ Future<Uint8List?> loadPictureBytesSafe(MyAudioMetadata? song) async {
 Future<Uint8List?> _loadPictureBytes(MyAudioMetadata song) async {
   try {
     late Uint8List? result;
-    if (song.isNavidrome) {
+    if (song.sourceType == .navidrome) {
       if (song.navidromeCachePath != null) {
         result = await readPictureAsync(song.navidromeCachePath!);
       } else {
         result = await navidromeClient!.getPictureBytes(song.id);
       }
-    } else if (song.isWebdav) {
+    } else if (song.sourceType == .webdav) {
       if (song.webdavCachePath != null) {
         result = await readPictureAsync(song.webdavCachePath!);
       } else {
@@ -210,6 +211,8 @@ Future<Uint8List?> _loadPictureBytes(MyAudioMetadata song) async {
           headers: webdavClient?.headers,
         );
       }
+    } else if (song.sourceType == .emby) {
+      result = await embyClient!.getPictureBytes(song.id);
     } else {
       result = await readPictureAsync(song.path!);
     }
@@ -289,13 +292,18 @@ Future<void> setSongList(
   List<MyAudioMetadata> destList,
   Map<String, MyAudioMetadata> id2Song,
 ) async {
-  final jsonString = await songIdListFile.readAsString();
+  final idSet = id2Song.keys.toSet();
 
+  final jsonString = await songIdListFile.readAsString();
   final List<dynamic> songIdList = jsonDecode(jsonString);
   for (final id in songIdList) {
     final song = id2Song[id];
     if (song != null) {
+      idSet.remove(id);
       destList.add(song);
     }
+  }
+  for (final id in idSet) {
+    destList.add(id2Song[id]!);
   }
 }

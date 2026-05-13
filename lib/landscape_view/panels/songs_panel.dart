@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/widgets/local_navidrome_base.dart';
+import 'package:particle_music/base/widgets/switchable_song_list.dart';
 import 'package:particle_music/base/data/library.dart';
 
 class SongsPanel extends StatelessWidget {
@@ -7,10 +7,8 @@ class SongsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LocalNavidromeBase(
-      displayNavidromeNotifier: library.displayNavidromeNotifier,
-      localSongList: library.songList,
-      navidromeSongList: library.navidromeSongList,
+    return SwitchableSongList(
+      songListManager: library.songListManager,
       isPanel: true,
     );
   }

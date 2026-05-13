@@ -296,7 +296,7 @@ class _EditMetadataState extends State<EditMetadata> {
           disc: writeDisc,
           lyrics: writeLyrics,
           pictureBytes: writePictureBytes,
-          headers: song.isWebdav ? webdavClient?.headers : null,
+          headers: song.sourceType == .webdav ? webdavClient?.headers : null,
         );
       } catch (e) {
         logger.output(e.toString());
@@ -334,10 +334,18 @@ class _EditMetadataState extends State<EditMetadata> {
         artistAlbumManager.updateArtistAlbum(song, originArtist, originAlbum);
 
         song.updateNotifier.value++;
-        await library.update();
-        for (final folder in library.folderList) {
+        if (song.sourceType == .local) {
+          await library.updateLocal();
+        } else {
+          await library.updateWebdav();
+        }
+        for (final folder
+            in song.sourceType == .local
+                ? library.localFolderList
+                : library.webdavFolderList) {
           if (folder.id2Song[song.id] != null) {
             await folder.update();
+            break;
           }
         }
       }

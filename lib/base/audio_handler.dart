@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:particle_music/base/services/emby_client.dart';
 import 'package:particle_music/base/services/webdav_client.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/app.dart';
@@ -243,10 +244,7 @@ class MyAudioHandler extends BaseAudioHandler {
       if (autoPlayOnStartupNotifier.value) {
         if (playQueue.isEmpty) {
           currentIndex = 0;
-          playQueue = List.from(library.songList);
-        }
-        if (playQueue.isEmpty) {
-          playQueue = List.from(library.navidromeSongList);
+          playQueue = List.from(library.songListManager.getSongList());
         }
         if (playQueue.isNotEmpty) {
           isPlayingNotifier.value = true;
@@ -507,7 +505,7 @@ class MyAudioHandler extends BaseAudioHandler {
 
     isLoading = true;
     try {
-      if (currentSong.isNavidrome) {
+      if (currentSong.sourceType == .navidrome) {
         currentSong.navidromeUrl ??= navidromeClient!.getStreamUrl(
           currentSong.id,
         );
@@ -515,7 +513,7 @@ class MyAudioHandler extends BaseAudioHandler {
           Media(currentSong.navidromeCachePath ?? currentSong.navidromeUrl!),
           play: isPlayingNotifier.value,
         );
-      } else if (currentSong.isWebdav) {
+      } else if (currentSong.sourceType == .webdav) {
         if (currentSong.webdavCachePath == null) {
           await _player.open(
             Media(currentSong.path!, httpHeaders: webdavClient?.headers),
@@ -527,6 +525,12 @@ class MyAudioHandler extends BaseAudioHandler {
             play: isPlayingNotifier.value,
           );
         }
+      } else if (currentSong.sourceType == .emby) {
+        currentSong.embyUrl ??= embyClient!.audioUrl(currentSong.id);
+        await _player.open(
+          Media(currentSong.embyCachePath ?? currentSong.embyUrl!),
+          play: isPlayingNotifier.value,
+        );
       } else {
         await _player.open(
           Media(currentSong.path!),

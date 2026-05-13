@@ -443,11 +443,11 @@ class Sidebar extends StatelessWidget {
         label: '_${playlist.name}',
         leading: ListenableBuilder(
           listenable: Listenable.merge([
-            playlist.updateNotifier,
-            playlist.displayNavidromeNotifier,
+            playlist.changeNotifier,
+            playlist.songListManager.sourceTypeNotifier,
           ]),
           builder: (_, _) {
-            final displaySong = playlist.getDisplaySong();
+            final displaySong = playlist.getCoverSong();
             if (displaySong == null) {
               return CoverArtWidget(size: 30, borderRadius: 3, song: null);
             }

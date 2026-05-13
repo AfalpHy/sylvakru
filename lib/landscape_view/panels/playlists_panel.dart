@@ -165,9 +165,9 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
                           itemBuilder: (context, index) {
                             final playlist = playlists[index];
                             return ValueListenableBuilder(
-                              valueListenable: playlist.updateNotifier,
+                              valueListenable: playlist.changeNotifier,
                               builder: (context, value, child) {
-                                final displaySong = playlist.getDisplaySong();
+                                final displaySong = playlist.getCoverSong();
                                 FocusNode focusNode = FocusNode();
 
                                 return StatefulBuilder(

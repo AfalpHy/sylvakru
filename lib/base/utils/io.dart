@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/data/library.dart';
 
@@ -35,4 +37,10 @@ String convertIOSSupportPath(String path) {
 // short path to full path
 String revertIOSSupportPath(String path) {
   return "${appSupportDir.path}/$path";
+}
+
+void initFile(File file, bool isList) {
+  if (!file.existsSync()) {
+    file.writeAsStringSync(isList ? '[]' : '{}');
+  }
 }

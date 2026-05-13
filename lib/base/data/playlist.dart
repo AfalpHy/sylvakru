@@ -4,34 +4,53 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:particle_music/base/app.dart';
+import 'package:particle_music/base/data/song_list_manager.dart';
+import 'package:particle_music/base/utils/io.dart';
+import 'package:particle_music/base/utils/metadata.dart';
 import 'package:particle_music/layer/layers_manager.dart';
 import 'package:particle_music/base/data/library.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
 import 'package:particle_music/base/services/navidrome_client.dart';
-import 'package:particle_music/base/utils/metadata.dart';
 
 final playlistManager = PlaylistManager();
 
 class PlaylistManager {
-  late File file;
+  late File localFile;
+  late File webdavFile;
+
   List<Playlist> playlists = [];
   Map<String, Playlist> playlistsMap = {};
   ValueNotifier<int> updateNotifier = ValueNotifier(0);
   final useLargePictureNotifier = ValueNotifier(true);
 
   Future<void> initAllPlaylists() async {
-    file = File("${playlistConfigDir.path}/particle_music_playlists.json");
-    if (!(file.existsSync())) {
-      file.writeAsStringSync(jsonEncode(['Favorite']));
+    localFile = File(
+      "${localPlaylistConfigDir.path}/particle_music_playlists.json",
+    );
+    if (!(localFile.existsSync())) {
+      localFile.writeAsStringSync(jsonEncode(['Favorite']));
     }
-    List<dynamic> allPlaylists = jsonDecode(await file.readAsString());
-    for (String name in allPlaylists) {
-      final playlist = Playlist(name: name);
-      playlistManager.addPlaylist(playlist);
-    }
+
+    webdavFile = File(
+      "${webdavPlaylistConfigDir.path}/particle_music_playlists.json",
+    );
+    initFile(webdavFile, true);
   }
 
   Future<void> load() async {
+    List<dynamic> localPlaylists = jsonDecode(await localFile.readAsString());
+    for (String name in localPlaylists) {
+      addPlaylist(Playlist(name: name));
+    }
+
+    List<dynamic> webdavPlaylits = jsonDecode(await webdavFile.readAsString());
+    for (String name in webdavPlaylits) {
+      if (playlistsMap[name] == null) {
+        addPlaylist(Playlist(name: name));
+      }
+      playlistsMap[name]!.setWebdavFile();
+    }
+
     if (navidromeClient != null) {
       final navidromePlaylists = await navidromeClient!.getPlaylists();
       for (final playlist in navidromePlaylists) {
@@ -40,11 +59,10 @@ class PlaylistManager {
         if (playlistsMap[name] == null) {
           addPlaylist(Playlist(name: name));
         }
-        playlistsMap[name]!.id = id;
+        playlistsMap[name]!.navidromeId = id;
       }
-      // navidrome may add some playlists
-      update();
     }
+    update();
     for (final playlist in playlists) {
       await playlist.load();
     }
@@ -72,18 +90,17 @@ class PlaylistManager {
       }
     }
 
-    final playlist = Playlist(name: name);
-    playlist.id = await navidromeClient?.createPlaylistAndGetId(name);
-    addPlaylist(playlist);
+    addPlaylist(Playlist(name: name));
 
     update();
   }
 
   Future<void> deletePlaylist(Playlist playlist) async {
-    playlist.file.deleteSync();
+    playlist.localFile.deleteSync();
+    playlist.webdavFile?.deleteSync();
     playlist.settingFile.deleteSync();
-    if (playlist.id != null) {
-      await navidromeClient?.deletePlaylist(playlist.id!);
+    if (playlist.navidromeId != null) {
+      await navidromeClient?.deletePlaylist(playlist.navidromeId!);
     }
     playlists.remove(playlist);
     playlistsMap.remove(playlist.name);
@@ -92,40 +109,49 @@ class PlaylistManager {
   }
 
   void update() {
-    file.writeAsString(jsonEncode(playlists.map((pl) => pl.name).toList()));
+    localFile.writeAsStringSync(
+      jsonEncode(playlists.map((pl) => pl.name).toList()),
+    );
+    webdavFile.writeAsStringSync(
+      jsonEncode(
+        playlists
+            .where((pl) => pl.webdavFile != null)
+            .map((pl) => pl.name)
+            .toList(),
+      ),
+    );
     updateNotifier.value++;
   }
 
   void clear() {
-    for (final playlist in playlists) {
-      playlist.clear();
-    }
+    playlists.clear();
+    playlistsMap.clear();
   }
 }
 
 class Playlist {
   String name;
-  // for navidrome
-  String? id;
-  List<MyAudioMetadata> songList = [];
-  List<MyAudioMetadata> navidromeSongList = [];
-  late File file;
-  late File settingFile;
-  ValueNotifier<int> updateNotifier = ValueNotifier(0);
-  ValueNotifier<int> sortTypeNotifier = ValueNotifier(0);
-  ValueNotifier<int> navidromeSortTypeNotifier = ValueNotifier(0);
 
-  final displayNavidromeNotifier = ValueNotifier(false);
+  String? navidromeId;
+  String? embyId;
+
+  late File localFile;
+  File? webdavFile;
+
+  late File settingFile;
+
+  ValueNotifier<int> changeNotifier = ValueNotifier(0);
+
+  SongListManager songListManager = SongListManager();
 
   late bool isFavorite;
   late bool isNotFavorite;
 
   Playlist({required this.name}) {
-    file = File("${playlistConfigDir.path}/$name.json");
-    settingFile = File("${playlistConfigDir.path}/${name}_setting.json");
-    if (!file.existsSync()) {
-      file.createSync();
-    }
+    localFile = File("${localPlaylistConfigDir.path}/$name.json");
+    initFile(localFile, true);
+    settingFile = File("${localPlaylistConfigDir.path}/${name}_setting.json");
+
     if (!settingFile.existsSync()) {
       saveSetting();
     } else {
@@ -136,64 +162,106 @@ class Playlist {
     isNotFavorite = !isFavorite;
   }
 
-  MyAudioMetadata? getDisplaySong() {
-    bool displayNavidrome = displayNavidromeNotifier.value;
-    return getFirstSong(displayNavidrome ? navidromeSongList : songList);
+  void setWebdavFile() {
+    webdavFile = File("${webdavPlaylistConfigDir.path}/$name.json");
+    initFile(webdavFile!, true);
   }
 
-  int getTotalCount() {
-    return songList.length + navidromeSongList.length;
+  MyAudioMetadata? getCoverSong() {
+    return getFirstSong(songListManager.getSongList());
+  }
+
+  int get totalCount => songListManager.totalCount;
+
+  Future<void> _loadLocal() async {
+    final contents = await localFile.readAsString();
+    List<dynamic> decoded = jsonDecode(contents);
+    for (String id in decoded) {
+      MyAudioMetadata? song = library.id2Song[id];
+      if (song == null) {
+        continue;
+      }
+      songListManager.localSongList.add(song);
+      if (isFavorite) {
+        song.isFavoriteNotifier.value = true;
+      }
+    }
+  }
+
+  Future<void> _loadWebdav() async {
+    if (webdavFile == null) {
+      return;
+    }
+    final contents = await webdavFile!.readAsString();
+    List<dynamic> decoded = jsonDecode(contents);
+    for (String id in decoded) {
+      MyAudioMetadata? song = library.id2Song[id];
+      if (song == null) {
+        continue;
+      }
+      songListManager.webdavSongList.add(song);
+      if (isFavorite) {
+        song.isFavoriteNotifier.value = true;
+      }
+    }
+  }
+
+  Future<void> _loadNavidrome() async {
+    if (navidromeClient == null) {
+      return;
+    }
+    List<String> songIds = [];
+    if (isFavorite) {
+      songIds = await navidromeClient!.getFavoriteSongIds();
+    } else if (navidromeId != null) {
+      songIds = await navidromeClient!.getPlaylistSongIds(navidromeId!);
+    }
+    for (final songId in songIds) {
+      final song = library.id2Song[songId];
+      if (song == null) {
+        continue;
+      }
+      songListManager.navidromeSongList.add(song);
+      if (isFavorite) {
+        song.isFavoriteNotifier.value = true;
+      }
+    }
+  }
+
+  Future<void> _loadEmby() async {
+    if (navidromeClient == null) {
+      return;
+    }
   }
 
   Future<void> load() async {
-    final contents = await file.readAsString();
-    if (contents != "") {
-      List<dynamic> decoded = jsonDecode(contents);
-      for (String id in decoded) {
-        MyAudioMetadata? song = library.id2Song[id];
-        if (song == null) {
-          continue;
-        }
-        songList.add(song);
-        if (isFavorite) {
-          song.isFavoriteNotifier.value = true;
-        }
-      }
-    }
-    if (navidromeClient != null) {
-      List<String> songIds = [];
-      if (isFavorite) {
-        songIds = await navidromeClient!.getFavoriteSongIds();
-      } else if (id != null) {
-        songIds = await navidromeClient!.getPlaylistSongIds(id!);
-      }
-      for (final songId in songIds) {
-        final song = library.id2Song[songId];
-        if (song == null) {
-          continue;
-        }
-        navidromeSongList.add(song);
-        if (isFavorite) {
-          song.isFavoriteNotifier.value = true;
-        }
-      }
-    }
-    displayNavidromeNotifier.value =
-        songList.isEmpty & navidromeSongList.isNotEmpty;
+    await _loadLocal();
+    await _loadWebdav();
+    await _loadNavidrome();
+    await _loadEmby();
+
+    songListManager.resetSourceType();
   }
 
   Future<void> add(List<MyAudioMetadata> songList) async {
     for (MyAudioMetadata song in songList) {
-      if (song.isNavidrome) {
-        if (navidromeSongList.contains(song)) {
-          continue;
-        }
-        navidromeSongList.insert(0, song);
-      } else {
-        if (this.songList.contains(song)) {
-          continue;
-        }
-        this.songList.insert(0, song);
+      switch (song.sourceType) {
+        case .local:
+          if (songListManager.localSongList.contains(song)) {
+            continue;
+          }
+          songListManager.localSongList.insert(0, song);
+          break;
+        case .webdav:
+          break;
+        case .navidrome:
+          if (songListManager.navidromeSongList.contains(song)) {
+            continue;
+          }
+          songListManager.navidromeSongList.insert(0, song);
+          break;
+        default:
+          break;
       }
       if (isFavorite) {
         song.isFavoriteNotifier.value = true;
@@ -204,10 +272,10 @@ class Playlist {
 
   Future<void> remove(List<MyAudioMetadata> songList) async {
     for (MyAudioMetadata song in songList) {
-      if (song.isNavidrome) {
-        navidromeSongList.remove(song);
+      if (song.sourceType == .navidrome) {
+        songListManager.navidromeSongList.remove(song);
       } else {
-        this.songList.remove(song);
+        songListManager.localSongList.remove(song);
       }
       if (isFavorite) {
         song.isFavoriteNotifier.value = false;
@@ -217,37 +285,37 @@ class Playlist {
   }
 
   Future<void> update() async {
-    await file.writeAsString(jsonEncode(songList.map((e) => e.id).toList()));
-    if (isFavorite) {
-      await navidromeClient?.unstarAllSongs();
-      await navidromeClient?.starSongs(
-        navidromeSongList.map((e) => e.id).toList().reversed.toList(),
-      );
-    } else if (id != null || navidromeSongList.isNotEmpty) {
-      if (id != null) {
-        await navidromeClient!.deletePlaylist(id!);
-      }
-      id = await navidromeClient!.createPlaylistAndGetId(name);
-      if (id != null) {
-        await navidromeClient!.addSongsToPlaylist(
-          id!,
-          navidromeSongList.map((e) => e.id).toList(),
-        );
-      }
-    }
+    // await file.writeAsString(
+    //   jsonEncode(songListManager.localSongList.map((e) => e.id).toList()),
+    // );
+    // if (isFavorite) {
+    //   await navidromeClient?.unstarAllSongs();
+    //   await navidromeClient?.starSongs(
+    //     songListManager.navidromeSongList
+    //         .map((e) => e.id)
+    //         .toList()
+    //         .reversed
+    //         .toList(),
+    //   );
+    // } else if (navidromeId != null ||
+    //     songListManager.navidromeSongList.isNotEmpty) {
+    //   if (navidromeId != null) {
+    //     await navidromeClient!.deletePlaylist(navidromeId!);
+    //   }
+    //   navidromeId = await navidromeClient!.createPlaylistAndGetId(name);
+    //   if (navidromeId != null) {
+    //     await navidromeClient!.addSongsToPlaylist(
+    //       navidromeId!,
+    //       songListManager.navidromeSongList.map((e) => e.id).toList(),
+    //     );
+    //   }
+    // }
 
-    if (displayNavidromeNotifier.value &&
-        navidromeSongList.isEmpty &&
-        songList.isNotEmpty) {
-      displayNavidromeNotifier.value = false;
-    } else if (!displayNavidromeNotifier.value &&
-        songList.isEmpty &&
-        navidromeSongList.isNotEmpty) {
-      displayNavidromeNotifier.value = true;
+    if (songListManager.getSongList().isEmpty) {
+      songListManager.resetSourceType();
     }
 
     layersManager.updateBackground();
-    updateNotifier.value++;
   }
 
   void loadSetting() {
@@ -255,23 +323,25 @@ class Playlist {
     final Map<String, dynamic> json =
         jsonDecode(content) as Map<String, dynamic>;
 
-    sortTypeNotifier.value = json['sortType'] as int? ?? 0;
-    navidromeSortTypeNotifier.value = json['navidromeSortType'] as int? ?? 0;
+    songListManager.localSortTypeNotifier.value =
+        json['localSortType'] as int? ?? 0;
+    songListManager.webdavSortTypeNotifier.value =
+        json['webdavSortType'] as int? ?? 0;
+    songListManager.navidromeSortTypeNotifier.value =
+        json['navidromeSortType'] as int? ?? 0;
+    songListManager.embySortTypeNotifier.value =
+        json['embySortType'] as int? ?? 0;
   }
 
   void saveSetting() {
     settingFile.writeAsStringSync(
       jsonEncode({
-        'sortType': sortTypeNotifier.value,
-        'navidromeSortType': navidromeSortTypeNotifier.value,
+        'sortType': songListManager.localSortTypeNotifier.value,
+        'wevdavSortType': songListManager.navidromeSortTypeNotifier.value,
+        'navidromeSortType': songListManager.navidromeSortTypeNotifier.value,
+        'embySortType': songListManager.embySortTypeNotifier.value,
       }),
     );
-  }
-
-  void clear() {
-    id = null;
-    songList = [];
-    navidromeSongList = [];
   }
 }
 

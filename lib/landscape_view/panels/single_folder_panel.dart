@@ -9,6 +9,9 @@ class SingleFolderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SongListPanel(folder: folder);
+    return SongListPanel(
+      folder: folder,
+      sourceType: folder.isWebdav ? .webdav : .local,
+    );
   }
 }

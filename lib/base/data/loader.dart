@@ -14,7 +14,6 @@ import 'package:particle_music/base/data/library.dart';
 import 'package:particle_music/base/data/playlist.dart';
 import 'package:particle_music/base/data/setting.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:uuid/uuid.dart';
 
 final ValueNotifier<int> loadedCountNotifier = ValueNotifier(0);
 
@@ -92,102 +91,6 @@ class Loader {
       return;
     } else {
       tmp.writeAsStringSync(jsonEncode(versionNumber));
-    }
-
-    tmp = File('${appSupportDir.path}/setting.txt');
-    if (tmp.existsSync()) {
-      tmp.renameSync('${appSupportDir.path}/setting.json');
-    }
-
-    tmp = File('${appSupportDir.path}/song_file_path_list.txt');
-    if (tmp.existsSync()) {
-      tmp.renameSync("${appSupportDir.path}/song_id_list.json");
-    }
-
-    tmp = File('${appSupportDir.path}/song_metadata_list.txt');
-    if (tmp.existsSync()) {
-      tmp.deleteSync();
-    }
-
-    tmp = File('${appSupportDir.path}/play_queue_state.txt');
-    if (tmp.existsSync()) {
-      tmp.deleteSync();
-    }
-
-    tmp = File('${appSupportDir.path}/play_state.txt');
-    if (tmp.existsSync()) {
-      tmp.deleteSync();
-    }
-
-    tmp = File('${appSupportDir.path}/ranking.txt');
-    if (tmp.existsSync()) {
-      final content = tmp.readAsStringSync();
-      List<dynamic> jsonList = jsonDecode(content);
-
-      tmp.writeAsStringSync(
-        jsonEncode(
-          jsonList.map((map) {
-            return {'times': map['times'] as int, 'id': map['path'] as String};
-          }).toList(),
-        ),
-      );
-      tmp.renameSync('${appSupportDir.path}/ranking.json');
-    }
-
-    tmp = File('${appSupportDir.path}/recently.txt');
-    if (tmp.existsSync()) {
-      tmp.renameSync('${appSupportDir.path}/recently.json');
-    }
-
-    tmp = File('${appSupportDir.path}/playlists.txt');
-    if (tmp.existsSync()) {
-      final content = tmp.readAsStringSync();
-      tmp.renameSync('${playlistConfigDir.path}/particle_music_playlists.json');
-
-      List<dynamic> jsonList = jsonDecode(content);
-
-      for (String name in jsonList) {
-        tmp = File('${appSupportDir.path}/$name.json');
-        if (tmp.existsSync()) {
-          tmp.renameSync('${playlistConfigDir.path}/$name.json');
-        }
-
-        tmp = File('${appSupportDir.path}/${name}_setting.json');
-        if (tmp.existsSync()) {
-          tmp.renameSync('${playlistConfigDir.path}/${name}_setting.json');
-        }
-      }
-    }
-
-    tmp = File('${appSupportDir.path}/folder_paths.txt');
-    if (tmp.existsSync()) {
-      final content = tmp.readAsStringSync();
-      tmp.renameSync('${folderConfigDir.path}/folder_map_list.json');
-      List<dynamic> jsonList = jsonDecode(content);
-      List<Map<String, dynamic>> folderMapList = [];
-      for (int i = 0; i < jsonList.length; i++) {
-        final id = jsonList[i];
-        final uuid = Uuid();
-        final songIdListPath = '${folderConfigDir.path}/${uuid.v4()}.json';
-        final songMetadataListPath =
-            '${folderConfigDir.path}/${uuid.v4()}.json';
-        tmp = File('${appSupportDir.path}/folder_song_file_path_list_$i.txt');
-        if (tmp.existsSync()) {
-          tmp.deleteSync();
-        }
-        folderMapList.add({
-          'id': id,
-          'songIdListPath': Platform.isIOS
-              ? songIdListPath.split('folder_config/').last
-              : songIdListPath,
-          'songMetadataListPath': Platform.isIOS
-              ? songMetadataListPath.split('folder_config/').last
-              : songMetadataListPath,
-        });
-      }
-
-      tmp = File('${folderConfigDir.path}/folder_map_list.json');
-      tmp.writeAsStringSync(jsonEncode(folderMapList));
     }
   }
 }

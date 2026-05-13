@@ -11,6 +11,7 @@ import 'package:particle_music/base/data/artist_album.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/asset_images.dart';
+import 'package:particle_music/base/utils/name_map.dart';
 import 'package:particle_music/base/widgets/cover_art_widget.dart';
 import 'package:particle_music/base/widgets/my_divider.dart';
 import 'package:particle_music/base/widgets/playlist_widgets.dart';
@@ -36,9 +37,9 @@ class SongListPanel extends BaseSongListWidget {
     super.artist,
     super.album,
     super.folder,
-    super.ranking,
-    super.recently,
-    super.isNavidrome,
+    super.isRanking,
+    super.isRecently,
+    super.sourceType,
     super.switchCallBack,
   });
 
@@ -196,11 +197,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                 SizedBox(height: isPhone ? 15 : 30),
                 ListTile(
                   title: AutoSizeText(
-                    isLibrary
-                        ? l10n.songs
-                        : playlist?.isFavorite == true
-                        ? l10n.favorites
-                        : title,
+                    getTitleText(l10n),
                     maxLines: 1,
                     minFontSize: 20,
                     maxFontSize: 20,
@@ -210,7 +207,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                   subtitle: ValueListenableBuilder(
                     valueListenable: currentSongListNotifier,
                     builder: (context, currentSongList, child) {
-                      String prefix = isNavidrome ? "Navidrome" : l10n.local;
+                      String prefix = getSourceTypeName(l10n, sourceType);
                       return Text(
                         "$prefix: ${l10n.songCount(currentSongList.length)}",
                       );
@@ -279,8 +276,8 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                                     songList: songList,
                                     playlist: playlist,
                                     folder: folder,
-                                    ranking: ranking,
-                                    recently: recently,
+                                    isRanking: isRanking,
+                                    isRecently: isRecently,
                                     isLibrary: isLibrary,
                                     reorderable: reorderable,
                                   ),
@@ -296,7 +293,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                           SizedBox(width: 15),
                           ElevatedButton(
                             onPressed: () async {
-                              widget.switchCallBack?.call();
+                              widget.switchCallBack!(context);
                             },
                             style: buttonStyle,
                             child: Text(l10n.switch_),
@@ -320,7 +317,8 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                           ),
                         ],
 
-                        if (isLibrary && !isNavidrome || folder != null) ...[
+                        if (isLibrary && sourceType == .local ||
+                            folder != null) ...[
                           SizedBox(width: 15),
                           ElevatedButton(
                             onPressed: () {
@@ -328,73 +326,78 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                                 context: context,
                                 child: SizedBox(
                                   width: 300,
-                                  height: 350,
-                                  child: ListView(
-                                    children: [
-                                      ListTile(
-                                        title: Text(l10n.defaultText),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          sortTypeNotifier.value = 0;
-                                        },
-                                        trailing: sortTypeNotifier.value == 0
-                                            ? Icon(Icons.check)
-                                            : null,
-                                      ),
-                                      ListTile(
-                                        title: Text(l10n.modifiedTimeAscending),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          sortTypeNotifier.value = 9;
-                                        },
-                                        trailing: sortTypeNotifier.value == 9
-                                            ? Icon(Icons.check)
-                                            : null,
-                                      ),
-                                      ListTile(
-                                        title: Text(
-                                          l10n.modifiedTimedescending,
+                                  height: 300,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: ListView(
+                                      children: [
+                                        ListTile(
+                                          title: Text(l10n.defaultText),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            sortTypeNotifier.value = 0;
+                                          },
+                                          trailing: sortTypeNotifier.value == 0
+                                              ? Icon(Icons.check)
+                                              : null,
                                         ),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          sortTypeNotifier.value = 10;
-                                        },
-                                        trailing: sortTypeNotifier.value == 10
-                                            ? Icon(Icons.check)
-                                            : null,
-                                      ),
-                                      ListTile(
-                                        title: Text(l10n.randomizeTemp),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          sortTypeNotifier.value = 11;
-                                        },
-                                        trailing: sortTypeNotifier.value == 11
-                                            ? Icon(Icons.check)
-                                            : null,
-                                      ),
-                                      ListTile(
-                                        title: Text(l10n.randomizePermanent),
-                                        onTap: () async {
-                                          Navigator.pop(context);
-                                          if (!await showConfirmDialog(
-                                            context,
-                                            l10n.cannotBeUndone,
-                                          )) {
-                                            return;
-                                          }
-                                          sortTypeNotifier.value = 0;
-                                          if (isLibrary) {
-                                            library.shuffle();
-                                          } else {
-                                            folder!.shuffle();
-                                          }
-                                        },
-                                        trailing: sortTypeNotifier.value == 12
-                                            ? Icon(Icons.check)
-                                            : null,
-                                      ),
-                                    ],
+                                        ListTile(
+                                          title: Text(
+                                            l10n.modifiedTimeAscending,
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            sortTypeNotifier.value = 9;
+                                          },
+                                          trailing: sortTypeNotifier.value == 9
+                                              ? Icon(Icons.check)
+                                              : null,
+                                        ),
+                                        ListTile(
+                                          title: Text(
+                                            l10n.modifiedTimedescending,
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            sortTypeNotifier.value = 10;
+                                          },
+                                          trailing: sortTypeNotifier.value == 10
+                                              ? Icon(Icons.check)
+                                              : null,
+                                        ),
+                                        ListTile(
+                                          title: Text(l10n.randomizeTemp),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            sortTypeNotifier.value = 11;
+                                          },
+                                          trailing: sortTypeNotifier.value == 11
+                                              ? Icon(Icons.check)
+                                              : null,
+                                        ),
+                                        ListTile(
+                                          title: Text(l10n.randomizePermanent),
+                                          onTap: () async {
+                                            Navigator.pop(context);
+                                            if (!await showConfirmDialog(
+                                              context,
+                                              l10n.cannotBeUndone,
+                                            )) {
+                                              return;
+                                            }
+                                            sortTypeNotifier.value = 0;
+                                            if (isLibrary) {
+                                              library.shuffle();
+                                            } else {
+                                              folder!.shuffle();
+                                            }
+                                          },
+                                          trailing: sortTypeNotifier.value == 12
+                                              ? Icon(Icons.check)
+                                              : null,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -418,7 +421,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
 
   Widget label() {
     final l10n = AppLocalizations.of(context);
-    bool canSort = ranking == null && recently == null;
+    bool canSort = !isRanking && !isRecently;
     return SizedBox(
       height: 50,
       child: Row(
@@ -570,7 +573,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
               ),
             ),
           ),
-          if (ranking != null)
+          if (isRanking)
             SizedBox(
               width: 50,
               child: Padding(
@@ -752,7 +755,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
               },
             ),
 
-          if (selectedCnt == 1 && !isNavidrome)
+          if (selectedCnt == 1 && sourceType == .local)
             MenuAction(
               title: l10n.editMetadata,
               image: MenuImage.icon(Icons.edit_rounded),
@@ -833,7 +836,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
         index: index,
         isSelected: isSelected,
         currentSongList: currentSongList,
-        isRanking: ranking != null,
+        isRanking: isRanking,
         moreButton: isTV ? moreButton : null,
         onTap: () async {
           if (ctrlIsPressed) {
@@ -918,22 +921,26 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                     Navigator.pop(context);
 
                     if (isLibrary) {
-                      final item = library.songList.removeAt(index);
-                      library.songList.insert(0, item);
+                      final item = library.songListManager.localSongList
+                          .removeAt(index);
+                      library.songListManager.localSongList.insert(0, item);
                       library.update();
                     } else if (folder != null) {
                       final item = folder!.songList.removeAt(index);
                       folder!.songList.insert(0, item);
                       folder!.update();
                     } else {
-                      if (song.isNavidrome) {
-                        final item = playlist!.navidromeSongList.removeAt(
-                          index,
+                      if (song.sourceType == .navidrome) {
+                        final item = playlist!.songListManager.navidromeSongList
+                            .removeAt(index);
+                        playlist!.songListManager.navidromeSongList.insert(
+                          0,
+                          item,
                         );
-                        playlist!.navidromeSongList.insert(0, item);
                       } else {
-                        final item = playlist!.songList.removeAt(index);
-                        playlist!.songList.insert(0, item);
+                        final item = playlist!.songListManager.localSongList
+                            .removeAt(index);
+                        playlist!.songListManager.localSongList.insert(0, item);
                       }
                       playlist!.update();
                     }
@@ -1049,7 +1056,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                 },
               ),
 
-              if (!song.isNavidrome)
+              if (song.sourceType != .navidrome)
                 ListTile(
                   leading: Icon(Icons.edit_rounded),
                   title: Text(

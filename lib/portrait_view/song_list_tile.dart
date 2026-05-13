@@ -176,23 +176,34 @@ class SongListTile extends StatelessWidget {
                               Navigator.pop(context);
 
                               if (isLibrary) {
-                                final item = library.songList.removeAt(index);
-                                library.songList.insert(0, item);
+                                final item = library
+                                    .songListManager
+                                    .localSongList
+                                    .removeAt(index);
+                                library.songListManager.localSongList.insert(
+                                  0,
+                                  item,
+                                );
                                 library.update();
                               } else if (folder != null) {
                                 final item = folder!.songList.removeAt(index);
                                 folder!.songList.insert(0, item);
                                 folder!.update();
                               } else {
-                                if (song.isNavidrome) {
-                                  final item = playlist!.navidromeSongList
+                                if (song.sourceType == .navidrome) {
+                                  final item = playlist!
+                                      .songListManager
+                                      .navidromeSongList
                                       .removeAt(index);
-                                  playlist!.navidromeSongList.insert(0, item);
+                                  playlist!.songListManager.navidromeSongList
+                                      .insert(0, item);
                                 } else {
-                                  final item = playlist!.songList.removeAt(
-                                    index,
-                                  );
-                                  playlist!.songList.insert(0, item);
+                                  final item = playlist!
+                                      .songListManager
+                                      .localSongList
+                                      .removeAt(index);
+                                  playlist!.songListManager.localSongList
+                                      .insert(0, item);
                                 }
                                 playlist!.update();
                               }
@@ -335,7 +346,7 @@ class SongListTile extends StatelessWidget {
                           },
                         ),
 
-                        if (!song.isNavidrome)
+                        if (song.sourceType != .navidrome)
                           ListTile(
                             leading: Icon(Icons.edit_rounded),
                             title: Text(

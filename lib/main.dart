@@ -3,7 +3,6 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/utils/logger.dart';
@@ -33,14 +32,30 @@ Future<void> main() async {
   appSupportDir = await getApplicationSupportDirectory();
   tmpDir = await getTemporaryDirectory();
 
-  folderConfigDir = Directory('${appSupportDir.path}/folder_config');
-  if (!folderConfigDir.existsSync()) {
-    folderConfigDir.createSync();
+  localFolderConfigDir = Directory('${appSupportDir.path}/local_folder_config');
+  if (!localFolderConfigDir.existsSync()) {
+    localFolderConfigDir.createSync();
   }
 
-  playlistConfigDir = Directory('${appSupportDir.path}/playlist_config');
-  if (!playlistConfigDir.existsSync()) {
-    playlistConfigDir.createSync();
+  localPlaylistConfigDir = Directory(
+    '${appSupportDir.path}/local_playlist_config',
+  );
+  if (!localPlaylistConfigDir.existsSync()) {
+    localPlaylistConfigDir.createSync();
+  }
+
+  webdavFolderConfigDir = Directory(
+    '${appSupportDir.path}/webdav_folder_config',
+  );
+  if (!webdavFolderConfigDir.existsSync()) {
+    webdavFolderConfigDir.createSync();
+  }
+
+  webdavPlaylistConfigDir = Directory(
+    '${appSupportDir.path}/webdav_playlist_config',
+  );
+  if (!webdavPlaylistConfigDir.existsSync()) {
+    webdavPlaylistConfigDir.createSync();
   }
 
   cacheConfigDir = Directory('${appSupportDir.path}/cache_config');
@@ -95,25 +110,7 @@ Future<void> main() async {
               titleTextStyle: TextStyle(color: textColor.value, fontSize: 24),
               iconTheme: IconThemeData(color: iconColor.value),
             ),
-            textTheme: Platform.isWindows
-                ? GoogleFonts.notoSerifScTextTheme().copyWith(
-                    bodyLarge: GoogleFonts.notoSerifSc(
-                      color: textColor.value,
-                      fontWeight: .w500,
-                    ),
-                    bodyMedium: GoogleFonts.notoSerifSc(
-                      color: textColor.value,
-                      fontWeight: .w500,
-                    ),
-                  )
-                : TextTheme(
-                    bodyLarge: TextStyle(color: textColor.value),
-                    bodyMedium: TextStyle(color: textColor.value),
-                    displayLarge: TextStyle(
-                      color: textColor.value,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+
             iconTheme: IconThemeData(color: iconColor.value),
             listTileTheme: ListTileThemeData(
               iconColor: iconColor.value,

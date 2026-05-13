@@ -1,8 +1,4 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
+import 'package:particle_music/base/data/song_list_manager.dart';
 import 'package:particle_music/layer/layers_manager.dart';
 import 'package:particle_music/base/data/library.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
@@ -10,90 +6,62 @@ import 'package:particle_music/base/services/navidrome_client.dart';
 
 final History history = History();
 
-final rankingChangeNotifier = ValueNotifier(0);
-final recentlyChangeNotifier = ValueNotifier(0);
-
 class History {
-  late File rankingFile;
-  late File recentlyFile;
+  SongListManager rankingSongListManager = SongListManager();
+  SongListManager recentlySongListManager = SongListManager();
 
-  List<MyAudioMetadata> rankingSongList = [];
-  List<MyAudioMetadata> navidromeRankingSongList = [];
+  void fetchSongs(
+    List<MyAudioMetadata> fromSongList,
+    List<MyAudioMetadata> toRankingSongList,
+    List<MyAudioMetadata> toRecentlySongList,
+  ) {
+    for (final song in fromSongList) {
+      if (song.playCount > 0) {
+        toRankingSongList.add(song);
+        toRecentlySongList.add(song);
+      }
+    }
+    toRankingSongList.sort((a, b) {
+      int tmp = b.playCount.compareTo(a.playCount);
+      return tmp != 0 ? tmp : a.lastPlayed!.compareTo(b.lastPlayed!);
+    });
 
-  List<MyAudioMetadata> recentlySongList = [];
-  List<MyAudioMetadata> navidromeRecentlySongList = [];
-
-  final displayNavidromeRankingNotifier = ValueNotifier(false);
-  final displayNavidromeRecentlyNotifier = ValueNotifier(false);
-
-  List<MyAudioMetadata> getRankingSongList(bool isNavidrome) {
-    return isNavidrome ? navidromeRankingSongList : rankingSongList;
-  }
-
-  List<MyAudioMetadata> getRecentlySongList(bool isNavidrome) {
-    return isNavidrome ? navidromeRecentlySongList : recentlySongList;
+    toRecentlySongList.sort((a, b) => b.lastPlayed!.compareTo(a.lastPlayed!));
   }
 
   Future<void> load() async {
-    rankingFile = File("${appSupportDir.path}/ranking.json");
-    if (rankingFile.existsSync()) {
-      String content = rankingFile.readAsStringSync();
-      List<dynamic> jsonList = jsonDecode(content);
+    fetchSongs(
+      library.songListManager.localSongList,
+      rankingSongListManager.localSongList,
+      recentlySongListManager.localSongList,
+    );
 
-      for (final raw in jsonList) {
-        final map = Map<String, dynamic>.from(raw);
-        String id = map['id'] as String;
-        MyAudioMetadata? song = library.id2Song[id];
-        if (song != null) {
-          song.playCount = map['times'] as int;
-          rankingSongList.add(song);
-        }
-      }
-    } else {
-      rankingFile.writeAsStringSync(jsonEncode([]));
-    }
+    fetchSongs(
+      library.songListManager.webdavSongList,
+      rankingSongListManager.webdavSongList,
+      recentlySongListManager.webdavSongList,
+    );
 
-    recentlyFile = File("${appSupportDir.path}/recently.json");
-    if (recentlyFile.existsSync()) {
-      String content = recentlyFile.readAsStringSync();
-      List<dynamic> jsonList = jsonDecode(content);
+    fetchSongs(
+      library.songListManager.navidromeSongList,
+      rankingSongListManager.navidromeSongList,
+      recentlySongListManager.navidromeSongList,
+    );
 
-      for (String id in jsonList) {
-        MyAudioMetadata? song = library.id2Song[id];
-        if (song != null) {
-          recentlySongList.add(song);
-        }
-      }
-    } else {
-      recentlyFile.writeAsStringSync(jsonEncode([]));
-    }
+    fetchSongs(
+      library.songListManager.embySongList,
+      rankingSongListManager.embySongList,
+      recentlySongListManager.embySongList,
+    );
 
-    for (final song in library.navidromeSongList) {
-      if (song.playCount > 0) {
-        navidromeRankingSongList.add(song);
-        navidromeRecentlySongList.add(song);
-      }
-      navidromeRankingSongList.sort((a, b) {
-        int tmp = b.playCount.compareTo(a.playCount);
-        return tmp != 0 ? tmp : a.lastPlayed!.compareTo(b.lastPlayed!);
-      });
-
-      navidromeRecentlySongList.sort(
-        (a, b) => b.lastPlayed!.compareTo(a.lastPlayed!),
-      );
-    }
-
-    displayNavidromeRankingNotifier.value =
-        rankingSongList.isEmpty & navidromeRankingSongList.isNotEmpty;
-
-    displayNavidromeRecentlyNotifier.value =
-        recentlySongList.isEmpty & navidromeRecentlySongList.isNotEmpty;
+    rankingSongListManager.resetSourceType();
+    recentlySongListManager.resetSourceType();
   }
 
   void _addSongTimes(MyAudioMetadata song, int times) {
-    final currentRankingSongList = song.isNavidrome
-        ? navidromeRankingSongList
-        : rankingSongList;
+    final currentRankingSongList = rankingSongListManager.getSongList2(
+      song.sourceType,
+    );
     int index = -1;
     for (int i = 0; i < currentRankingSongList.length; i++) {
       if (song == currentRankingSongList[i]) {
@@ -124,49 +92,35 @@ class History {
   Future<void> addSongTimes(MyAudioMetadata song, int times) async {
     _addSongTimes(song, times);
 
-    if (song.isNavidrome) {
-      while (times-- > 0) {
-        await navidromeClient!.scrobble(song.id);
-      }
-    } else {
-      rankingFile.writeAsStringSync(
-        jsonEncode(
-          rankingSongList
-              .map((e) => {'times': e.playCount, 'id': e.id})
-              .toList(),
-        ),
-      );
+    switch (song.sourceType) {
+      case .local:
+      case .webdav:
+        await library.updatePlayCount(song);
+        break;
+      case .navidrome:
+        while (times-- > 0) {
+          await navidromeClient!.scrobble(song.id);
+        }
+        break;
+      default:
+        break;
     }
+    rankingSongListManager.getChangeNotifier2(song.sourceType).value++;
 
     _add2Recently(song);
 
     layersManager.updateBackground();
-    rankingChangeNotifier.value++;
   }
 
   void _add2Recently(MyAudioMetadata song) {
-    if (song.isNavidrome) {
-      navidromeRecentlySongList.remove(song);
-      navidromeRecentlySongList.insert(0, song);
-    } else {
-      recentlySongList.remove(song);
-      recentlySongList.insert(0, song);
-      if (recentlySongList.length > 500) {
-        recentlySongList.removeLast();
-      }
-      recentlyFile.writeAsStringSync(
-        jsonEncode(recentlySongList.map((e) => e.id).toList()),
-      );
-    }
-
-    recentlyChangeNotifier.value++;
+    final songList = recentlySongListManager.getSongList2(song.sourceType);
+    songList.remove(song);
+    songList.insert(0, song);
+    recentlySongListManager.getChangeNotifier2(song.sourceType).value++;
   }
 
   void clear() {
-    rankingSongList = [];
-    navidromeRankingSongList = [];
-
-    recentlySongList = [];
-    navidromeRecentlySongList = [];
+    rankingSongListManager.clear();
+    recentlySongListManager.clear();
   }
 }

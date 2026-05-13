@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/data/artist_album.dart';
+import 'package:particle_music/base/data/song_list_manager.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/widgets/cover_art_widget.dart';
 import 'package:particle_music/base/data/folder.dart';
@@ -11,18 +12,19 @@ import 'package:particle_music/base/data/library.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
 import 'package:particle_music/base/data/playlist.dart';
 import 'package:particle_music/base/utils/metadata.dart';
+import 'package:particle_music/l10n/generated/app_localizations.dart';
 
 abstract class BaseSongListWidget extends StatefulWidget {
   final Playlist? playlist;
   final Artist? artist;
   final Album? album;
   final Folder? folder;
-  final String? ranking;
-  final String? recently;
+  final bool isRanking;
+  final bool isRecently;
 
-  final bool isNavidrome;
+  final SourceType sourceType;
 
-  final Function()? switchCallBack;
+  final Function(BuildContext)? switchCallBack;
 
   const BaseSongListWidget({
     super.key,
@@ -30,9 +32,9 @@ abstract class BaseSongListWidget extends StatefulWidget {
     this.artist,
     this.album,
     this.folder,
-    this.ranking,
-    this.recently,
-    this.isNavidrome = false,
+    this.isRanking = false,
+    this.isRecently = false,
+    this.sourceType = .local,
     this.switchCallBack,
   });
 }
@@ -40,19 +42,20 @@ abstract class BaseSongListWidget extends StatefulWidget {
 abstract class BaseSongListState<T extends BaseSongListWidget>
     extends State<T> {
   late String title;
+  late SongListManager songListManager;
   late List<MyAudioMetadata> songList;
   Playlist? playlist;
   Artist? artist;
   Album? album;
   Folder? folder;
-  String? ranking;
-  String? recently;
 
   bool isLibrary = false;
+  bool isRanking = false;
+  bool isRecently = false;
 
   bool reorderable = false;
 
-  late bool isNavidrome;
+  late SourceType sourceType;
 
   Timer? timer;
 
@@ -64,6 +67,18 @@ abstract class BaseSongListState<T extends BaseSongListWidget>
   final TextEditingController textController = TextEditingController();
 
   ValueNotifier<int> sortTypeNotifier = ValueNotifier(0);
+
+  String getTitleText(AppLocalizations l10n) {
+    return isLibrary
+        ? l10n.songs
+        : playlist?.isFavorite == true
+        ? l10n.favorites
+        : isRanking
+        ? l10n.ranking
+        : isRecently
+        ? l10n.recently
+        : title;
+  }
 
   void updateSongList() {
     final value = textController.text;
@@ -80,52 +95,43 @@ abstract class BaseSongListState<T extends BaseSongListWidget>
     artist = widget.artist;
     album = widget.album;
     folder = widget.folder;
-    ranking = widget.ranking;
-    recently = widget.recently;
+    isRanking = widget.isRanking;
+    isRecently = widget.isRecently;
 
-    isNavidrome = widget.isNavidrome;
+    sourceType = widget.sourceType;
 
     if (playlist != null) {
-      songList = isNavidrome ? playlist!.navidromeSongList : playlist!.songList;
       title = playlist!.name;
-      sortTypeNotifier = isNavidrome
-          ? playlist!.navidromeSortTypeNotifier
-          : playlist!.sortTypeNotifier;
-      playlist!.updateNotifier.addListener(updateSongList);
+      songListManager = playlist!.songListManager;
       reorderable = true;
     } else if (artist != null) {
-      songList = artist!.getSongList(isNavidrome);
       title = artist!.name;
-      artist!.updateNotifier.addListener(updateSongList);
+      songListManager = artist!.songListManager;
     } else if (album != null) {
-      songList = album!.getSongList(isNavidrome);
       title = album!.name;
-      album!.updateNotifier.addListener(updateSongList);
+      songListManager = album!.songListManager;
     } else if (folder != null) {
-      songList = folder!.songList;
       title = folder!.id;
+      reorderable = true;
+    } else if (isRanking) {
+      songListManager = history.rankingSongListManager;
+    } else if (isRecently) {
+      songListManager = history.recentlySongListManager;
+    } else {
+      isLibrary = true;
+      songListManager = library.songListManager;
+      reorderable = sourceType == .local || sourceType == .webdav;
+    }
+    if (folder == null) {
+      songList = songListManager.getSongList2(sourceType);
+      sortTypeNotifier = songListManager.getSortTypeNotifier2(sourceType);
+      songListManager
+          .getChangeNotifier2(sourceType)
+          .addListener(updateSongList);
+    } else {
+      songList = folder!.songList;
       sortTypeNotifier = folder!.sortTypeNotifier;
       folder!.updateNotifier.addListener(updateSongList);
-      reorderable = true;
-    } else if (ranking != null) {
-      songList = history.getRankingSongList(isNavidrome);
-      title = ranking!;
-      rankingChangeNotifier.addListener(updateSongList);
-    } else if (recently != null) {
-      songList = history.getRecentlySongList(isNavidrome);
-      title = recently!;
-      recentlyChangeNotifier.addListener(updateSongList);
-    } else {
-      if (isNavidrome) {
-        songList = library.navidromeSongList;
-        sortTypeNotifier = library.navidromeSortTypeNotifier;
-      } else {
-        songList = library.songList;
-        sortTypeNotifier = library.sortTypeNotifier;
-        library.changeNotifier.addListener(updateSongList);
-        reorderable = true;
-      }
-      isLibrary = true;
     }
     updateSongList();
     sortTypeNotifier.addListener(updateSongList);
@@ -134,21 +140,14 @@ abstract class BaseSongListState<T extends BaseSongListWidget>
 
   @override
   void dispose() {
-    if (playlist != null) {
-      playlist!.updateNotifier.removeListener(updateSongList);
-    } else if (artist != null) {
-      artist!.updateNotifier.removeListener(updateSongList);
-    } else if (album != null) {
-      album!.updateNotifier.removeListener(updateSongList);
-    } else if (folder != null) {
+    if (folder == null) {
+      songListManager
+          .getChangeNotifier2(sourceType)
+          .removeListener(updateSongList);
+    } else {
       folder!.updateNotifier.removeListener(updateSongList);
-    } else if (ranking != null) {
-      rankingChangeNotifier.removeListener(updateSongList);
-    } else if (recently != null) {
-      recentlyChangeNotifier.removeListener(updateSongList);
-    } else if (isLibrary && !isNavidrome) {
-      library.changeNotifier.removeListener(updateSongList);
     }
+
     sortTypeNotifier.removeListener(updateSongList);
     textController.removeListener(updateSongList);
     scrollController.dispose();

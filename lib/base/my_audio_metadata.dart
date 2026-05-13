@@ -1,9 +1,8 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/utils/io.dart';
+import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/utils/lyric.dart';
 
 class MyAudioMetadata {
@@ -12,8 +11,7 @@ class MyAudioMetadata {
   String? path;
   DateTime? modified;
 
-  final bool isNavidrome;
-  final bool isWebdav;
+  final SourceType sourceType;
 
   final AudioMetadata _audioMetadata;
 
@@ -23,9 +21,11 @@ class MyAudioMetadata {
   ParsedLyrics? parsedLyrics;
 
   String? navidromeUrl;
+  String? embyUrl;
 
   String? navidromeCachePath;
   String? webdavCachePath;
+  String? embyCachePath;
 
   final isFavoriteNotifier = ValueNotifier(false);
   final updateNotifier = ValueNotifier(0);
@@ -38,8 +38,7 @@ class MyAudioMetadata {
     required this.id,
     this.path,
     this.modified,
-    this.isNavidrome = false,
-    this.isWebdav = false,
+    this.sourceType = .local,
     this.playCount = 0,
     this.lastPlayed,
   });
@@ -81,38 +80,6 @@ class MyAudioMetadata {
   set duration(Duration? value) => _audioMetadata.duration = value;
   set pictureBytes(Uint8List? value) => _audioMetadata.pictureBytes = value;
 
-  factory MyAudioMetadata.fromMap(Map<String, dynamic> map) {
-    final id = map['id'] as String;
-    String path = id;
-    bool isWebdav = id.startsWith('http://') | id.startsWith('https://');
-    if (!isWebdav && Platform.isIOS) {
-      path = revertIOSPath(path);
-    }
-
-    return MyAudioMetadata(
-      id: id,
-      path: path,
-      isWebdav: isWebdav,
-      modified: DateTime.fromMillisecondsSinceEpoch(map['modified'] as int),
-      AudioMetadata(
-        format: map['format'] as String?,
-        title: map['title'] as String?,
-        artist: map['artist'] as String?,
-        album: map['album'] as String?,
-        genre: map['genre'] as String?,
-        year: map['year'] as int?,
-        track: map['track'] as int?,
-        disc: map['disc'] as int?,
-        bitrate: map['bitrate'] as int?,
-        samplerate: map['samplerate'] as int?,
-        duration: map['duration'] != null
-            ? Duration(milliseconds: map['duration'] as int)
-            : null,
-        lyrics: map['lyrics'] as String?,
-      ),
-    );
-  }
-
   factory MyAudioMetadata.fromNavidromeMap(Map<String, dynamic> song) {
     return MyAudioMetadata(
       AudioMetadata(
@@ -131,7 +98,7 @@ class MyAudioMetadata {
             ? Duration(seconds: song['duration'])
             : null,
       ),
-      isNavidrome: true,
+      sourceType: .navidrome,
       id: song['id'],
       playCount: song['playCount'] as int? ?? 0,
       lastPlayed: song['played'] != null
@@ -140,23 +107,70 @@ class MyAudioMetadata {
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'format': format,
-      'modified': modified?.millisecondsSinceEpoch,
-      'title': title,
-      'artist': artist,
-      'album': album,
-      'albumArtist': albumArtist,
-      'genre': genre,
-      'year': year,
-      'track': track,
-      'disc': disc,
-      'bitrate': bitrate,
-      'samplerate': samplerate,
-      'duration': duration?.inMilliseconds,
-      'lyrics': lyrics,
-    };
+  factory MyAudioMetadata.fromEmbyMap(Map<String, dynamic> song) {
+    final mediaSources = (song['MediaSources'] as List?) ?? [];
+    final primarySource = mediaSources.isNotEmpty ? mediaSources.first : null;
+    final streams = (primarySource?['MediaStreams'] as List?) ?? [];
+
+    final audioStream = streams.firstWhere(
+      (s) => s['Type'] == 'Audio',
+      orElse: () => null,
+    );
+
+    final lyricStream = streams.firstWhere(
+      (s) => s['Type'] == 'Subtitle',
+      orElse: () => null,
+    );
+
+    return MyAudioMetadata(
+      AudioMetadata(
+        format: audioStream?['Codec'] ?? primarySource?['Container'],
+
+        title: song['Name'],
+
+        artist:
+            (song['ArtistItems'] as List?)?.map((a) => a['Name']).join(', ') ??
+            (song['Artists'] as List?)?.join(', '),
+
+        album: song['Album'],
+
+        albumArtist: song['AlbumArtist'],
+
+        genre: (song['Genres'] as List?)?.join(', '),
+
+        year: song['ProductionYear'],
+
+        track: song['IndexNumber'],
+
+        disc: song['ParentIndexNumber'],
+
+        bitrate: audioStream?['BitRate'] ?? primarySource?['Bitrate'],
+
+        samplerate: audioStream?['SampleRate'],
+
+        duration: song['RunTimeTicks'] != null
+            ? Duration(microseconds: song['RunTimeTicks'] ~/ 10)
+            : null,
+
+        lyrics: lyricStream?['Extradata'],
+      ),
+
+      sourceType: SourceType.emby,
+
+      id: song['Id'],
+
+      playCount: song['UserData']?['PlayCount'] as int? ?? 0,
+
+      lastPlayed: song['UserData']?['LastPlayedDate'] != null
+          ? DateTime.parse(song['UserData']['LastPlayedDate'])
+          : DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  @override
+  String toString() {
+    return "$_audioMetadata\n"
+        "playCount:$playCount\n"
+        "lastPlayed:$lastPlayed";
   }
 }

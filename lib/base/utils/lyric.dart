@@ -88,18 +88,21 @@ Future<void> setParsedLyrics(MyAudioMetadata song) async {
 
   List<String> lines = [];
 
-  if (song.isNavidrome) {
+  if (song.sourceType == .navidrome) {
     final lyrics = await navidromeClient!.getLyricsById(song.id);
     if (lyrics != null) {
       lines = lyrics.split(RegExp(r'[\n]'));
     }
+  } else if (song.sourceType == .emby) {
+    result.lines.add(LyricLine(Duration.zero, 'There are no lyrics', []));
+    return;
   } else {
     if (song.lyrics == null || song.lyrics!.isEmpty) {
       String path = song.path!;
       path = "${path.substring(0, path.lastIndexOf('.'))}.lrc";
 
       late File lrcFile;
-      if (song.isWebdav) {
+      if (song.sourceType == .webdav) {
         lrcFile = File('${tmpDir.path}/particle_music_lyric');
         await webdavClient?.download(remotePath: path, localPath: lrcFile.path);
       } else {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:particle_music/base/data/folder.dart';
 import 'package:particle_music/base/utils/color_manager.dart';
 import 'package:particle_music/base/asset_images.dart';
 import 'package:particle_music/base/widgets/cover_art_widget.dart';
@@ -44,7 +45,10 @@ class FoldersPanel extends StatelessWidget {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                  l10n.folderCount(library.folderList.length),
+                  l10n.folderCount(
+                    library.localFolderList.length +
+                        library.webdavFolderList.length,
+                  ),
                   style: TextStyle(fontSize: 12),
                 ),
               ),
@@ -66,9 +70,17 @@ class FoldersPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 40),
 
           sliver: SliverList.builder(
-            itemCount: library.folderList.length,
-            itemBuilder: (context, index) {
-              final folder = library.folderList[index];
+            itemCount:
+                library.localFolderList.length +
+                library.webdavFolderList.length,
+            itemBuilder: (_, index) {
+              late Folder folder;
+              if (index < library.localFolderList.length) {
+                folder = library.localFolderList[index];
+              } else {
+                folder = library
+                    .webdavFolderList[index - library.localFolderList.length];
+              }
               return ValueListenableBuilder(
                 valueListenable: folder.updateNotifier,
                 builder: (context, value, child) {

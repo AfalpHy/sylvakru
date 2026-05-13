@@ -1,0 +1,152 @@
+import 'package:flutter/material.dart';
+import 'package:particle_music/base/app.dart';
+import 'package:particle_music/base/my_audio_metadata.dart';
+
+class SongListManager {
+  List<MyAudioMetadata> localSongList = [];
+  List<MyAudioMetadata> webdavSongList = [];
+  List<MyAudioMetadata> navidromeSongList = [];
+  List<MyAudioMetadata> embySongList = [];
+
+  ValueNotifier<int> localSortTypeNotifier = ValueNotifier(0);
+  ValueNotifier<int> webdavSortTypeNotifier = ValueNotifier(0);
+  ValueNotifier<int> navidromeSortTypeNotifier = ValueNotifier(0);
+  ValueNotifier<int> embySortTypeNotifier = ValueNotifier(0);
+
+  ValueNotifier<int> localChangeNotifier = ValueNotifier(0);
+  ValueNotifier<int> webdavChangeNotifier = ValueNotifier(0);
+  ValueNotifier<int> navidromeChangeNotifier = ValueNotifier(0);
+  ValueNotifier<int> embyChangeNotifier = ValueNotifier(0);
+
+  final sourceTypeNotifier = ValueNotifier(SourceType.local);
+
+  void resetSourceType() {
+    if (localSongList.isNotEmpty) {
+      sourceTypeNotifier.value = .local;
+    } else if (webdavSongList.isNotEmpty) {
+      sourceTypeNotifier.value = .webdav;
+    } else if (navidromeSongList.isNotEmpty) {
+      sourceTypeNotifier.value = .navidrome;
+    } else if (embySongList.isNotEmpty) {
+      sourceTypeNotifier.value = .emby;
+    } else {
+      sourceTypeNotifier.value = .local;
+    }
+  }
+
+  List<MyAudioMetadata> getSongList() {
+    switch (sourceTypeNotifier.value) {
+      case .local:
+        return localSongList;
+      case .webdav:
+        return webdavSongList;
+      case .navidrome:
+        return navidromeSongList;
+      default:
+        return embySongList;
+    }
+  }
+
+  List<MyAudioMetadata> getSongList2(SourceType sourceType) {
+    switch (sourceType) {
+      case .local:
+        return localSongList;
+      case .webdav:
+        return webdavSongList;
+      case .navidrome:
+        return navidromeSongList;
+      default:
+        return embySongList;
+    }
+  }
+
+  ValueNotifier<int> getSortTypeNotifier() {
+    switch (sourceTypeNotifier.value) {
+      case .local:
+        return localSortTypeNotifier;
+      case .webdav:
+        return webdavSortTypeNotifier;
+      case .navidrome:
+        return navidromeSortTypeNotifier;
+      default:
+        return embySortTypeNotifier;
+    }
+  }
+
+  ValueNotifier<int> getSortTypeNotifier2(SourceType sourceType) {
+    switch (sourceType) {
+      case .local:
+        return localSortTypeNotifier;
+      case .webdav:
+        return webdavSortTypeNotifier;
+      case .navidrome:
+        return navidromeSortTypeNotifier;
+      default:
+        return embySortTypeNotifier;
+    }
+  }
+
+  ValueNotifier<int> getChangeNotifier() {
+    switch (sourceTypeNotifier.value) {
+      case .local:
+        return localChangeNotifier;
+      case .webdav:
+        return webdavChangeNotifier;
+      case .navidrome:
+        return navidromeChangeNotifier;
+      default:
+        return embyChangeNotifier;
+    }
+  }
+
+  ValueNotifier<int> getChangeNotifier2(SourceType sourceType) {
+    switch (sourceType) {
+      case .local:
+        return localChangeNotifier;
+      case .webdav:
+        return webdavChangeNotifier;
+      case .navidrome:
+        return navidromeChangeNotifier;
+      default:
+        return embyChangeNotifier;
+    }
+  }
+
+  bool get isEmpty {
+    return localSongList.isEmpty &&
+        webdavSongList.isEmpty &&
+        navidromeSongList.isEmpty &&
+        embySongList.isEmpty;
+  }
+
+  int get totalCount {
+    return localSongList.length +
+        webdavSongList.length +
+        navidromeSongList.length +
+        embySongList.length;
+  }
+
+  int get notEmptyCount {
+    int cnt = 0;
+    if (localSongList.isNotEmpty) {
+      cnt++;
+    }
+    if (webdavSongList.isNotEmpty) {
+      cnt++;
+    }
+    if (navidromeSongList.isNotEmpty) {
+      cnt++;
+    }
+    if (embySongList.isNotEmpty) {
+      cnt++;
+    }
+    return cnt;
+  }
+
+  void clear() {
+    localSongList.clear();
+    webdavSongList.clear();
+    navidromeSongList.clear();
+    embySongList.clear();
+  }
+}

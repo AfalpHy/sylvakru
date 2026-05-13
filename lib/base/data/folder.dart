@@ -43,24 +43,15 @@ class Folder {
   late Directory? _dir;
   bool isWebdav;
   late File _songIdListFile;
-  late File _songMetadataListFile;
 
   List<MyAudioMetadata> songList = [];
-  List<MyAudioMetadata> additionalSongList = [];
   Map<String, MyAudioMetadata> id2Song = {};
-  Set<String> validId = {};
 
   ValueNotifier<int> sortTypeNotifier = ValueNotifier(0);
 
   final updateNotifier = ValueNotifier(0);
 
-  Folder(
-    this.id,
-    this.path,
-    String songIdListPath,
-    String songMetadataListPath, {
-    this.isWebdav = false,
-  }) {
+  Folder(this.id, this.path, String songIdListPath, {this.isWebdav = false}) {
     if (!isWebdav) {
       _dir = Directory(path);
     }
@@ -68,19 +59,13 @@ class Folder {
     if (!_songIdListFile.existsSync()) {
       _songIdListFile.writeAsStringSync('[]');
     }
-    _songMetadataListFile = File(songMetadataListPath);
-    if (!_songMetadataListFile.existsSync()) {
-      _songMetadataListFile.writeAsStringSync('[]');
-    }
   }
 
-  static Future<Folder> from(Map<String, dynamic> map) async {
+  static Future<Folder> fromLocal(Map<String, dynamic> map) async {
     String id = map['id'] as String;
     String path = id;
-    bool isWebdav = id.startsWith('WebDAV:');
-    if (isWebdav) {
-      path = id.substring(7);
-    } else if (Platform.isIOS) {
+    String songIdListPath = map['songIdListPath'] as String;
+    if (Platform.isIOS) {
       if (id.startsWith('Particle Music')) {
         path =
             '${appDocsDir.parent.path}/${id.replaceFirst('Particle Music', 'Documents')}';
@@ -88,33 +73,27 @@ class Folder {
         path = await BookmarkService.getUrlById(id) ?? '';
         library.setIOSFileProviderStorageIfNeed(path);
       }
-    }
-    String songIdListPath = map['songIdListPath'] as String;
-    String songMetadataListPath = map['songMetadataListPath'] as String;
-    if (Platform.isIOS) {
-      songIdListPath = "${folderConfigDir.path}/$songIdListPath";
-      songMetadataListPath = "${folderConfigDir.path}/$songMetadataListPath";
+      songIdListPath = "${localFolderConfigDir.path}/$songIdListPath";
     }
 
-    return Folder(
-      id,
-      path,
-      songIdListPath,
-      songMetadataListPath,
-      isWebdav: isWebdav,
-    );
+    return Folder(id, path, songIdListPath);
   }
 
-  static Future<Folder> create(String id) async {
+  static Future<Folder> fromWebdav(Map<String, dynamic> map) async {
+    String id = map['id'] as String;
+    String path = id;
+
+    String songIdListPath = map['songIdListPath'] as String;
+
+    return Folder(id, path, songIdListPath, isWebdav: true);
+  }
+
+  static Future<Folder> createLocal(String id) async {
     final uuid = Uuid();
-    final songIdListPath = '${folderConfigDir.path}/${uuid.v4()}.json';
-    final songMetadataListPath = '${folderConfigDir.path}/${uuid.v4()}.json';
+    final songIdListPath = '${localFolderConfigDir.path}/${uuid.v4()}.json';
 
     String path = id;
-    bool isWebdav = id.startsWith('WebDAV:');
-    if (isWebdav) {
-      path = id.substring(7);
-    } else if (Platform.isIOS) {
+    if (Platform.isIOS) {
       if (id.startsWith('Particle Music')) {
         path =
             '${appDocsDir.parent.path}/${id.replaceFirst('Particle Music', 'Documents')}';
@@ -126,13 +105,16 @@ class Folder {
       }
     }
 
-    return Folder(
-      id,
-      path,
-      songIdListPath,
-      songMetadataListPath,
-      isWebdav: isWebdav,
-    );
+    return Folder(id, path, songIdListPath);
+  }
+
+  static Future<Folder> createWebdav(String id) async {
+    final uuid = Uuid();
+    final songIdListPath = '${webdavFolderConfigDir.path}/${uuid.v4()}.json';
+
+    String path = id;
+
+    return Folder(id, path, songIdListPath, isWebdav: true);
   }
 
   Map<String, dynamic> toMap() {
@@ -141,38 +123,18 @@ class Folder {
       'songIdListPath': Platform.isIOS
           ? _songIdListFile.path.split('folder_config/').last
           : _songIdListFile.path,
-      'songMetadataListPath': Platform.isIOS
-          ? _songMetadataListFile.path.split('folder_config/').last
-          : _songMetadataListFile.path,
     };
   }
 
-  Future<void> _prepare() async {
-    final jsonString = await _songMetadataListFile.readAsString();
-    final List<dynamic> list = jsonDecode(jsonString);
-    for (final map in list) {
-      final song = MyAudioMetadata.fromMap(map);
-      id2Song[song.id] = song;
-    }
-  }
-
   Future<void> _processSong(String id, String path, DateTime modified) async {
-    MyAudioMetadata? song = id2Song[id];
-    bool isAdditional = song == null;
-
-    if (recursiveScanNotifier.value) {
-      MyAudioMetadata? song = library.id2Song[id];
-      if (song != null) {
-        if (isAdditional) {
-          additionalSongList.add(song);
-        }
-
-        id2Song[id] = song;
-        validId.add(id);
-        return;
-      }
+    MyAudioMetadata? song = library.id2Song[id];
+    // visited
+    if (song != null) {
+      id2Song[id] = song;
+      return;
     }
 
+    song = id2Song[id];
     if (song?.modified != modified) {
       try {
         final tmp = isWebdav
@@ -189,14 +151,8 @@ class Folder {
             id: id,
             path: path,
             modified: modified,
-            isWebdav: isWebdav,
+            sourceType: isWebdav ? .webdav : .local,
           );
-
-          if (isAdditional) {
-            additionalSongList.add(song);
-          }
-
-          id2Song[id] = song;
         } else {
           song = null;
         }
@@ -206,18 +162,26 @@ class Folder {
       }
     }
     if (song != null) {
-      validId.add(id);
+      id2Song[id] = song;
       loadedCountNotifier.value++;
+    } else {
+      id2Song.remove(id);
+    }
+  }
+
+  void prepare() {
+    final jsonString = _songIdListFile.readAsStringSync();
+    final List<dynamic> songIdList = jsonDecode(jsonString);
+    for (final id in songIdList) {
+      id2Song[id] = library.id2Song[id]!;
     }
   }
 
   Future<void> load() async {
     currentLoadingFolderNotifier.value = id;
-    await _prepare();
     if (isWebdav) {
-      if (webdavClient == null) {
-        await setSongList(_songIdListFile, songList, id2Song);
-        logger.output('There are no WebDAV client');
+      if (await webdavClient?.ping() != true) {
+        logger.output('WebDAV not connected');
         return;
       }
 
@@ -252,15 +216,11 @@ class Folder {
 
         await pool.close();
       } catch (e) {
-        // If it fails, keep the original data.
-        await setSongList(_songIdListFile, songList, id2Song);
-        additionalSongList.clear();
         logger.output(e.toString());
         return;
       }
     } else {
       if (!_dir!.existsSync()) {
-        await setSongList(_songIdListFile, songList, id2Song);
         logger.output('$path is not exist');
         return;
       }
@@ -284,29 +244,14 @@ class Folder {
       }
     }
 
-    final Map<String, MyAudioMetadata> newId2Song = {};
-
-    for (final path in validId) {
-      newId2Song[path] = id2Song[path]!;
-    }
-    id2Song = newId2Song;
-
     await setSongList(_songIdListFile, songList, id2Song);
-    songList.addAll(additionalSongList);
 
     await _saveSongIdList();
-    await _saveSongMetadataList();
   }
 
   Future<void> _saveSongIdList() async {
     await _songIdListFile.writeAsString(
       jsonEncode(songList.map((e) => e.id).toList()),
-    );
-  }
-
-  Future<void> _saveSongMetadataList() async {
-    await _songMetadataListFile.writeAsString(
-      jsonEncode(songList.map((e) => e.toMap()).toList()),
     );
   }
 
@@ -324,7 +269,6 @@ class Folder {
   void delete() {
     try {
       _songIdListFile.deleteSync();
-      _songMetadataListFile.deleteSync();
     } catch (e) {
       logger.output(e.toString());
     }
@@ -332,8 +276,6 @@ class Folder {
 
   void clear() {
     songList = [];
-    additionalSongList = [];
-    validId = {};
     id2Song = {};
   }
 }

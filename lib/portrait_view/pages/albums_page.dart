@@ -230,12 +230,12 @@ class _AlbumsPageState extends State<AlbumsPage> {
               children: [
                 GestureDetector(
                   child: ValueListenableBuilder(
-                    valueListenable: album.displayNavidromeNotifier,
+                    valueListenable: album.songListManager.sourceTypeNotifier,
                     builder: (context, value, child) {
                       return CoverArtWidget(
                         size: coverArtWidth,
                         borderRadius: radius,
-                        song: album.getDisplaySong(),
+                        song: album.getCoverSong(),
                       );
                     },
                   ),
@@ -256,7 +256,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
                       Text(
                         AppLocalizations.of(
                           context,
-                        ).songCount(album.getTotalCount()),
+                        ).songCount(album.totalCount),
                         style: TextStyle(fontSize: 12),
                       ),
                     ],
