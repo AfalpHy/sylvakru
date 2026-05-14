@@ -305,7 +305,7 @@ class _EditMetadataState extends State<EditMetadata> {
 
       if (success) {
         song.modified = DateTime.now();
-        song.webdavCachePath = null;
+        song.cachePath = null;
 
         final originArtist = getArtist(song);
         final originAlbum = getAlbum(song);

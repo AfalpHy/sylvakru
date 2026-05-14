@@ -27,13 +27,8 @@ class Library {
   late MetadataDB _localMetadataDB;
   late MetadataDB _webdavMetadataDB;
 
-  late File _webdavCacheMapFile;
-  late File _navidromeCacheMapFile;
-  late File _embyCacheMapFile;
-
-  Map<String, String> _id2WebdavCache = {};
-  Map<String, String> _id2navidromeCache = {};
-  Map<String, String> _id2embyCache = {};
+  late File _cacheMapFile;
+  final Map<String, String> _id2CachePath = {};
   ValueNotifier<double> cacheSizeNotifier = ValueNotifier(0);
 
   Map<String, MyAudioMetadata> id2Song = {};
@@ -48,29 +43,21 @@ class Library {
 
   Library() {
     _localSongIdListFile = File(
-      "${appSupportDir.path}/local_song_id_list.json",
+      "${appSupportDir.path}/local/song_id_list.json",
     );
     initFile(_localSongIdListFile, true);
 
     _webdavSongIdListFile = File(
-      "${appSupportDir.path}/webdav_song_id_list.json",
+      "${appSupportDir.path}/webdav/song_id_list.json",
     );
     initFile(_webdavSongIdListFile, true);
 
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-    _localMetadataDB = MetadataDB(openMetadataDB('local_metadata.db'));
-    _webdavMetadataDB = MetadataDB(openMetadataDB('webdav_metadata.db'));
+    _localMetadataDB = MetadataDB(openMetadataDB('local/metadata.db'));
+    _webdavMetadataDB = MetadataDB(openMetadataDB('webdav/metadata.db'));
 
-    _webdavCacheMapFile = File("${cacheConfigDir.path}/webdav_cache_map.json");
-    initFile(_webdavCacheMapFile, false);
-
-    _navidromeCacheMapFile = File(
-      "${cacheConfigDir.path}/navidrome_cache_map.json",
-    );
-    initFile(_navidromeCacheMapFile, false);
-
-    _embyCacheMapFile = File("${cacheConfigDir.path}/emby_cache_map.json");
-    initFile(_embyCacheMapFile, false);
+    _cacheMapFile = File("${cacheConfigDir.path}/cache_map.json");
+    initFile(_cacheMapFile, false);
 
     _localFolderMapListFile = File(
       "${localFolderConfigDir.path}/folder_map_list.json",
@@ -275,193 +262,88 @@ class Library {
     await _saveLocalMetadata();
     await _saveWebdavMetadata();
 
-    await _processCache(.webdav);
-    await _saveWebdavCache();
-
-    await _processCache(.navidrome);
-    await _saveNavidromeCache();
-
-    await _processCache(.emby);
-    await _saveEmbyCache();
+    await _processCache();
   }
 
-  Future<void> _processCache(SourceType souceType) async {
-    final cacheMapFile = souceType == .webdav
-        ? _webdavCacheMapFile
-        : souceType == .navidrome
-        ? _navidromeCacheMapFile
-        : _embyCacheMapFile;
-    final cacheMap = souceType == .webdav
-        ? _id2WebdavCache
-        : souceType == .navidrome
-        ? _id2navidromeCache
-        : _id2embyCache;
-
-    cacheMap.addAll(
-      (jsonDecode(await cacheMapFile.readAsString()) as Map<String, dynamic>)
+  Future<void> _processCache() async {
+    _id2CachePath.addAll(
+      (jsonDecode(await _cacheMapFile.readAsString()) as Map<String, dynamic>)
           .cast(),
     );
 
-    for (final id in cacheMap.keys) {
+    for (final id in _id2CachePath.keys) {
       final song = id2Song[id];
-      String cachePath = cacheMap[id]!;
+      String cachePath = _id2CachePath[id]!;
 
       if (Platform.isIOS) {
         cachePath = revertIOSSupportPath(cachePath);
       }
       File cacheFile = File(cachePath);
       if (song != null && await cacheFile.exists()) {
-        if (souceType == .webdav) {
-          song.webdavCachePath = cachePath;
-        } else if (souceType == .navidrome) {
-          song.navidromeCachePath = cachePath;
-        } else {
-          song.embyCachePath = cachePath;
-        }
+        song.cachePath = cachePath;
         cacheSizeNotifier.value += await cacheFile.length() / (1024 * 1024);
       } else {
         if (await cacheFile.exists()) {
           await cacheFile.delete();
         }
-        cacheMap[id] = '';
+        _id2CachePath[id] = '';
       }
     }
 
-    cacheMap.removeWhere((key, value) => value == '');
+    _id2CachePath.removeWhere((key, value) => value == '');
+    await _saveCacheMap();
   }
 
   Future<void> tryAddCache(MyAudioMetadata song) async {
+    if (song.sourceType == .local || song.cachePath != null) {
+      return;
+    }
+    final uuid = Uuid();
+    final savePath = "${cacheConfigDir.path}/cache/${uuid.v4()}";
     if (song.sourceType == .webdav) {
-      if (song.webdavCachePath != null) {
-        return;
-      }
-      final uuid = Uuid();
-      final savePath = "${cacheConfigDir.path}/webdavCache/${uuid.v4()}";
-
       await webdavClient!.download(remotePath: song.path!, localPath: savePath);
-
-      final tmp = File(savePath);
-      if (await tmp.exists()) {
-        _id2WebdavCache[song.id] = savePath;
-        song.webdavCachePath = savePath;
-        cacheSizeNotifier.value += await tmp.length() / (1024 * 1024);
-        await _saveWebdavCache();
-      }
     } else if (song.sourceType == .navidrome) {
-      if (song.navidromeCachePath != null) {
-        return;
-      }
-
-      final uuid = Uuid();
-      final savePath = "${cacheConfigDir.path}/navidromeCache/${uuid.v4()}";
-
       await navidromeClient!.downloadSong(songId: song.id, savePath: savePath);
-
-      final tmp = File(savePath);
-      if (await tmp.exists()) {
-        _id2navidromeCache[song.id] = savePath;
-        song.navidromeCachePath = savePath;
-        cacheSizeNotifier.value += await tmp.length() / (1024 * 1024);
-        await _saveNavidromeCache();
-      }
     } else if (song.sourceType == .emby) {
-      if (song.embyCachePath != null) {
-        return;
-      }
-
-      final uuid = Uuid();
-      final savePath = "${cacheConfigDir.path}/embyCache/${uuid.v4()}";
-
       await embyClient!.downloadSong(itemId: song.id, savePath: savePath);
-
-      final tmp = File(savePath);
-      if (await tmp.exists()) {
-        _id2embyCache[song.id] = savePath;
-        song.embyCachePath = savePath;
-        cacheSizeNotifier.value += await tmp.length() / (1024 * 1024);
-        await _saveEmbyCache();
-      }
+    }
+    final tmp = File(savePath);
+    if (await tmp.exists()) {
+      song.cachePath = savePath;
+      _id2CachePath[song.id] = savePath;
+      cacheSizeNotifier.value += await tmp.length() / (1024 * 1024);
+      await _saveCacheMap();
     }
   }
 
-  Future<void> _saveWebdavCache() async {
+  Future<void> _saveCacheMap() async {
     if (Platform.isIOS) {
-      await _webdavCacheMapFile.writeAsString(
+      await _cacheMapFile.writeAsString(
         jsonEncode(
-          _id2WebdavCache.map(
+          _id2CachePath.map(
             (key, value) => MapEntry(key, convertIOSSupportPath(value)),
           ),
         ),
       );
     } else {
-      await _webdavCacheMapFile.writeAsString(jsonEncode(_id2WebdavCache));
-    }
-  }
-
-  Future<void> _saveNavidromeCache() async {
-    if (Platform.isIOS) {
-      await _navidromeCacheMapFile.writeAsString(
-        jsonEncode(
-          _id2navidromeCache.map(
-            (key, value) => MapEntry(key, convertIOSSupportPath(value)),
-          ),
-        ),
-      );
-    } else {
-      await _navidromeCacheMapFile.writeAsString(
-        jsonEncode(_id2navidromeCache),
-      );
-    }
-  }
-
-  Future<void> _saveEmbyCache() async {
-    if (Platform.isIOS) {
-      await _embyCacheMapFile.writeAsString(
-        jsonEncode(
-          _id2embyCache.map(
-            (key, value) => MapEntry(key, convertIOSSupportPath(value)),
-          ),
-        ),
-      );
-    } else {
-      await _embyCacheMapFile.writeAsString(jsonEncode(_id2embyCache));
+      await _cacheMapFile.writeAsString(jsonEncode(_id2CachePath));
     }
   }
 
   Future<void> clearCache() async {
-    for (final id in _id2WebdavCache.keys) {
+    for (final id in _id2CachePath.keys) {
       final song = id2Song[id];
-      song!.webdavCachePath = null;
+      song!.cachePath = null;
     }
+    _id2CachePath.clear();
+    await _saveCacheMap();
 
-    for (final id in _id2navidromeCache.keys) {
-      final song = id2Song[id];
-      song!.navidromeCachePath = null;
-    }
-
-    Directory webdavCacheDir = Directory("${cacheConfigDir.path}/webdavCache");
-    if (await webdavCacheDir.exists()) {
-      await webdavCacheDir.delete(recursive: true);
-    }
-    Directory navidromeCacheDir = Directory(
-      "${cacheConfigDir.path}/navidromeCache",
-    );
-    if (await navidromeCacheDir.exists()) {
-      await navidromeCacheDir.delete(recursive: true);
-    }
-    Directory embyCacheDir = Directory("${cacheConfigDir.path}/embyCache");
-    if (await embyCacheDir.exists()) {
-      await embyCacheDir.delete(recursive: true);
+    Directory cacheDir = Directory("${cacheConfigDir.path}/cache");
+    if (await cacheDir.exists()) {
+      await cacheDir.delete(recursive: true);
     }
 
     cacheSizeNotifier.value = 0;
-
-    _id2WebdavCache = {};
-    await _saveWebdavCache();
-    _id2navidromeCache = {};
-    await _saveNavidromeCache();
-    _id2embyCache = {};
-    await _saveEmbyCache();
   }
 
   Future<void> _saveLocalSongIdList() async {
@@ -535,13 +417,11 @@ class Library {
   }
 
   void clear() {
-    _id2WebdavCache = {};
-    _id2navidromeCache = {};
-    _id2embyCache = {};
+    _id2CachePath.clear();
     cacheSizeNotifier.value = 0;
 
     songListManager.clear();
-    id2Song = {};
+    id2Song.clear();
 
     for (final folder in localFolderList) {
       folder.clear();

@@ -20,12 +20,7 @@ class MyAudioMetadata {
   Color? lowerLuminance;
   ParsedLyrics? parsedLyrics;
 
-  String? navidromeUrl;
-  String? embyUrl;
-
-  String? navidromeCachePath;
-  String? webdavCachePath;
-  String? embyCachePath;
+  String? cachePath;
 
   final isFavoriteNotifier = ValueNotifier(false);
   final updateNotifier = ValueNotifier(0);

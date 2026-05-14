@@ -32,30 +32,30 @@ Future<void> main() async {
   appSupportDir = await getApplicationSupportDirectory();
   tmpDir = await getTemporaryDirectory();
 
-  localFolderConfigDir = Directory('${appSupportDir.path}/local_folder_config');
+  localFolderConfigDir = Directory('${appSupportDir.path}/local/folder_config');
   if (!localFolderConfigDir.existsSync()) {
-    localFolderConfigDir.createSync();
+    localFolderConfigDir.createSync(recursive: true);
   }
 
   localPlaylistConfigDir = Directory(
-    '${appSupportDir.path}/local_playlist_config',
+    '${appSupportDir.path}/local/playlist_config',
   );
   if (!localPlaylistConfigDir.existsSync()) {
-    localPlaylistConfigDir.createSync();
+    localPlaylistConfigDir.createSync(recursive: true);
   }
 
   webdavFolderConfigDir = Directory(
-    '${appSupportDir.path}/webdav_folder_config',
+    '${appSupportDir.path}/webdav/folder_config',
   );
   if (!webdavFolderConfigDir.existsSync()) {
-    webdavFolderConfigDir.createSync();
+    webdavFolderConfigDir.createSync(recursive: true);
   }
 
   webdavPlaylistConfigDir = Directory(
-    '${appSupportDir.path}/webdav_playlist_config',
+    '${appSupportDir.path}/webdav/playlist_config',
   );
   if (!webdavPlaylistConfigDir.existsSync()) {
-    webdavPlaylistConfigDir.createSync();
+    webdavPlaylistConfigDir.createSync(recursive: true);
   }
 
   cacheConfigDir = Directory('${appSupportDir.path}/cache_config');

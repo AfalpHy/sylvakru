@@ -506,43 +506,34 @@ class MyAudioHandler extends BaseAudioHandler {
 
     isLoading = true;
     try {
-      switch (currentSong.sourceType) {
-        case .local:
-          await _player.open(
-            Media(currentSong.path!),
-            play: isPlayingNotifier.value,
-          );
-          break;
-        case .webdav:
-          if (currentSong.webdavCachePath == null) {
-            await _player.open(
-              Media(currentSong.path!, httpHeaders: webdavClient?.headers),
-              play: isPlayingNotifier.value,
-            );
-          } else {
-            await _player.open(
-              Media(currentSong.webdavCachePath!),
-              play: isPlayingNotifier.value,
-            );
-          }
-          break;
-        case .navidrome:
-          currentSong.navidromeUrl ??= navidromeClient!.getStreamUrl(
-            currentSong.id,
-          );
-          await _player.open(
-            Media(currentSong.navidromeCachePath ?? currentSong.navidromeUrl!),
-            play: isPlayingNotifier.value,
-          );
-          break;
-        default:
-          currentSong.embyUrl ??= embyClient!.audioUrl(currentSong.id);
-          await _player.open(
-            Media(currentSong.embyCachePath ?? currentSong.embyUrl!),
-            play: isPlayingNotifier.value,
-          );
-          break;
+      if (currentSong.cachePath != null) {
+        await _player.open(
+          Media(currentSong.cachePath!),
+          play: isPlayingNotifier.value,
+        );
+      } else {
+        switch (currentSong.sourceType) {
+          case .navidrome:
+            currentSong.path ??= navidromeClient!.getStreamUrl(currentSong.id);
+            break;
+          case .emby:
+            currentSong.path ??= embyClient!.audioUrl(currentSong.id);
+            break;
+          default:
+            break;
+        }
+
+        await _player.open(
+          Media(
+            currentSong.path!,
+            httpHeaders: currentSong.sourceType == .webdav
+                ? webdavClient?.headers
+                : null,
+          ),
+          play: isPlayingNotifier.value,
+        );
       }
+
       if (isPlayingNotifier.value) {
         _playLastSyncTime = DateTime.now();
       }

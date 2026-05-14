@@ -196,25 +196,26 @@ Future<Uint8List?> loadPictureBytesSafe(MyAudioMetadata? song) async {
 Future<Uint8List?> _loadPictureBytes(MyAudioMetadata song) async {
   try {
     late Uint8List? result;
-    if (song.sourceType == .navidrome) {
-      if (song.navidromeCachePath != null) {
-        result = await readPictureAsync(song.navidromeCachePath!);
-      } else {
-        result = await navidromeClient!.getPictureBytes(song.id);
-      }
-    } else if (song.sourceType == .webdav) {
-      if (song.webdavCachePath != null) {
-        result = await readPictureAsync(song.webdavCachePath!);
-      } else {
-        result = await readPictureAsync(
-          song.path!,
-          headers: webdavClient?.headers,
-        );
-      }
-    } else if (song.sourceType == .emby) {
-      result = await embyClient!.getPictureBytes(song.id);
+    if (song.cachePath != null) {
+      result = await readPictureAsync(song.cachePath!);
     } else {
-      result = await readPictureAsync(song.path!);
+      switch (song.sourceType) {
+        case .local:
+          result = await readPictureAsync(song.path!);
+          break;
+        case .webdav:
+          result = await readPictureAsync(
+            song.path!,
+            headers: webdavClient?.headers,
+          );
+          break;
+        case .navidrome:
+          result = await navidromeClient!.getPictureBytes(song.id);
+          break;
+        default:
+          result = await embyClient!.getPictureBytes(song.id);
+          break;
+      }
     }
 
     song.pictureBytes = result;
