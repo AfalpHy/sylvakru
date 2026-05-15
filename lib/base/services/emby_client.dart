@@ -23,6 +23,9 @@ class EmbyClient {
     dio = Dio(
       BaseOptions(
         baseUrl: _normalizeBaseUrl(baseUrl),
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 15),
         headers: {
           'Content-Type': 'application/json',
           'X-Emby-Authorization':
@@ -38,6 +41,7 @@ class EmbyClient {
     if (url.endsWith('/')) {
       return url.substring(0, url.length - 1);
     }
+
     return url;
   }
 
@@ -55,81 +59,131 @@ class EmbyClient {
     );
   }
 
+  Future<T?> _safeRequest<T>(
+    Future<Response> Function() request,
+    T? Function(Response response) parser,
+  ) async {
+    try {
+      final response = await request();
+
+      return parser(response);
+    } on DioException catch (e) {
+      logger.output(
+        '[Emby] Dio error: ${e.message} '
+        '(${e.response?.statusCode})',
+      );
+
+      if (e.response?.data != null) {
+        logger.output(e.response!.data.toString());
+      }
+
+      return null;
+    } catch (e) {
+      logger.output('[Emby] Unknown error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> _boolRequest(Future<Response> Function() request) async {
+    return await _safeRequest(request, (_) => true) ?? false;
+  }
+
   /// Login
-  Future<void> login() async {
-    final response = await dio.post(
-      '/Users/AuthenticateByName',
-      data: {'Username': username, 'Pw': password},
+  Future<bool> login() async {
+    final result = await _safeRequest(
+      () => dio.post(
+        '/Users/AuthenticateByName',
+        data: {'Username': username, 'Pw': password},
+      ),
+      (response) {
+        accessToken = response.data['AccessToken'];
+        userId = response.data['User']['Id'];
+
+        return true;
+      },
     );
 
-    accessToken = response.data['AccessToken'];
-    userId = response.data['User']['Id'];
+    return result ?? false;
   }
 
   Future<bool> ping() async {
-    try {
-      final response = await dio.get('/System/Info/Public');
+    final result = await _safeRequest(
+      () => dio.get('/System/Info/Public'),
+      (response) => response.statusCode == 200,
+    );
 
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+    return result ?? false;
   }
 
   /// Get all libraries
   Future<List<dynamic>> getLibraries() async {
-    final response = await dio.get('/Users/$userId/Views');
+    final result = await _safeRequest(
+      () => dio.get('/Users/$userId/Views'),
+      (response) => response.data['Items'] as List<dynamic>,
+    );
 
-    return response.data['Items'];
+    return result ?? [];
   }
 
   /// Get music libraries only
   Future<List<dynamic>> getMusicLibraries() async {
-    final libraries = await getLibraries();
+    try {
+      final libraries = await getLibraries();
 
-    return libraries.where((e) {
-      return e['CollectionType'] == 'music';
-    }).toList();
+      return libraries.where((e) {
+        return e['CollectionType'] == 'music';
+      }).toList();
+    } catch (e) {
+      logger.output('[Emby] Get music libraries error: $e');
+      return [];
+    }
   }
 
   Stream<List<Map<String, dynamic>>> getAllSongs({int limit = 50}) async* {
     final libraries = await getMusicLibraries();
 
-    if (libraries.isEmpty) return;
+    if (libraries.isEmpty) {
+      return;
+    }
 
     final libraryId = libraries.first['Id'];
 
     int startIndex = 0;
-    const limit = 50;
+    int cnt = 0;
 
     while (true) {
-      final response = await dio.get(
-        '/Users/$userId/Items',
-        queryParameters: {
-          'ParentId': libraryId,
-          'Recursive': true,
-          'IncludeItemTypes': 'Audio',
+      final items = await _safeRequest(
+        () => dio.get(
+          '/Users/$userId/Items',
+          queryParameters: {
+            'ParentId': libraryId,
+            'Recursive': true,
+            'IncludeItemTypes': 'Audio',
 
-          'StartIndex': startIndex,
-          'Limit': limit,
+            'StartIndex': startIndex,
+            'Limit': limit,
 
-          'Fields':
-              'Id,Name,Album,Artists,AlbumArtist,RunTimeTicks,Genres,ProductionYear,IndexNumber,ParentIndexNumber,MediaSources,UserData',
+            'Fields':
+                'Id,Name,Album,Artists,AlbumArtist,RunTimeTicks,Genres,ProductionYear,IndexNumber,ParentIndexNumber,MediaSources,UserData',
 
-          'EnableImages': false,
+            'EnableImages': false,
+          },
+        ),
+        (response) {
+          return (response.data['Items'] as List).cast<Map<String, dynamic>>();
         },
       );
 
-      final items = (response.data['Items'] as List)
-          .cast<Map<String, dynamic>>();
-
-      if (items.isEmpty) break;
+      if (items == null || items.isEmpty) {
+        break;
+      }
 
       yield items;
 
+      cnt += items.length;
       startIndex += limit;
 
-      logger.output('Fetched $startIndex songs...');
+      logger.output('[Emby] Fetched $cnt songs...');
     }
   }
 
@@ -139,87 +193,142 @@ class EmbyClient {
         '?UserId=$userId&api_key=$accessToken&static=true';
   }
 
-  Future<Uint8List> getPictureBytes(String itemId) async {
-    final response = await dio.get<List<int>>(
-      '/Items/$itemId/Images/Primary',
-      options: Options(responseType: ResponseType.bytes),
+  Future<Uint8List?> getPictureBytes(String itemId) async {
+    return _safeRequest(
+      () => dio.get<List<int>>(
+        '/Items/$itemId/Images/Primary',
+        options: Options(responseType: ResponseType.bytes),
+      ),
+      (response) {
+        return Uint8List.fromList(response.data!);
+      },
     );
-
-    return Uint8List.fromList(response.data!);
   }
 
-  Future<void> downloadSong({
+  Future<bool> downloadSong({
     required String itemId,
     required String savePath,
   }) async {
-    await dio.download(
-      '/Items/$itemId/Download',
-      savePath,
-      queryParameters: {'api_key': accessToken},
+    return _boolRequest(
+      () => dio.download(
+        '/Items/$itemId/Download',
+        savePath,
+        queryParameters: {'api_key': accessToken},
+      ),
     );
   }
 
   Future<List<String>> getFavoriteSongIds() async {
-    final res = await dio.get(
-      '/Users/$userId/Items',
-      queryParameters: {
-        'IncludeItemTypes': 'Audio',
-        'Recursive': true,
-        'Filters': 'IsFavorite',
+    final result = await _safeRequest(
+      () => dio.get(
+        '/Users/$userId/Items',
+        queryParameters: {
+          'IncludeItemTypes': 'Audio',
+          'Recursive': true,
+          'Filters': 'IsFavorite',
+        },
+      ),
+      (response) {
+        return (response.data['Items'] as List)
+            .map((e) => e['Id'].toString())
+            .toList();
       },
     );
 
-    return (res.data['Items'] as List).map((e) => e['Id'].toString()).toList();
+    return result ?? [];
   }
 
-  Future<void> clearFavorites() async {
-    final ids = await getFavoriteSongIds();
+  Future<bool> clearFavorites() async {
+    try {
+      final ids = await getFavoriteSongIds();
 
-    for (final id in ids) {
-      await dio.delete('/Users/$userId/FavoriteItems/$id');
+      for (final id in ids) {
+        final success = await _boolRequest(
+          () => dio.delete('/Users/$userId/FavoriteItems/$id'),
+        );
+
+        if (!success) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      logger.output('[Emby] Clear favorites error: $e');
+      return false;
     }
   }
 
-  Future<void> rebuildFavorites(List<String> songIds) async {
-    await clearFavorites();
+  Future<bool> rebuildFavorites(List<String> songIds) async {
+    try {
+      final cleared = await clearFavorites();
 
-    for (final id in songIds) {
-      await dio.post('/Users/$userId/FavoriteItems/$id');
+      if (!cleared) {
+        return false;
+      }
+
+      for (final id in songIds) {
+        final success = await _boolRequest(
+          () => dio.post('/Users/$userId/FavoriteItems/$id'),
+        );
+
+        if (!success) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      logger.output('[Emby] Rebuild favorites error: $e');
+      return false;
     }
   }
 
   Future<List<dynamic>> getPlaylists() async {
-    final res = await dio.get(
-      '/Users/$userId/Items',
-      queryParameters: {'IncludeItemTypes': 'Playlist', 'Recursive': true},
+    final result = await _safeRequest(
+      () => dio.get(
+        '/Users/$userId/Items',
+        queryParameters: {'IncludeItemTypes': 'Playlist', 'Recursive': true},
+      ),
+      (response) {
+        return response.data['Items'] as List<dynamic>;
+      },
     );
 
-    return res.data['Items'];
+    return result ?? [];
   }
 
   Future<List<String>> getPlaylistItems(String playlistId) async {
-    final res = await dio.get('/Playlists/$playlistId/Items');
+    final result = await _safeRequest(
+      () => dio.get('/Playlists/$playlistId/Items'),
+      (response) {
+        return (response.data['Items'] as List)
+            .map((e) => e['Id'].toString())
+            .toList();
+      },
+    );
 
-    return (res.data['Items'] as List).map((e) => e['Id'].toString()).toList();
+    return result ?? [];
   }
 
   Future<String?> createPlaylist({
     required String name,
     required List<String> songIds,
   }) async {
-    final res = await dio.post(
-      '/Playlists',
-      queryParameters: {
-        'Name': name,
-        'Ids': songIds.join(','),
-        'MediaType': 'Audio',
-      },
+    return _safeRequest(
+      () => dio.post(
+        '/Playlists',
+        queryParameters: {
+          'Name': name,
+          'Ids': songIds.join(','),
+          'MediaType': 'Audio',
+        },
+      ),
+      (response) => response.data['Id']?.toString(),
     );
-
-    return res.data['Id'];
   }
 
-  Future<void> deletePlaylist(String playlistId) async {
-    await dio.delete('/Items/$playlistId');
+  Future<bool> deletePlaylist(String playlistId) async {
+    return _boolRequest(() => dio.delete('/Items/$playlistId'));
   }
 }

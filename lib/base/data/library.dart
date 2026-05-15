@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:audio_tags_lofty/audio_tags_lofty.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:particle_music/base/app.dart';
@@ -8,7 +9,7 @@ import 'package:particle_music/base/data/database.dart';
 import 'package:particle_music/base/data/song_list_manager.dart';
 import 'package:particle_music/base/extensions/metadata_extension.dart';
 import 'package:particle_music/base/services/emby_client.dart';
-import 'package:particle_music/base/services/metadata_service.dart';
+import 'package:particle_music/base/services/logger.dart';
 import 'package:particle_music/base/services/song_list_service.dart';
 import 'package:particle_music/base/services/webdav_client.dart';
 import 'package:particle_music/base/utils/path.dart';
@@ -395,11 +396,63 @@ class Library {
     layersManager.updateBackground();
   }
 
-  Future<void> sync(SourceType sourceType) async {
-    songListManager.getSongList2(sourceType).clear();
-    songListManager.getChangeNotifier2(sourceType).value++;
-    songListManager.resetSourceType();
+  Future<MyAudioMetadata?> _parseMetadataIfNeed(
+    String id,
+    String path,
+    DateTime modified,
+  ) async {
+    MyAudioMetadata? song = library.id2Song[id];
 
+    if (song?.modified != modified) {
+      bool isWebdav = path.startsWith('http://') || path.startsWith('https://');
+      AudioMetadata? tmp;
+      try {
+        tmp = isWebdav
+            ? await readMetadataAsync(
+                path,
+                false,
+                headers: webdavClient?.headers,
+              )
+            : readMetadata(path, false);
+      } catch (e) {
+        logger.output("$path: $e");
+      }
+
+      if (tmp != null) {
+        song = MyAudioMetadata(
+          tmp,
+          id: id,
+          path: path,
+          modified: modified,
+          sourceType: isWebdav ? .webdav : .local,
+        );
+      } else {
+        song = null;
+      }
+    }
+    if (song != null) {
+      library.id2Song[id] = song;
+    } else {
+      library.id2Song.remove(id);
+    }
+    return song;
+  }
+
+  void prepareForSync(SourceType sourceType) {
+    songListManager.prepareForSync(sourceType);
+    if (sourceType == .local || sourceType == .webdav) {
+      final folderList = sourceType == .local
+          ? localFolderList
+          : webdavFolderList;
+
+      for (final folder in folderList) {
+        folder.songList.clear();
+        folder.changeNotifier.value++;
+      }
+    }
+  }
+
+  Future<void> sync(SourceType sourceType) async {
     switch (sourceType) {
       case .local:
       case .webdav:
@@ -409,8 +462,6 @@ class Library {
             : webdavFolderList;
 
         for (final folder in folderList) {
-          folder.songList.clear();
-          folder.changeNotifier.value++;
           await folder.setFileAndModified();
           pathAndModified.addAll(folder.pathAndModified);
         }
@@ -426,7 +477,7 @@ class Library {
         Set<String> validId = {};
 
         Future<void> syncOne(String id, String path, DateTime modified) async {
-          final song = await syncSong(id, path, modified);
+          final song = await _parseMetadataIfNeed(id, path, modified);
           if (song != null) {
             validId.add(id);
             songListManager.getSongList2(sourceType).add(song);

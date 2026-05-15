@@ -15,8 +15,6 @@ import 'package:particle_music/base/data/playlist.dart';
 import 'package:particle_music/base/data/setting.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-final ValueNotifier<int> loadedCountNotifier = ValueNotifier(0);
-
 class Loader {
   static bool _syncing = false;
 
@@ -64,6 +62,18 @@ class Loader {
     await layersManager.pushLayer('songs');
   }
 
+  static Future<void> _sync(SourceType sourceType) async {
+    await library.sync(sourceType);
+    history.sync(sourceType);
+    await playlistManager.sync(sourceType);
+  }
+
+  static Future<void> _prepareForSync(SourceType sourceType) async {
+    library.prepareForSync(sourceType);
+    history.prepareForSync(sourceType);
+    await playlistManager.prepareForSync(sourceType);
+  }
+
   static Future<void> sync(int syncBitMask) async {
     _syncing = true;
     syncStateNotifier.value++;
@@ -72,27 +82,35 @@ class Loader {
     artistAlbumManager.clear();
 
     if ((syncBitMask & 1) == 1) {
-      await library.sync(.local);
-      history.sync(.local);
-      await playlistManager.sync(.local);
+      await _prepareForSync(.local);
     }
 
     if ((syncBitMask & 2) == 2) {
-      await library.sync(.webdav);
-      history.sync(.webdav);
-      await playlistManager.sync(.webdav);
+      await _prepareForSync(.webdav);
     }
 
     if ((syncBitMask & 4) == 4) {
-      await library.sync(.navidrome);
-      history.sync(.navidrome);
-      await playlistManager.sync(.navidrome);
+      await _prepareForSync(.navidrome);
     }
 
     if ((syncBitMask & 8) == 8) {
-      await library.sync(.emby);
-      history.sync(.emby);
-      await playlistManager.sync(.emby);
+      await _prepareForSync(.emby);
+    }
+
+    if ((syncBitMask & 1) == 1) {
+      await _sync(.local);
+    }
+
+    if ((syncBitMask & 2) == 2) {
+      await _sync(.webdav);
+    }
+
+    if ((syncBitMask & 4) == 4) {
+      await _sync(.navidrome);
+    }
+
+    if ((syncBitMask & 8) == 8) {
+      await _sync(.emby);
     }
 
     artistAlbumManager.classify();

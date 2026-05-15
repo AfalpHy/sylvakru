@@ -202,26 +202,26 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
         false,
       );
 
-      int bitMask = 0;
+      int sourceTypeBitMask = 0;
       if (tmpRecursiveScanNotifier.value != recursiveScanNotifier.value) {
-        bitMask = 3;
+        sourceTypeBitMask = 3;
         recursiveScanNotifier.value = tmpRecursiveScanNotifier.value;
       } else {
         if (updateLocal) {
-          bitMask = 1;
+          sourceTypeBitMask = 1;
         }
         if (updateWebdav) {
-          bitMask += 2;
+          sourceTypeBitMask += 2;
         }
       }
 
       setting.save();
 
-      if (bitMask > 0) {
+      if (sourceTypeBitMask > 0) {
         if (context.mounted) {
           Navigator.pop(context);
         }
-        await Loader.sync(bitMask);
+        await Loader.sync(sourceTypeBitMask);
       } else {
         if (context.mounted) {
           showCenterMessage(context, 'Nothing is changed', duration: 2000);

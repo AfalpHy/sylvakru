@@ -192,7 +192,9 @@ class SongListTile extends StatelessWidget {
                                     .getSongList2(song.sourceType);
                                 final item = targetSongList.removeAt(index);
                                 targetSongList.insert(0, item);
-                                playlist!.update(getBitMask(song.sourceType));
+                                playlist!.update(
+                                  getSourceTypeBitMask(song.sourceType),
+                                );
                               }
                             },
                           ),

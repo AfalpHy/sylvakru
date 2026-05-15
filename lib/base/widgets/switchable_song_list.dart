@@ -19,7 +19,14 @@ class SwitchableSongList extends StatelessWidget {
   final SongListManager songListManager;
   final bool isPanel;
 
-  const SwitchableSongList({
+  final sources = [
+    SourceType.local,
+    SourceType.webdav,
+    SourceType.navidrome,
+    SourceType.emby,
+  ];
+
+  SwitchableSongList({
     super.key,
     this.playlist,
     this.artist,
@@ -114,41 +121,14 @@ class SwitchableSongList extends StatelessWidget {
       valueListenable: songListManager.changeNotifier,
       builder: (context, value, child) {
         final sourceType = songListManager.sourceTypeNotifier.value;
-        return Stack(
-          children: [
-            if (songListManager.localSongList.isNotEmpty ||
-                songListManager.isEmpty)
-              Visibility(
-                key: ValueKey('local'),
-                visible: sourceType == .local,
-                maintainState: true,
-                child: isPanel ? panel(.local) : page(.local),
-              ),
 
-            if (songListManager.webdavSongList.isNotEmpty)
-              Visibility(
-                key: ValueKey('webdav'),
-                visible: sourceType == .webdav,
-                maintainState: true,
-                child: isPanel ? panel(.webdav) : page(.webdav),
-              ),
+        final index = sources.indexOf(sourceType);
 
-            if (songListManager.navidromeSongList.isNotEmpty)
-              Visibility(
-                key: ValueKey('navidrome'),
-                visible: sourceType == .navidrome,
-                maintainState: true,
-                child: isPanel ? panel(.navidrome) : page(.navidrome),
-              ),
-
-            if (songListManager.embySongList.isNotEmpty)
-              Visibility(
-                key: ValueKey('emby'),
-                visible: sourceType == .emby,
-                maintainState: true,
-                child: isPanel ? panel(.emby) : page(.emby),
-              ),
-          ],
+        return IndexedStack(
+          index: index,
+          children: sources.map((source) {
+            return isPanel ? panel(source) : page(source);
+          }).toList(),
         );
       },
     );

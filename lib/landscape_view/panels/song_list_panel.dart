@@ -165,7 +165,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                   } else if (folder != null) {
                     folder!.update();
                   } else {
-                    playlist!.update(getBitMask(sourceType));
+                    playlist!.update(getSourceTypeBitMask(sourceType));
                   }
                 },
               );
@@ -649,7 +649,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                 } else if (folder != null) {
                   folder!.update();
                 } else {
-                  playlist!.update(getBitMask(item.sourceType));
+                  playlist!.update(getSourceTypeBitMask(item.sourceType));
                 }
               },
             ),
@@ -952,7 +952,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                           .getSongList2(song.sourceType);
                       final item = targetSongList.removeAt(index);
                       targetSongList.insert(0, item);
-                      playlist!.update(getBitMask(sourceType));
+                      playlist!.update(getSourceTypeBitMask(sourceType));
                     }
                   },
                 ),

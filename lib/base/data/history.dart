@@ -125,17 +125,22 @@ class History {
     recentlySongListManager.clear();
   }
 
-  void sync(SourceType sourceType) {
-    rankingSongListManager.getSongList2(sourceType).clear();
-    recentlySongListManager.getSongList2(sourceType).clear();
+  void prepareForSync(SourceType sourceType) {
+    rankingSongListManager.prepareForSync(sourceType);
+    recentlySongListManager.prepareForSync(sourceType);
+  }
 
+  void sync(SourceType sourceType) {
     _fetchSongs(
       library.songListManager.getSongList2(sourceType),
       rankingSongListManager.getSongList2(sourceType),
       recentlySongListManager.getSongList2(sourceType),
     );
 
+    rankingSongListManager.getChangeNotifier2(sourceType).value++;
     rankingSongListManager.resetSourceType();
+
+    recentlySongListManager.getChangeNotifier2(sourceType).value++;
     recentlySongListManager.resetSourceType();
   }
 }

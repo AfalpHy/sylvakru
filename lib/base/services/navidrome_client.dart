@@ -20,7 +20,14 @@ class NavidromeClient {
     required this.username,
     required this.password,
   }) {
-    dio = Dio(BaseOptions(baseUrl: baseUrl));
+    dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 15),
+      ),
+    );
     _applyAuth();
   }
 
@@ -81,10 +88,18 @@ class NavidromeClient {
 
       return parser(res.data);
     } on DioException catch (e) {
-      logger.output('Network error: ${e.message}');
+      logger.output(
+        '[Navidrome] Dio error: ${e.message} '
+        '(${e.response?.statusCode})',
+      );
+
+      if (e.response?.data != null) {
+        logger.output(e.response!.data.toString());
+      }
+
       return null;
     } catch (e) {
-      logger.output('Unknown error: $e');
+      logger.output('[Navidrome] Unknown error: $e');
       return null;
     }
   }
@@ -98,10 +113,8 @@ class NavidromeClient {
   }
 
   Stream<List<Map<String, dynamic>>> getSongs({int limit = 50}) async* {
-    final List<Map<String, dynamic>> allSongs = [];
-
     int offset = 0;
-
+    int cnt = 0;
     while (true) {
       final res = await _safeRequest(
         () => dio.get(
@@ -125,11 +138,10 @@ class NavidromeClient {
 
       yield normalized;
 
-      allSongs.addAll(normalized);
-
+      cnt += normalized.length;
       offset += limit;
 
-      logger.output('Fetched ${allSongs.length} songs...');
+      logger.output('[Navidrome] Fetched $cnt songs...');
     }
   }
 

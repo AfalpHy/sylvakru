@@ -161,6 +161,12 @@ class SongListManager {
     return cnt;
   }
 
+  void prepareForSync(SourceType sourceType) {
+    getSongList2(sourceType).clear();
+    getChangeNotifier2(sourceType).value++;
+    resetSourceType();
+  }
+
   void clear() {
     localSongList.clear();
     webdavSongList.clear();

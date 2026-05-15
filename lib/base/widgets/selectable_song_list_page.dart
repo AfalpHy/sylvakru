@@ -316,7 +316,9 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
                               } else if (folder != null) {
                                 folder!.update();
                               } else {
-                                playlist!.update(getBitMask(item.sourceType));
+                                playlist!.update(
+                                  getSourceTypeBitMask(item.sourceType),
+                                );
                               }
                             },
                             onReorderStart: (_) {

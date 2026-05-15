@@ -14,7 +14,7 @@ String getSourceTypeName(AppLocalizations l10n, SourceType sourceType) {
   }
 }
 
-int getBitMask(SourceType sourceType) {
+int getSourceTypeBitMask(SourceType sourceType) {
   switch (sourceType) {
     case .local:
       return 1;

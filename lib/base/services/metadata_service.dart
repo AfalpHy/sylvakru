@@ -3,52 +3,12 @@ import 'dart:typed_data';
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as image;
-import 'package:particle_music/base/data/library.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
 import 'package:particle_music/base/services/emby_client.dart';
 import 'package:particle_music/base/services/navidrome_client.dart';
 import 'package:particle_music/base/services/webdav_client.dart';
 import 'package:particle_music/base/services/logger.dart';
 import 'package:particle_music/base/services/picture_load_scheduler.dart';
-
-Future<MyAudioMetadata?> syncSong(
-  String id,
-  String path,
-  DateTime modified,
-) async {
-  MyAudioMetadata? song = library.id2Song[id];
-
-  if (song?.modified != modified) {
-    try {
-      bool isWebdav = path.startsWith('http://') || path.startsWith('https://');
-
-      final tmp = isWebdav
-          ? await readMetadataAsync(path, false, headers: webdavClient?.headers)
-          : readMetadata(path, false);
-
-      if (tmp != null) {
-        song = MyAudioMetadata(
-          tmp,
-          id: id,
-          path: path,
-          modified: modified,
-          sourceType: isWebdav ? .webdav : .local,
-        );
-      } else {
-        song = null;
-      }
-    } catch (e) {
-      song = null;
-      logger.output(e.toString());
-    }
-  }
-  if (song != null) {
-    library.id2Song[id] = song;
-  } else {
-    library.id2Song.remove(id);
-  }
-  return song;
-}
 
 Future<Uint8List?> loadPictureBytesSafe(MyAudioMetadata? song) async {
   if (song == null) {

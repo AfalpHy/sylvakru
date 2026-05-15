@@ -13,19 +13,13 @@ class WebDavFile {
   final String path;
   final String name;
   final bool isDirectory;
-
   final DateTime? modified;
-  final DateTime? created;
-
-  final String? etag;
 
   WebDavFile({
     required this.path,
     required this.name,
     required this.isDirectory,
     this.modified,
-    this.created,
-    this.etag,
   });
 }
 
@@ -41,7 +35,15 @@ class WebDavClient {
     required this.username,
     required this.password,
   }) {
-    dio = Dio(BaseOptions(baseUrl: baseUrl));
+    dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+
     _applyAuth();
   }
 
@@ -57,114 +59,136 @@ class WebDavClient {
   String _safeDecodeUri(String value) {
     try {
       return Uri.decodeFull(value);
-    } catch (_) {
+    } catch (e) {
+      logger.output('[WebDav] Decode uri error: $e');
       return value;
     }
   }
 
-  bool _isSelfPath(String requestPath, String href) {
-    String normalize(String path) {
-      path = _safeDecodeUri(path);
+  Future<T?> _safeRequest<T>(
+    Future<Response> Function() request,
+    T? Function(Response response) parser,
+  ) async {
+    try {
+      final response = await request();
 
-      if (path.endsWith('/') && path.length > 1) {
-        path = path.substring(0, path.length - 1);
+      return parser(response);
+    } on DioException catch (e) {
+      logger.output(
+        '[WebDav] Dio error: ${e.message} '
+        '(${e.response?.statusCode})',
+      );
+
+      if (e.response?.data != null) {
+        logger.output(e.response!.data.toString());
       }
 
-      if (path.isEmpty) {
-        path = '/';
-      }
-
-      return path;
+      return null;
+    } catch (e) {
+      logger.output('[WebDav] Unknown error: $e');
+      return null;
     }
+  }
 
-    return normalize(requestPath) == normalize(href);
+  Future<bool> _boolRequest(Future<Response> Function() request) async {
+    return await _safeRequest(request, (_) => true) ?? false;
   }
 
   Future<bool> ping() async {
-    try {
-      final response = await dio.request(
-        '/',
-        options: Options(method: 'OPTIONS'),
-      );
+    final result = await _safeRequest(
+      () => dio.request('/', options: Options(method: 'OPTIONS')),
+      (response) {
+        final code = response.statusCode ?? 0;
+        return code >= 200 && code < 400;
+      },
+    );
 
-      return response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 400;
-    } catch (_) {
-      return false;
-    }
+    return result ?? false;
   }
 
   Future<List<WebDavFile>> list(String remotePath) async {
     if (!remotePath.endsWith('/')) {
       remotePath += '/';
     }
-    final response = await dio.request(
-      remotePath,
-      data: '''
+
+    final result = await _safeRequest(
+      () => dio.request(
+        remotePath,
+        data: '''
 <?xml version="1.0" encoding="utf-8"?>
 <d:propfind xmlns:d="DAV:">
   <d:allprop />
 </d:propfind>
 ''',
-      options: Options(
-        method: 'PROPFIND',
-        headers: {'Depth': '1', 'Content-Type': 'text/xml; charset=utf-8'},
+        options: Options(
+          method: 'PROPFIND',
+          headers: {'Depth': '1', 'Content-Type': 'text/xml; charset=utf-8'},
+        ),
       ),
+      (response) {
+        final document = XmlDocument.parse(response.data);
+
+        final responses = document
+            .findAllElements('*')
+            .where((e) => e.name.local == 'response');
+
+        final result = <WebDavFile>[];
+
+        for (final item in responses) {
+          try {
+            final hrefElement = item.children
+                .whereType<XmlElement>()
+                .firstWhere((e) => e.name.local == 'href');
+
+            final href = _safeDecodeUri(hrefElement.innerText);
+
+            if (remotePath == href) {
+              continue;
+            }
+
+            final isDir = item
+                .findAllElements('*')
+                .any((e) => e.name.local == 'collection');
+
+            final modifiedElement = item
+                .findAllElements('*')
+                .where((e) => e.name.local == 'getlastmodified')
+                .firstOrNull;
+
+            DateTime? modified;
+
+            if (modifiedElement != null) {
+              try {
+                modified = HttpDate.parse(modifiedElement.innerText).toLocal();
+              } catch (e) {
+                logger.output('[WebDav] Parse modified time error: $e');
+              }
+            }
+
+            final cleanPath = href.endsWith('/')
+                ? href.substring(0, href.length - 1)
+                : href;
+
+            final name = p.basename(cleanPath);
+
+            result.add(
+              WebDavFile(
+                path: href,
+                name: name,
+                isDirectory: isDir,
+                modified: modified,
+              ),
+            );
+          } catch (e) {
+            logger.output('[WebDav] Parse item error: $e');
+          }
+        }
+
+        return result;
+      },
     );
 
-    final document = XmlDocument.parse(response.data);
-
-    final responses = document
-        .findAllElements('*')
-        .where((e) => e.name.local == 'response');
-
-    final result = <WebDavFile>[];
-
-    for (final item in responses) {
-      final hrefElement = item.children.whereType<XmlElement>().firstWhere(
-        (e) => e.name.local == 'href',
-      );
-
-      final href = _safeDecodeUri(hrefElement.innerText);
-
-      if (_isSelfPath(remotePath, href)) {
-        continue;
-      }
-
-      final isDir = item
-          .findAllElements('*')
-          .any((e) => e.name.local == 'collection');
-
-      final modifiedElement = item
-          .findAllElements('*')
-          .where((e) => e.name.local == 'getlastmodified')
-          .firstOrNull;
-
-      DateTime? modified;
-
-      if (modifiedElement != null) {
-        try {
-          modified = HttpDate.parse(modifiedElement.innerText).toLocal();
-        } catch (_) {}
-      }
-
-      final cleanPath = href.endsWith('/')
-          ? href.substring(0, href.length - 1)
-          : href;
-
-      final name = p.basename(cleanPath);
-
-      result.add(
-        WebDavFile(
-          path: href,
-          name: name,
-          isDirectory: isDir,
-          modified: modified,
-        ),
-      );
-    }
-    return result;
+    return result ?? [];
   }
 
   Stream<WebDavFile> listStream(
@@ -183,86 +207,100 @@ class WebDavClient {
   }
 
   Future<List<String>> listSubDirectories(String root) async {
-    List<String> dirList = [];
-    Queue<String> dirQueue = Queue();
-    dirQueue.add(root);
-    while (dirQueue.isNotEmpty) {
-      String dir = dirQueue.first;
-      dirQueue.removeFirst();
-      final fileList = await list(dir);
-      for (final f in fileList) {
-        if (f.isDirectory) {
-          dirList.add(f.path);
-          dirQueue.add(f.path);
+    try {
+      final dirList = <String>[];
+      final dirQueue = Queue<String>();
+
+      dirQueue.add(root);
+
+      while (dirQueue.isNotEmpty) {
+        final dir = dirQueue.removeFirst();
+
+        final fileList = await list(dir);
+
+        for (final f in fileList) {
+          if (f.isDirectory) {
+            dirList.add(f.path);
+            dirQueue.add(f.path);
+          }
         }
       }
+
+      return dirList;
+    } catch (e) {
+      logger.output('[WebDav] List sub directories error: $e');
+      return [];
     }
-    return dirList;
   }
 
-  Future<void> download({
+  Future<bool> download({
     required String remotePath,
     required String localPath,
     ProgressCallback? onReceiveProgress,
   }) async {
-    try {
-      await dio.download(
+    return _boolRequest(
+      () => dio.download(
         remotePath,
         localPath,
         onReceiveProgress: onReceiveProgress,
-      );
-    } catch (e) {
-      logger.output(e.toString());
-    }
+      ),
+    );
   }
 
-  Future<void> upload({
+  Future<bool> upload({
     required String localPath,
     required String remotePath,
     ProgressCallback? onSendProgress,
   }) async {
     final file = File(localPath);
+    final length = await file.length();
 
-    await dio.put(
-      remotePath,
-      data: file.openRead(),
-      options: Options(
-        headers: {Headers.contentLengthHeader: await file.length()},
-      ),
-      onSendProgress: onSendProgress,
-    );
-  }
-
-  Future<void> mkdir(String remotePath) async {
-    await dio.request(remotePath, options: Options(method: 'MKCOL'));
-  }
-
-  Future<void> delete(String remotePath) async {
-    await dio.delete(remotePath);
-  }
-
-  Future<void> move({
-    required String source,
-    required String destination,
-  }) async {
-    await dio.request(
-      source,
-      options: Options(
-        method: 'MOVE',
-        headers: {'Destination': '$baseUrl$destination'},
+    return _boolRequest(
+      () => dio.put(
+        remotePath,
+        data: file.openRead(),
+        options: Options(headers: {Headers.contentLengthHeader: length}),
+        onSendProgress: onSendProgress,
       ),
     );
   }
 
-  Future<void> copy({
+  Future<bool> mkdir(String remotePath) async {
+    return _boolRequest(
+      () => dio.request(remotePath, options: Options(method: 'MKCOL')),
+    );
+  }
+
+  Future<bool> delete(String remotePath) async {
+    return _boolRequest(() => dio.delete(remotePath));
+  }
+
+  Future<bool> move({
     required String source,
     required String destination,
   }) async {
-    await dio.request(
-      source,
-      options: Options(
-        method: 'COPY',
-        headers: {'Destination': '$baseUrl$destination'},
+    return _boolRequest(
+      () => dio.request(
+        source,
+        options: Options(
+          method: 'MOVE',
+          headers: {'Destination': '$baseUrl$destination'},
+        ),
+      ),
+    );
+  }
+
+  Future<bool> copy({
+    required String source,
+    required String destination,
+  }) async {
+    return _boolRequest(
+      () => dio.request(
+        source,
+        options: Options(
+          method: 'COPY',
+          headers: {'Destination': '$baseUrl$destination'},
+        ),
       ),
     );
   }

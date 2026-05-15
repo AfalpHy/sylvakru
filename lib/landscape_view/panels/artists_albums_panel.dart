@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:particle_music/base/data/artist_album.dart';
+import 'package:particle_music/base/data/loader.dart';
 import 'package:particle_music/base/services/color_manager.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/asset_images.dart';
@@ -202,100 +203,114 @@ class _ArtistsAlbumsPanelState extends State<ArtistsAlbumsPanel> {
         ),
         SliverToBoxAdapter(child: SizedBox(height: 15)),
 
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
+        ValueListenableBuilder(
+          valueListenable: Loader.syncStateNotifier,
+          builder: (context, value, child) {
+            if (Loader.syncing) {
+              return SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: CircularProgressIndicator(color: iconColor.value),
+                ),
+              );
+            }
+            return SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
 
-          sliver: ValueListenableBuilder(
-            valueListenable: useLargePictureNotifier,
-            builder: (context, value, child) {
-              int crossAxisCount;
-              double coverArtWidth;
-              if (value) {
-                crossAxisCount = (panelWidth / (isTV ? 150 : 240)).toInt();
-                coverArtWidth = panelWidth / crossAxisCount - 45;
-              } else {
-                crossAxisCount = (panelWidth / (isTV ? 100 : 120)).toInt();
-                coverArtWidth = panelWidth / crossAxisCount - 35;
-              }
-              return ValueListenableBuilder(
-                valueListenable: currentArtistAlbumListNotifier,
-                builder: (context, list, child) {
-                  return SliverGrid.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: 1.05,
-                    ),
-                    itemCount: list.length,
-                    itemBuilder: (context, index) {
-                      FocusNode focusNode = FocusNode();
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return AnimatedScale(
-                            duration: Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            scale: focusNode.hasFocus ? 1.1 : 1.0,
-                            child: Column(
-                              children: [
-                                InkWell(
-                                  focusNode: focusNode,
-                                  onFocusChange: (value) {
-                                    setState(() {});
-                                  },
-                                  mouseCursor: SystemMouseCursors.click,
-                                  focusColor: Colors.transparent,
-                                  splashColor: Colors.transparent,
-                                  hoverColor: Colors.transparent,
-                                  highlightColor: Colors.transparent,
+              sliver: ValueListenableBuilder(
+                valueListenable: useLargePictureNotifier,
+                builder: (context, value, child) {
+                  int crossAxisCount;
+                  double coverArtWidth;
+                  if (value) {
+                    crossAxisCount = (panelWidth / (isTV ? 150 : 240)).toInt();
+                    coverArtWidth = panelWidth / crossAxisCount - 45;
+                  } else {
+                    crossAxisCount = (panelWidth / (isTV ? 100 : 120)).toInt();
+                    coverArtWidth = panelWidth / crossAxisCount - 35;
+                  }
+                  return ValueListenableBuilder(
+                    valueListenable: currentArtistAlbumListNotifier,
+                    builder: (context, list, child) {
+                      return SliverGrid.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          childAspectRatio: 1.05,
+                        ),
+                        itemCount: list.length,
+                        itemBuilder: (context, index) {
+                          FocusNode focusNode = FocusNode();
+                          return StatefulBuilder(
+                            builder: (context, setState) {
+                              return AnimatedScale(
+                                duration: Duration(milliseconds: 250),
+                                curve: Curves.easeOutCubic,
+                                scale: focusNode.hasFocus ? 1.1 : 1.0,
+                                child: Column(
+                                  children: [
+                                    InkWell(
+                                      focusNode: focusNode,
+                                      onFocusChange: (value) {
+                                        setState(() {});
+                                      },
+                                      mouseCursor: SystemMouseCursors.click,
+                                      focusColor: Colors.transparent,
+                                      splashColor: Colors.transparent,
+                                      hoverColor: Colors.transparent,
+                                      highlightColor: Colors.transparent,
 
-                                  child: ValueListenableBuilder(
-                                    valueListenable: list[index]
-                                        .songListManager
-                                        .sourceTypeNotifier,
-                                    builder: (context, value, child) {
-                                      final displaySong = list[index]
-                                          .getCoverSong();
-                                      return ValueListenableBuilder(
-                                        valueListenable:
-                                            displaySong.updateNotifier,
-                                        builder: (_, _, _) {
-                                          return CoverArtWidget(
-                                            size: coverArtWidth,
-                                            borderRadius: coverArtWidth / 10,
-                                            song: displaySong,
+                                      child: ValueListenableBuilder(
+                                        valueListenable: list[index]
+                                            .songListManager
+                                            .sourceTypeNotifier,
+                                        builder: (context, value, child) {
+                                          final displaySong = list[index]
+                                              .getCoverSong();
+                                          return ValueListenableBuilder(
+                                            valueListenable:
+                                                displaySong.updateNotifier,
+                                            builder: (_, _, _) {
+                                              return CoverArtWidget(
+                                                size: coverArtWidth,
+                                                borderRadius:
+                                                    coverArtWidth / 10,
+                                                song: displaySong,
+                                              );
+                                            },
                                           );
                                         },
-                                      );
-                                    },
-                                  ),
-                                  onTap: () {
-                                    layersManager.pushLayer(
-                                      isArtist ? 'artists' : 'albums',
-                                      content: list[index].name,
-                                    );
-                                  },
-                                ),
-                                SizedBox(
-                                  width: coverArtWidth - 5,
-                                  child: Center(
-                                    child: Text(
-                                      list[index].name,
-                                      style: TextStyle(
-                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      onTap: () {
+                                        layersManager.pushLayer(
+                                          isArtist ? 'artists' : 'albums',
+                                          content: list[index].name,
+                                        );
+                                      },
+                                    ),
+                                    SizedBox(
+                                      width: coverArtWidth - 5,
+                                      child: Center(
+                                        child: Text(
+                                          list[index].name,
+                                          style: TextStyle(
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           );
                         },
                       );
                     },
                   );
                 },
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ],
     );
