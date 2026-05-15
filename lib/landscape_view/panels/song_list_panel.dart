@@ -938,7 +938,7 @@ class _SongListPanel extends BaseSongListState<SongListPanel> {
                     Navigator.pop(context);
 
                     if (isLibrary) {
-                      final targetSongList = playlist!.songListManager
+                      final targetSongList = library.songListManager
                           .getSongList2(sourceType);
                       final item = targetSongList.removeAt(index);
                       targetSongList.insert(0, item);

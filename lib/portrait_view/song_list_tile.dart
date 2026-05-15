@@ -177,7 +177,7 @@ class SongListTile extends StatelessWidget {
                               Navigator.pop(context);
 
                               if (isLibrary) {
-                                final targetSongList = playlist!.songListManager
+                                final targetSongList = library.songListManager
                                     .getSongList2(song.sourceType);
 
                                 final item = targetSongList.removeAt(index);
