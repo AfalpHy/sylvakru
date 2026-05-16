@@ -80,6 +80,12 @@ Future<void> main() async {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           title: 'Particle Music',
           theme: ThemeData(
+            focusColor: mainPageThemeNotifier.value == .dark
+                ? Colors.white.withAlpha(15)
+                : Colors.black.withAlpha(10),
+            hoverColor: mainPageThemeNotifier.value == .dark
+                ? Colors.white.withAlpha(15)
+                : Colors.black.withAlpha(10),
             textTheme: Theme.of(context).textTheme.apply(
               fontFamily: fontFamilyNotifier.value,
               bodyColor: textColor.value,

@@ -76,7 +76,7 @@ final MyColor searchFieldColor = MyColor(
     final tmpColor = backgroundSong?.lowerLuminance ?? backgroundCoverArtColor;
     return tmpColor.withAlpha(75);
   },
-  lightModeValue: Colors.grey.shade100,
+  lightModeValue: Colors.grey.shade200,
   darkModeValue: Colors.grey.shade700,
 );
 
@@ -85,7 +85,7 @@ final MyColor buttonColor = MyColor(
     final tmpColor = backgroundSong?.lowerLuminance ?? backgroundCoverArtColor;
     return tmpColor.withAlpha(75);
   },
-  lightModeValue: Colors.grey.shade100,
+  lightModeValue: Colors.grey.shade200,
   darkModeValue: Colors.grey.shade700,
 );
 
