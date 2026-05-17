@@ -168,6 +168,7 @@ class Library {
       }
     }
     _fontMap.remove(name);
+    importedFonts.remove(name);
     await _fontMapFile.writeAsString(json.encode(_fontMap));
   }
 

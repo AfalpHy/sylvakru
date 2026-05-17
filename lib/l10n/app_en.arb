@@ -208,6 +208,9 @@
   "searchFonts": "Search Fonts",
   "setFontName": "Set Font Name",
   "setFont": "Set Font",
+  "restoreDefault": "Restore Default",
   "addFont": "Add Font",
-  "currentFont": "Current Font"
+  "deleteFont": "Delete Font",
+  "currentFont": "Current Font",
+  "refresh": "Refresh"
 }

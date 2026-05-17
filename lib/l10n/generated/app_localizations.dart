@@ -1058,17 +1058,35 @@ abstract class AppLocalizations {
   /// **'Set Font'**
   String get setFont;
 
+  /// No description provided for @restoreDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Default'**
+  String get restoreDefault;
+
   /// No description provided for @addFont.
   ///
   /// In en, this message translates to:
   /// **'Add Font'**
   String get addFont;
 
+  /// No description provided for @deleteFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Font'**
+  String get deleteFont;
+
   /// No description provided for @currentFont.
   ///
   /// In en, this message translates to:
   /// **'Current Font'**
   String get currentFont;
+
+  /// No description provided for @refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
 }
 
 class _AppLocalizationsDelegate

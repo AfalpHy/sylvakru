@@ -503,8 +503,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get setFont => '设置字体';
 
   @override
+  String get restoreDefault => '恢复默认';
+
+  @override
   String get addFont => '添加字体';
 
   @override
+  String get deleteFont => '删除字体';
+
+  @override
   String get currentFont => '当前字体';
+
+  @override
+  String get refresh => '刷新';
 }

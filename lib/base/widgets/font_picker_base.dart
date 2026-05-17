@@ -49,10 +49,10 @@ abstract class FontPickerBaseState extends State<FontPickerBase> {
     super.dispose();
   }
 
-  void resetFontAction() async {
+  void restoreDefaultAction() async {
     final l10n = AppLocalizations.of(context);
 
-    if (await showConfirmDialog(context, l10n.reset)) {
+    if (await showConfirmDialog(context, l10n.restoreDefault)) {
       fontFamilyNotifier.value = null;
       setting.save();
       setState(() {});
@@ -73,6 +73,20 @@ abstract class FontPickerBaseState extends State<FontPickerBase> {
         if (result == '') {
           return;
         }
+        if (Platform.isMacOS || Platform.isWindows) {
+          for (final font in JustFontScan.scan().map((e) => e.name).toList()) {
+            if (font == result) {
+              if (context.mounted) {
+                showCenterMessage(
+                  context,
+                  'Conflict name with system font',
+                  duration: 2000,
+                );
+              }
+              return;
+            }
+          }
+        }
         final loader = FontLoader(result);
 
         for (final file in fileResult.files) {
@@ -82,6 +96,11 @@ abstract class FontPickerBaseState extends State<FontPickerBase> {
 
         await loader.load();
 
+        await library.addFonts(
+          result,
+          fileResult.files.map((e) => e.path!).toList(),
+        );
+
         if (importedFonts.contains(result)) {
           setState(() {});
         } else {
@@ -89,9 +108,51 @@ abstract class FontPickerBaseState extends State<FontPickerBase> {
           allFonts.clear();
           reloadAllFonts();
         }
-
-        library.addFonts(result, fileResult.files.map((e) => e.path!).toList());
       }
     }
+  }
+
+  void deleteFontAction(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+
+    await showAnimationDialog(
+      context: context,
+      child: SizedBox(
+        width: 300,
+        height: 350,
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return ListView.builder(
+                itemCount: importedFonts.length,
+                itemBuilder: (context, index) {
+                  final font = importedFonts[index];
+                  return ListTile(
+                    title: Text(font),
+                    onTap: () async {
+                      if (await showConfirmDialog(context, l10n.deleteFont)) {
+                        await library.deleteFonts(font);
+
+                        if (font == fontFamilyNotifier.value) {
+                          fontFamilyNotifier.value = null;
+                        }
+                        reloadAllFonts();
+
+                        if (importedFonts.isEmpty && context.mounted) {
+                          Navigator.pop(context);
+                          return;
+                        }
+                        setState(() {});
+                      }
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -91,10 +91,10 @@ class _FontPickerPageState extends FontPickerBaseState {
 
           ListTile(
             title: Text(
-              l10n.reset,
+              l10n.restoreDefault,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            onTap: resetFontAction,
+            onTap: restoreDefaultAction,
           ),
 
           ListTile(
@@ -103,6 +103,14 @@ class _FontPickerPageState extends FontPickerBaseState {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             onTap: () => addFontAction(context),
+          ),
+
+          ListTile(
+            title: Text(
+              l10n.deleteFont,
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            onTap: () => deleteFontAction(context),
           ),
         ],
       ),

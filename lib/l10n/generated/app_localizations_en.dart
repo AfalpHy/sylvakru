@@ -503,8 +503,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setFont => 'Set Font';
 
   @override
+  String get restoreDefault => 'Restore Default';
+
+  @override
   String get addFont => 'Add Font';
 
   @override
+  String get deleteFont => 'Delete Font';
+
+  @override
   String get currentFont => 'Current Font';
+
+  @override
+  String get refresh => 'Refresh';
 }

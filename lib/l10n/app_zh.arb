@@ -159,6 +159,9 @@
   "searchFonts": "搜索字体",
   "setFontName": "设置字体名称",
   "setFont": "设置字体",
+  "restoreDefault": "恢复默认",
   "addFont": "添加字体",
-  "currentFont": "当前字体"
+  "deleteFont": "删除字体",
+  "currentFont": "当前字体",
+  "refresh": "刷新"
 }
