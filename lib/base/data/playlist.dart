@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/data/song_list_manager.dart';
 import 'package:particle_music/base/services/emby_client.dart';
+import 'package:particle_music/base/services/webdav_client.dart';
 import 'package:particle_music/base/utils/path.dart';
 import 'package:particle_music/base/utils/metadata_utils.dart';
 import 'package:particle_music/base/utils/source_type.dart';
@@ -89,7 +90,14 @@ class PlaylistManager {
   }
 
   Future<void> prepareForSync(SourceType sourceType) async {
-    if (sourceType == .navidrome) {
+    if (sourceType == .webdav) {
+      if (webdavClient == null) {
+        for (final playlist in playlists) {
+          await playlist.webdavFile?.delete();
+          playlist.webdavFile = null;
+        }
+      }
+    } else if (sourceType == .navidrome) {
       for (final playlist in playlists) {
         playlist.navidromeId = null;
         await playlist.navidromeFile?.delete();
