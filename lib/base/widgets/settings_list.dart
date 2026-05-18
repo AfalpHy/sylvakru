@@ -355,7 +355,9 @@ class SettingsList extends StatelessWidget {
       title: Text(l10n.clearCache),
       onTap: () async {
         if (await showConfirmDialog(context, l10n.clear)) {
-          library.clearCache();
+          for (final sourceType in SourceType.values) {
+            await library.clearCache(sourceType);
+          }
         }
       },
       trailing: ValueListenableBuilder(

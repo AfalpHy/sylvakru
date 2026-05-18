@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:particle_music/base/services/bookmark_service.dart';
 import 'package:particle_music/base/app.dart';
@@ -13,7 +14,6 @@ import 'package:particle_music/layer/layers_manager.dart';
 import 'package:particle_music/base/data/library.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
 import 'package:path/path.dart';
-import 'package:uuid/uuid.dart';
 
 final Set<String> _loftySupportedExts = {
   '.mp2',
@@ -49,21 +49,22 @@ class Folder {
 
   final changeNotifier = ValueNotifier(0);
 
-  Folder(this.id, this.path, String songIdListPath, {this.isWebdav = false}) {
+  Folder(this.id, this.path, {this.isWebdav = false}) {
     if (!isWebdav) {
       _dir = Directory(path);
     }
-    _songIdListFile = File(songIdListPath);
+    _songIdListFile = File(
+      "${getFolderConfigPath(isWebdav ? .webdav : .local)}/${md5.convert(utf8.encode(id)).toString()}.json",
+    );
     if (!_songIdListFile.existsSync()) {
       _songIdListFile.writeAsStringSync('[]');
     }
   }
 
-  static Future<Folder> fromLocal(Map<String, dynamic> map) async {
-    String id = map['id'] as String;
+  static Future<Folder> from(String id, bool isWebdav) async {
     String path = id;
-    String songIdListPath = map['songIdListPath'] as String;
-    if (Platform.isIOS) {
+
+    if (!isWebdav && Platform.isIOS) {
       if (id.startsWith('Particle Music')) {
         path =
             '${appDocsDir.parent.path}/${id.replaceFirst('Particle Music', 'Documents')}';
@@ -71,27 +72,15 @@ class Folder {
         path = await BookmarkService.getUrlById(id) ?? '';
         library.setIOSFileProviderStorageIfNeed(path);
       }
-      songIdListPath = "${getFolderConfigPath(.local)}/$songIdListPath";
     }
 
-    return Folder(id, path, songIdListPath);
+    return Folder(id, path, isWebdav: isWebdav);
   }
 
-  static Folder fromWebdav(Map<String, dynamic> map) {
-    String id = map['id'] as String;
+  static Future<Folder> create(String id, bool isWebdav) async {
     String path = id;
 
-    String songIdListPath = map['songIdListPath'] as String;
-
-    return Folder(id, path, songIdListPath, isWebdav: true);
-  }
-
-  static Future<Folder> createLocal(String id) async {
-    final uuid = Uuid();
-    final songIdListPath = '${getFolderConfigPath(.local)}/${uuid.v4()}.json';
-
-    String path = id;
-    if (Platform.isIOS) {
+    if (!isWebdav && Platform.isIOS) {
       if (id.startsWith('Particle Music')) {
         path =
             '${appDocsDir.parent.path}/${id.replaceFirst('Particle Music', 'Documents')}';
@@ -103,25 +92,7 @@ class Folder {
       }
     }
 
-    return Folder(id, path, songIdListPath);
-  }
-
-  static Future<Folder> createWebdav(String id) async {
-    final uuid = Uuid();
-    final songIdListPath = '${getFolderConfigPath(.webdav)}/${uuid.v4()}.json';
-
-    String path = id;
-
-    return Folder(id, path, songIdListPath, isWebdav: true);
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'songIdListPath': Platform.isIOS
-          ? _songIdListFile.path.split('folder_config/').last
-          : _songIdListFile.path,
-    };
+    return Folder(id, path, isWebdav: isWebdav);
   }
 
   Future<void> setFileAndModified() async {

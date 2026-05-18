@@ -14,6 +14,7 @@ import 'package:particle_music/base/data/artist_album.dart';
 import 'package:particle_music/base/services/color_manager.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/services/lyric.dart';
+import 'package:particle_music/base/utils/contrast_color_generator.dart';
 import 'package:particle_music/base/widgets/cover_art_widget.dart';
 import 'package:particle_music/base/widgets/custom_text_field.dart';
 import 'package:particle_music/base/widgets/my_divider.dart';
@@ -45,7 +46,7 @@ class _EditMetadataState extends State<EditMetadata> {
   final TextEditingController _trackTextController = TextEditingController();
   final TextEditingController _discTextController = TextEditingController();
   final TextEditingController _lyricsTextController = TextEditingController();
-  late final ValueNotifier<Uint8List?> _pictureBytesNotifier;
+  late final ValueNotifier<String?> _picturePathNotifier;
 
   @override
   void initState() {
@@ -60,7 +61,7 @@ class _EditMetadataState extends State<EditMetadata> {
     _trackTextController.text = song.track?.toString() ?? '';
     _discTextController.text = song.disc?.toString() ?? '';
     _lyricsTextController.text = song.lyrics ?? '';
-    _pictureBytesNotifier = ValueNotifier(getPictureBytes(song));
+    _picturePathNotifier = ValueNotifier(song.picturePath);
   }
 
   @override
@@ -219,8 +220,8 @@ class _EditMetadataState extends State<EditMetadata> {
 
     return Center(
       child: ValueListenableBuilder(
-        valueListenable: _pictureBytesNotifier,
-        builder: (context, pictureBytes, child) {
+        valueListenable: _picturePathNotifier,
+        builder: (context, picturePath, child) {
           return Tooltip(
             message: l10n.replacePicture,
             child: MouseRegion(
@@ -229,22 +230,19 @@ class _EditMetadataState extends State<EditMetadata> {
                 onTap: () async {
                   final result = await FilePicker.pickFiles(
                     type: FileType.image,
-                    allowMultiple: false,
                   );
+
                   if (result == null || result.files.isEmpty) {
                     return;
                   }
 
                   final file = result.files.first;
 
-                  final Uint8List bytes =
-                      file.bytes ?? await File(file.path!).readAsBytes();
-
-                  _pictureBytesNotifier.value = bytes;
+                  _picturePathNotifier.value = file.path;
                 },
                 child: CoverArtWidget(
                   song: song,
-                  pictureBytes: pictureBytes,
+                  picturePath: picturePath,
                   size: isPhone ? 150 : 180,
                   borderRadius: 10,
                 ),
@@ -281,7 +279,13 @@ class _EditMetadataState extends State<EditMetadata> {
       int? writeTrack = int.tryParse(_trackTextController.text);
       int? writeDisc = int.tryParse(_discTextController.text);
 
-      Uint8List? writePictureBytes = _pictureBytesNotifier.value;
+      Uint8List? writePictureBytes;
+      if (_picturePathNotifier.value != null) {
+        File pictureFile = File(_picturePathNotifier.value!);
+        if (await pictureFile.exists()) {
+          writePictureBytes = await pictureFile.readAsBytes();
+        }
+      }
 
       late bool success;
       try {
@@ -324,12 +328,16 @@ class _EditMetadataState extends State<EditMetadata> {
         song.track = writeTrack ?? song.track;
         song.disc = writeDisc ?? song.disc;
 
-        song.pictureBytes = _pictureBytesNotifier.value;
+        song.pictureLoaded = false;
+        song.pictureExist = false;
         song.coverArtColor = null;
         song.lowerLuminance = null;
         await computeCoverArtColor(song);
         if (song == currentSongNotifier.value) {
           currentCoverArtColor = song.coverArtColor!;
+          contrastColorTheme = ContrastColorGenerator.generate(
+            currentCoverArtColor,
+          );
           colorManager.updateLyricsPageColors();
         }
         artistAlbumManager.updateArtistAlbum(song, originArtist, originAlbum);

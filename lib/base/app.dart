@@ -8,7 +8,6 @@ const String versionNumber = '2.3.0';
 late final Directory appDocsDir;
 late final Directory appSupportDir;
 late final Directory tmpDir;
-late final Directory cacheConfigDir;
 
 final isMobile = Platform.isAndroid || Platform.isIOS;
 const isTV = bool.fromEnvironment('TV', defaultValue: false);

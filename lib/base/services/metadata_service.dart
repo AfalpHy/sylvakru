@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
@@ -10,59 +11,63 @@ import 'package:particle_music/base/services/webdav_client.dart';
 import 'package:particle_music/base/services/logger.dart';
 import 'package:particle_music/base/services/picture_load_scheduler.dart';
 
-Future<Uint8List?> loadPictureBytesSafe(MyAudioMetadata? song) async {
-  if (song == null) {
-    return null;
+Future<void> loadPictureSafe(MyAudioMetadata? song) async {
+  if (song == null || song.pictureLoaded) {
+    return;
   }
-
-  if (song.pictureLoaded) {
-    return song.pictureBytes;
-  }
-
-  return pictureLoadScheduler.load(song.id, () => _loadPictureBytes(song));
+  return pictureLoadScheduler.load(song.id, () => _loadPicture(song));
 }
 
-Future<Uint8List?> _loadPictureBytes(MyAudioMetadata song) async {
+Future<void> _loadPicture(MyAudioMetadata song) async {
   try {
-    late Uint8List? result;
-    if (song.cachePath != null) {
-      result = await readPictureAsync(song.cachePath!);
-    } else {
-      switch (song.sourceType) {
-        case .local:
-          result = await readPictureAsync(song.path!);
-          break;
-        case .webdav:
-          result = await readPictureAsync(
-            song.path!,
-            headers: webdavClient?.headers,
-          );
-          break;
-        case .navidrome:
-          result = await navidromeClient!.getPictureBytes(song.id);
-          break;
-        default:
-          result = await embyClient!.getPictureBytes(song.id);
-          break;
-      }
+    Uint8List? bytes;
+
+    switch (song.sourceType) {
+      case .local:
+        bytes = await readPictureAsync(song.path!);
+        break;
+      case .webdav:
+        bytes = await readPictureAsync(
+          song.path!,
+          headers: webdavClient?.headers,
+        );
+        break;
+      case .navidrome:
+        bytes = await navidromeClient!.getPictureBytes(song.id);
+        break;
+      default:
+        bytes = await embyClient!.getPictureBytes(song.id);
+        break;
     }
 
-    song.pictureBytes = result;
+    if (bytes != null) {
+      File pictureFile = File(song.picturePath);
+      if (!await pictureFile.exists()) {
+        await pictureFile.create(recursive: true);
+      }
+      await pictureFile.writeAsBytes(bytes);
+      song.pictureExist = true;
+    }
     song.pictureLoaded = true;
-    return result;
   } catch (e) {
-    song.pictureBytes = null;
-    song.pictureLoaded = true;
     logger.output(e.toString());
   }
-  return null;
 }
 
 Future<Color> computeCoverArtColor(MyAudioMetadata? song) async {
   if (song?.coverArtColor != null) {
     return song!.coverArtColor!;
   }
-  final bytes = await loadPictureBytesSafe(song);
+  Uint8List? bytes;
+  await loadPictureSafe(song);
+
+  if (song?.pictureExist == true) {
+    File pictureFile = File(song!.picturePath);
+    if (await pictureFile.exists()) {
+      bytes = await pictureFile.readAsBytes();
+    }
+  }
+
   if (bytes == null) {
     song?.coverArtColor = Colors.grey;
     return Colors.grey;

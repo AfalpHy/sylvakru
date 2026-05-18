@@ -1,32 +1,28 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 PictureLoadScheduler pictureLoadScheduler = PictureLoadScheduler();
 
 class PictureLoadScheduler {
-  final int maxConcurrent;
+  final int maxConcurrent = 6;
 
   int _running = 0;
   final _queue = <_Task>[];
 
-  final Map<String, Future<Uint8List?>> _inFlight = {};
+  final Map<String, Future<void>> _inFlight = {};
 
-  PictureLoadScheduler({this.maxConcurrent = 5});
-
-  Future<Uint8List?> load(String key, Future<Uint8List?> Function() loader) {
+  Future<void> load(String key, Future<void> Function() loader) {
     if (_inFlight.containsKey(key)) {
       return _inFlight[key]!;
     }
 
-    final completer = Completer<Uint8List?>();
+    final completer = Completer<void>();
 
     final task = _Task(() async {
       try {
-        final result = await loader();
-
-        completer.complete(result);
+        await loader();
+        completer.complete();
       } catch (_, _) {
-        completer.complete(null);
+        completer.complete();
       } finally {
         _inFlight.remove(key);
         _running--;

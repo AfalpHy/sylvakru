@@ -32,11 +32,6 @@ Future<void> main() async {
   appSupportDir = await getApplicationSupportDirectory();
   tmpDir = await getTemporaryDirectory();
 
-  cacheConfigDir = Directory('${appSupportDir.path}/cache_config');
-  if (!cacheConfigDir.existsSync()) {
-    cacheConfigDir.createSync();
-  }
-
   if (isMobile) {
     await logger.init();
     screenRadius = await ScreenCornerRadius.get();

@@ -20,7 +20,6 @@ import 'package:particle_music/base/my_audio_metadata.dart';
 import 'package:particle_music/base/services/navidrome_client.dart';
 import 'package:path/path.dart';
 import 'package:pool/pool.dart';
-import 'package:uuid/uuid.dart';
 
 final library = Library();
 
@@ -35,16 +34,14 @@ class Library {
   late MetadataDB _navidromeMetadataDB;
   late MetadataDB _embyMetadataDB;
 
-  late File _cacheMapFile;
-  final Map<String, String> _id2CachePath = {};
   ValueNotifier<double> cacheSizeNotifier = ValueNotifier(0);
 
   Map<String, MyAudioMetadata> id2Song = {};
 
   SongListManager songListManager = SongListManager();
 
-  late final File _localFolderMapListFile;
-  late final File _webdavFolderMapListFile;
+  late final File _localFolderIdListFile;
+  late final File _webdavFolderIdListFile;
   List<Folder> localFolderList = [];
   List<Folder> webdavFolderList = [];
   final folderListChangeNotifier = ValueNotifier(0);
@@ -78,40 +75,37 @@ class Library {
     _navidromeMetadataDB = MetadataDB(openMetadataDB('navidrome/metadata.db'));
     _embyMetadataDB = MetadataDB(openMetadataDB('emby/metadata.db'));
 
-    _cacheMapFile = File("${cacheConfigDir.path}/cache_map.json");
-    initFile(_cacheMapFile, false);
-
-    _localFolderMapListFile = File(
-      "${getFolderConfigPath(.local)}/folder_map_list.json",
+    _localFolderIdListFile = File(
+      "${getFolderConfigPath(.local)}/folder_id_list.json",
     );
-    initFile(_localFolderMapListFile, true);
+    initFile(_localFolderIdListFile, true);
 
-    _webdavFolderMapListFile = File(
-      "${getFolderConfigPath(.webdav)}/folder_map_list.json",
+    _webdavFolderIdListFile = File(
+      "${getFolderConfigPath(.webdav)}/folder_id_list.json",
     );
-    initFile(_webdavFolderMapListFile, true);
+    initFile(_webdavFolderIdListFile, true);
 
     _fontMapFile = File("${appSupportDir.path}/fonts/font_map.json");
     initFile(_fontMapFile, false);
   }
 
   Future<void> _initLocalFolders() async {
-    final jsonString = await _localFolderMapListFile.readAsString();
-    List<dynamic> result = jsonDecode(jsonString);
-    final folderMapList = result.cast<Map<String, dynamic>>();
+    List<dynamic> folderIdList = jsonDecode(
+      await _localFolderIdListFile.readAsString(),
+    );
 
-    for (final map in folderMapList) {
-      localFolderList.add(await Folder.fromLocal(map));
+    for (final id in folderIdList) {
+      localFolderList.add(await Folder.from(id, false));
     }
   }
 
   Future<void> _initWebdavFolders() async {
-    final jsonString = await _webdavFolderMapListFile.readAsString();
-    List<dynamic> result = jsonDecode(jsonString);
-    final folderMapList = result.cast<Map<String, dynamic>>();
+    List<dynamic> folderIdList = jsonDecode(
+      await _webdavFolderIdListFile.readAsString(),
+    );
 
-    for (final map in folderMapList) {
-      webdavFolderList.add(Folder.fromWebdav(map));
+    for (final id in folderIdList) {
+      webdavFolderList.add(await Folder.from(id, true));
     }
   }
 
@@ -208,11 +202,7 @@ class Library {
         }
       }
       if (!exist) {
-        newFolderList.add(
-          isLocal
-              ? await Folder.createLocal(id)
-              : await Folder.createWebdav(id),
-        );
+        newFolderList.add(await Folder.create(id, !isLocal));
       }
     }
 
@@ -226,13 +216,13 @@ class Library {
 
     if (isLocal) {
       localFolderList = newFolderList;
-      await _localFolderMapListFile.writeAsString(
-        jsonEncode(localFolderList.map((e) => e.toMap()).toList()),
+      await _localFolderIdListFile.writeAsString(
+        jsonEncode(localFolderList.map((e) => e.id).toList()),
       );
     } else {
       webdavFolderList = newFolderList;
-      await _webdavFolderMapListFile.writeAsString(
-        jsonEncode(webdavFolderList.map((e) => e.toMap()).toList()),
+      await _webdavFolderIdListFile.writeAsString(
+        jsonEncode(webdavFolderList.map((e) => e.id).toList()),
       );
     }
 
@@ -301,33 +291,30 @@ class Library {
 
     songListManager.resetSourceType();
 
-    await _loadCache();
+    for (final sourceType in SourceType.values) {
+      await _accumulateCache(sourceType);
+    }
   }
 
-  Future<void> _loadCache() async {
-    _id2CachePath.addAll(
-      (jsonDecode(await _cacheMapFile.readAsString()) as Map<String, dynamic>)
-          .cast(),
-    );
-
-    for (final id in _id2CachePath.keys) {
-      String cachePath = _id2CachePath[id]!;
-      if (Platform.isIOS) {
-        cachePath = revertIOSSupportPath(cachePath);
-      }
-      final song = id2Song[id];
-      song!.cachePath = cachePath;
-      File cacheFile = File(cachePath);
-      cacheSizeNotifier.value += await cacheFile.length() / (1024 * 1024);
+  Future<void> _accumulateCache(SourceType sourceType) async {
+    Directory cacheDir = Directory(getCachesPath(sourceType));
+    if (!await cacheDir.exists()) {
+      return;
     }
+    int total = 0;
+    await for (final file in cacheDir.list()) {
+      if (file is File) {
+        total += await file.length();
+      }
+    }
+    cacheSizeNotifier.value += total / (1024 * 1024);
   }
 
   Future<void> tryAddCache(MyAudioMetadata song) async {
     if (song.sourceType == .local || song.cachePath != null) {
       return;
     }
-    final uuid = Uuid();
-    final savePath = "${cacheConfigDir.path}/cache/${uuid.v4()}";
+    final savePath = song.cachePath!;
     if (song.sourceType == .webdav) {
       await webdavClient!.download(remotePath: song.path!, localPath: savePath);
     } else if (song.sourceType == .navidrome) {
@@ -337,41 +324,42 @@ class Library {
     }
     final tmp = File(savePath);
     if (await tmp.exists()) {
-      song.cachePath = savePath;
-      _id2CachePath[song.id] = savePath;
+      song.cacheExist = true;
       cacheSizeNotifier.value += await tmp.length() / (1024 * 1024);
-      await _saveCacheMap();
     }
   }
 
-  Future<void> _saveCacheMap() async {
-    if (Platform.isIOS) {
-      await _cacheMapFile.writeAsString(
-        jsonEncode(
-          _id2CachePath.map(
-            (key, value) => MapEntry(key, convertIOSSupportPath(value)),
-          ),
-        ),
-      );
-    } else {
-      await _cacheMapFile.writeAsString(jsonEncode(_id2CachePath));
+  Future<void> clearCache(SourceType sourceType) async {
+    for (final song in songListManager.getSongList2(sourceType)) {
+      song.cacheExist = false;
     }
-  }
 
-  Future<void> clearCache() async {
-    for (final id in _id2CachePath.keys) {
-      final song = id2Song[id];
-      song!.cachePath = null;
-    }
-    _id2CachePath.clear();
-    await _saveCacheMap();
-
-    Directory cacheDir = Directory("${cacheConfigDir.path}/cache");
+    Directory cacheDir = Directory(getCachesPath(sourceType));
+    int totalSize = 0;
     if (await cacheDir.exists()) {
-      await cacheDir.delete(recursive: true);
+      await for (final file in cacheDir.list()) {
+        if (file is File) {
+          totalSize += file.lengthSync();
+          await file.delete();
+        }
+      }
     }
 
-    cacheSizeNotifier.value = 0;
+    cacheSizeNotifier.value -= totalSize / (1024 * 1024);
+  }
+
+  Future<void> clearPicture(SourceType sourceType) async {
+    for (final song in songListManager.getSongList2(sourceType)) {
+      song.pictureLoaded = false;
+      song.pictureExist = false;
+    }
+
+    Directory pictureDir = Directory(getPicturesPath(sourceType));
+    if (await pictureDir.exists()) {
+      await for (final file in pictureDir.list()) {
+        await file.delete();
+      }
+    }
   }
 
   File _getSongIdListFile(SourceType sourceType) {
@@ -496,7 +484,10 @@ class Library {
     return song;
   }
 
-  void prepareForSync(SourceType sourceType) {
+  Future<void> prepareForSync(SourceType sourceType) async {
+    await library.clearCache(sourceType);
+    await library.clearPicture(sourceType);
+
     songListManager.prepareForSync(sourceType);
     if (sourceType == .local || sourceType == .webdav) {
       final folderList = sourceType == .local
@@ -528,7 +519,7 @@ class Library {
           await _getSongIdListFile(sourceType).readAsString(),
         );
 
-        final pool = Pool(8);
+        final pool = Pool(6);
 
         final tasks = <Future>[];
 

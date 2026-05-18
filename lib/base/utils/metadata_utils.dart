@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:lpinyin/lpinyin.dart';
 import 'package:particle_music/base/my_audio_metadata.dart';
 import 'package:path/path.dart';
@@ -69,10 +68,6 @@ Duration getDuration(MyAudioMetadata? song) {
     return Duration.zero;
   }
   return song.duration ?? Duration.zero;
-}
-
-Uint8List? getPictureBytes(MyAudioMetadata? song) {
-  return song?.pictureBytes;
 }
 
 List<MyAudioMetadata> filterSongList(

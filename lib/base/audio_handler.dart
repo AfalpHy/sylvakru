@@ -82,14 +82,7 @@ class MyAudioHandler extends BaseAudioHandler {
   MyAudioHandler() {
     // avoid reading .lrc files
     (_player.platform as NativePlayer).setProperty('sub-auto', 'no');
-    // clear invalid cache
-    if (Platform.isLinux || Platform.isAndroid) {
-      for (final f in tmpDir.listSync()) {
-        if (f.path.contains('particle_music_cover')) {
-          f.deleteSync();
-        }
-      }
-    }
+
     _player.stream.error.listen((onData) {
       logger.output("player error:$onData");
     });
@@ -494,7 +487,7 @@ class MyAudioHandler extends BaseAudioHandler {
 
     isLoading = true;
     try {
-      if (currentSong.cachePath != null) {
+      if (currentSong.cacheExist) {
         await _player.open(
           Media(currentSong.cachePath!),
           play: isPlayingNotifier.value,
@@ -532,15 +525,8 @@ class MyAudioHandler extends BaseAudioHandler {
 
     Uri? artUri;
 
-    if (currentSong.pictureBytes != null) {
-      String tmpPath = "${tmpDir.path}/particle_music_cover";
-      // only doing this can update the picture
-      if (Platform.isLinux || Platform.isAndroid) {
-        tmpPath += currentSong.hashCode.toString();
-      }
-      final tmpFile = File(tmpPath);
-      await tmpFile.writeAsBytes(currentSong.pictureBytes!);
-      artUri = tmpFile.uri;
+    if (currentSong.pictureExist) {
+      artUri = File(currentSong.picturePath).uri;
     }
 
     mediaItem.add(

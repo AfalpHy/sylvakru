@@ -1,9 +1,12 @@
-import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/services/lyric.dart';
+import 'package:particle_music/base/utils/path.dart';
 
 class MyAudioMetadata {
   final String id;
@@ -16,10 +19,14 @@ class MyAudioMetadata {
   final AudioMetadata _audioMetadata;
 
   bool pictureLoaded = false;
+  late bool pictureExist;
+  late String picturePath;
   Color? coverArtColor;
   Color? lowerLuminance;
+
   ParsedLyrics? parsedLyrics;
 
+  bool cacheExist = false;
   String? cachePath;
 
   final isFavoriteNotifier = ValueNotifier(false);
@@ -36,7 +43,19 @@ class MyAudioMetadata {
     this.sourceType = .local,
     this.playCount = 0,
     this.lastPlayed,
-  });
+  }) {
+    final md5Hash = md5.convert(utf8.encode(id)).toString();
+    picturePath = '${getPicturesPath(sourceType)}/$md5Hash';
+    if (File(picturePath).existsSync()) {
+      pictureLoaded = true;
+      pictureExist = true;
+    }
+
+    if (sourceType != .local) {
+      cachePath = '${getCachesPath(sourceType)}/$md5Hash';
+      cacheExist = File(cachePath!).existsSync();
+    }
+  }
 
   String? get format => _audioMetadata.format;
   String? get title => _audioMetadata.title;
@@ -55,10 +74,6 @@ class MyAudioMetadata {
 
   String? get lyrics => _audioMetadata.lyrics;
 
-  Uint8List? get pictureBytes => _audioMetadata.pictureBytes;
-
-  bool get noPicture => pictureLoaded && pictureBytes == null;
-
   set title(String? value) => _audioMetadata.title = value;
   set artist(String? value) => _audioMetadata.artist = value;
   set album(String? value) => _audioMetadata.album = value;
@@ -73,7 +88,6 @@ class MyAudioMetadata {
 
   set lyrics(String? value) => _audioMetadata.lyrics = value;
   set duration(Duration? value) => _audioMetadata.duration = value;
-  set pictureBytes(Uint8List? value) => _audioMetadata.pictureBytes = value;
 
   factory MyAudioMetadata.fromNavidromeMap(Map<String, dynamic> song) {
     return MyAudioMetadata(

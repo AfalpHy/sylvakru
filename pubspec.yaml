@@ -82,7 +82,6 @@ dependencies:
   url_launcher: ^6.3.2
   dio: ^5.9.2
   crypto: ^3.0.7
-  uuid: ^4.5.3
   charset: ^2.0.1
   pool: ^1.5.2
   screen_corner_radius: ^3.0.0

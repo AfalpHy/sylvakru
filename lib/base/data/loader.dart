@@ -61,16 +61,16 @@ class Loader {
     await layersManager.pushLayer('songs');
   }
 
+  static Future<void> _prepareForSync(SourceType sourceType) async {
+    await library.prepareForSync(sourceType);
+    history.prepareForSync(sourceType);
+    await playlistManager.prepareForSync(sourceType);
+  }
+
   static Future<void> _sync(SourceType sourceType) async {
     await library.sync(sourceType);
     history.sync(sourceType);
     await playlistManager.sync(sourceType);
-  }
-
-  static Future<void> _prepareForSync(SourceType sourceType) async {
-    library.prepareForSync(sourceType);
-    history.prepareForSync(sourceType);
-    await playlistManager.prepareForSync(sourceType);
   }
 
   static Future<void> sync(int syncBitMask) async {
@@ -113,7 +113,6 @@ class Loader {
     }
     artistAlbumManager.classify();
 
-    await library.clearCache();
     _syncing = false;
     syncStateNotifier.value++;
   }

@@ -53,3 +53,11 @@ String getFolderConfigPath(SourceType sourceType) {
 String getPlaylistConfigPath(SourceType sourceType) {
   return '${appSupportDir.path}/${sourceType.name}/playlist_config';
 }
+
+String getCachesPath(SourceType sourceType) {
+  return '${appSupportDir.path}/${sourceType.name}/caches';
+}
+
+String getPicturesPath(SourceType sourceType) {
+  return '${appSupportDir.path}/${sourceType.name}/pictures';
+}

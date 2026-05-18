@@ -88,45 +88,50 @@ class BottomControl extends StatelessWidget {
               borderRadius: .all(.circular(10)),
             ),
             clipBehavior: .antiAlias,
-            child: ListTile(
-              focusNode: currentSongTileNode,
-              leading: Hero(
-                tag: 'cover',
-                flightShuttleBuilder:
-                    (
-                      flightContext,
-                      animation,
-                      flightDirection,
-                      fromHeroContext,
-                      toHeroContext,
-                    ) => FittedBox(
-                      child: flightDirection == .push
-                          ? toHeroContext.widget
-                          : fromHeroContext.widget,
+            child: ListenableBuilder(
+              listenable: Listenable.merge([currentSong?.updateNotifier]),
+              builder: (context, _) {
+                return ListTile(
+                  focusNode: currentSongTileNode,
+                  leading: Hero(
+                    tag: 'cover',
+                    flightShuttleBuilder:
+                        (
+                          flightContext,
+                          animation,
+                          flightDirection,
+                          fromHeroContext,
+                          toHeroContext,
+                        ) => FittedBox(
+                          child: flightDirection == .push
+                              ? toHeroContext.widget
+                              : fromHeroContext.widget,
+                        ),
+                    child: CoverArtWidget(
+                      size: 50,
+                      borderRadius: 5,
+                      song: currentSong,
                     ),
-                child: CoverArtWidget(
-                  size: 50,
-                  borderRadius: 5,
-                  song: currentSong,
-                ),
-              ),
-              title: Text(
-                getTitle(currentSong),
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: currentSong != null
-                  ? Text(
-                      "${getArtist(currentSong)} - ${getAlbum(currentSong)}",
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13),
-                    )
-                  : null,
-              onTap: () {
-                if (playQueue.isEmpty) {
-                  return;
-                }
-                Navigator.of(context, rootNavigator: true).push(
-                  DynamicRoute(pageBuilder: (_, _, _) => LyricsPageLayer()),
+                  ),
+                  title: Text(
+                    getTitle(currentSong),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: currentSong != null
+                      ? Text(
+                          "${getArtist(currentSong)} - ${getAlbum(currentSong)}",
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13),
+                        )
+                      : null,
+                  onTap: () {
+                    if (playQueue.isEmpty) {
+                      return;
+                    }
+                    Navigator.of(context, rootNavigator: true).push(
+                      DynamicRoute(pageBuilder: (_, _, _) => LyricsPageLayer()),
+                    );
+                  },
                 );
               },
             ),
