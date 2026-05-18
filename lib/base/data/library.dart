@@ -311,7 +311,7 @@ class Library {
   }
 
   Future<void> tryAddCache(MyAudioMetadata song) async {
-    if (song.sourceType == .local || song.cachePath != null) {
+    if (song.sourceType == .local || song.cacheExist) {
       return;
     }
     final savePath = song.cachePath!;
