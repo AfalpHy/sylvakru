@@ -572,7 +572,7 @@ class Library {
           } else if (Platform.isIOS) {
             id = convertIOSPath(path);
           }
-          tasks.add(pool.withResource(() => syncOne(id, id, entry.value)));
+          tasks.add(pool.withResource(() => syncOne(id, path, entry.value)));
         }
 
         await Future.wait(tasks);
