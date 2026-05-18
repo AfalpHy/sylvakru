@@ -46,7 +46,7 @@ class CoverArtWidget extends StatelessWidget {
     }
 
     if (song!.pictureLoaded) {
-      return imageWidget(song!.picturePath);
+      return song!.pictureExist ? imageWidget(song!.picturePath) : musicNote();
     }
 
     return FutureBuilder(

@@ -49,6 +49,8 @@ class MyAudioMetadata {
     if (File(picturePath).existsSync()) {
       pictureLoaded = true;
       pictureExist = true;
+    } else {
+      pictureExist = false;
     }
 
     if (sourceType != .local) {

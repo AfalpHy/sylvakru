@@ -48,10 +48,10 @@ Future<void> _loadPicture(MyAudioMetadata song) async {
       await pictureFile.writeAsBytes(bytes);
       song.pictureExist = true;
     }
-    song.pictureLoaded = true;
   } catch (e) {
     logger.output(e.toString());
   }
+  song.pictureLoaded = true;
 }
 
 Future<Color> computeCoverArtColor(MyAudioMetadata? song) async {
