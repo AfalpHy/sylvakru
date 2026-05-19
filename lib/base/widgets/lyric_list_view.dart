@@ -8,6 +8,7 @@ import 'package:particle_music/base/audio_handler.dart';
 import 'package:particle_music/base/services/color_manager.dart';
 import 'package:particle_music/base/app.dart';
 import 'package:particle_music/base/services/lyric.dart';
+import 'package:particle_music/mini_view/mini_view.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 
@@ -253,6 +254,10 @@ class LyricLineWidget extends StatelessWidget {
 
                   fontSize += fontSizeOffset;
 
+                  final textColor = miniModeNotifier.value
+                      ? miniViewForegroundColor.value
+                      : lyricsPageForegroundColor.value;
+
                   return AnimatedScale(
                     scale: isCurrent ? 1.05 : 0.95,
                     duration: Duration(milliseconds: 300),
@@ -281,10 +286,8 @@ class LyricLineWidget extends StatelessWidget {
                               fontSize: fontSize,
                               fontWeight: .bold,
                               color: isCurrent
-                                  ? colorManager.getSpecificHighlightTextColor()
-                                  : colorManager
-                                        .getSpecificHighlightTextColor()
-                                        .withAlpha(128),
+                                  ? textColor
+                                  : textColor.withAlpha(128),
                             ),
                           ),
                         for (final translate in line.translates)
@@ -294,9 +297,7 @@ class LyricLineWidget extends StatelessWidget {
                             style: TextStyle(
                               fontSize: fontSize - (expanded ? 8 : 4),
                               fontWeight: .bold,
-                              color: colorManager
-                                  .getSpecificTextColor()
-                                  .withAlpha(128),
+                              color: textColor.withAlpha(128),
                             ),
                           ),
                       ],
@@ -339,6 +340,8 @@ class KaraokeTextState extends State<KaraokeText>
   Duration displayPosition = Duration.zero;
   DateTime lastSyncTime = DateTime.now();
 
+  late Color textColor;
+
   void _playStateListener() {
     if (isPlayingNotifier.value) {
       lastSyncTime = DateTime.now();
@@ -371,6 +374,12 @@ class KaraokeTextState extends State<KaraokeText>
     if (isPlayingNotifier.value) {
       ticker.start();
     }
+
+    textColor = widget.isDesktopLyrics
+        ? Colors.white
+        : miniModeNotifier.value
+        ? miniViewHighlightTextColor.value
+        : lyricsPageHighlightTextColor.value;
   }
 
   @override
@@ -406,9 +415,7 @@ class KaraokeTextState extends State<KaraokeText>
     final style = TextStyle(
       fontSize: widget.fontSize,
       fontWeight: FontWeight.bold,
-      color: widget.isDesktopLyrics
-          ? Colors.white
-          : colorManager.getSpecificHighlightTextColor(),
+      color: textColor,
     );
 
     return WidgetSpan(
@@ -437,16 +444,7 @@ class KaraokeTextState extends State<KaraokeText>
             shaderCallback: (bounds) {
               final p = progress.clamp(0.0, 1.0);
               return LinearGradient(
-                colors: [
-                  widget.isDesktopLyrics
-                      ? Colors.white
-                      : colorManager.getSpecificHighlightTextColor(),
-                  widget.isDesktopLyrics
-                      ? Colors.white.withAlpha(128)
-                      : colorManager.getSpecificHighlightTextColor().withAlpha(
-                          128,
-                        ),
-                ],
+                colors: [textColor, textColor.withAlpha(128)],
                 stops: [p, p],
               ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height));
             },
