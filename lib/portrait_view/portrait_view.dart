@@ -112,85 +112,94 @@ class _PortraitViewState extends State<PortraitView>
                       ? layersManager.helperPage
                       : layersManager.currentPage;
 
-                  return Stack(
-                    children: [
-                      ...layersManager.pageMap.values
-                          .where((page) => page != topPage)
-                          .map(
-                            (page) => Visibility(
-                              visible: page == bottomPage,
-                              maintainState: true,
-                              child: page,
-                            ),
-                          ),
-
-                      ValueListenableBuilder(
-                        valueListenable: dragNotifier,
-                        builder: (context, value, child) {
-                          if (value) {
-                            return ValueListenableBuilder(
-                              valueListenable: dragDxNotifier,
-                              builder: (context, value, child) {
-                                return AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
-                                  curve: Curves.easeOutCubic,
-                                  transform: .translationValues(value, 0, 0),
-                                  child: topPage,
-                                );
-                              },
-                            );
+                  return GestureDetector(
+                    onHorizontalDragEnd: Platform.isAndroid
+                        ? (details) {
+                            if ((details.primaryVelocity ?? 0) > 300) {
+                              portraitKey.currentState!.openDrawer();
+                            }
                           }
-                          if (slideAnimation == null) {
-                            return topPage!;
-                          } else {
-                            return SlideTransition(
-                              position: slideAnimation,
-                              child: topPage,
-                            );
-                          }
-                        },
-                      ),
-
-                      if (Platform.isIOS &&
-                          layersManager.layerHistory.length > 1)
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: GestureDetector(
-                            onHorizontalDragUpdate: (details) {
-                              if (dragNotifier.value == false) {
-                                return;
-                              }
-                              dragDxNotifier.value += details.delta.dx;
-                              if (dragDxNotifier.value < 0) {
-                                dragDxNotifier.value = 0;
-                              }
-                            },
-                            onHorizontalDragEnd: (details) {
-                              if (dragNotifier.value == false) {
-                                return;
-                              }
-                              if (dragDxNotifier.value /
-                                          MediaQuery.widthOf(context) >
-                                      0.6 ||
-                                  (details.primaryVelocity ?? 0) > 300) {
-                                slideBeginDx =
-                                    dragDxNotifier.value /
-                                    MediaQuery.widthOf(context);
-                                layersManager.popLayer();
-                              } else {
-                                dragDxNotifier.value = 0;
-                              }
-                            },
-
-                            child: Container(
-                              color: Colors.transparent,
-                              width: 20,
+                        : null,
+                    child: Stack(
+                      children: [
+                        ...layersManager.pageMap.values
+                            .where((page) => page != topPage)
+                            .map(
+                              (page) => Visibility(
+                                visible: page == bottomPage,
+                                maintainState: true,
+                                child: page,
+                              ),
                             ),
-                          ),
+
+                        ValueListenableBuilder(
+                          valueListenable: dragNotifier,
+                          builder: (context, value, child) {
+                            if (value) {
+                              return ValueListenableBuilder(
+                                valueListenable: dragDxNotifier,
+                                builder: (context, value, child) {
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeOutCubic,
+                                    transform: .translationValues(value, 0, 0),
+                                    child: topPage,
+                                  );
+                                },
+                              );
+                            }
+                            if (slideAnimation == null) {
+                              return topPage!;
+                            } else {
+                              return SlideTransition(
+                                position: slideAnimation,
+                                child: topPage,
+                              );
+                            }
+                          },
                         ),
-                    ],
+
+                        if (Platform.isIOS &&
+                            layersManager.layerHistory.length > 1)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              onHorizontalDragUpdate: (details) {
+                                if (dragNotifier.value == false) {
+                                  return;
+                                }
+                                dragDxNotifier.value += details.delta.dx;
+                                if (dragDxNotifier.value < 0) {
+                                  dragDxNotifier.value = 0;
+                                }
+                              },
+                              onHorizontalDragEnd: (details) {
+                                if (dragNotifier.value == false) {
+                                  return;
+                                }
+                                if (dragDxNotifier.value /
+                                            MediaQuery.widthOf(context) >
+                                        0.6 ||
+                                    (details.primaryVelocity ?? 0) > 300) {
+                                  slideBeginDx =
+                                      dragDxNotifier.value /
+                                      MediaQuery.widthOf(context);
+                                  layersManager.popLayer();
+                                } else {
+                                  dragDxNotifier.value = 0;
+                                }
+                              },
+
+                              child: Container(
+                                color: Colors.transparent,
+                                width: 20,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),

@@ -60,7 +60,10 @@ class LayersManager {
 
   Widget getPage(Widget layer) {
     return pageMap.putIfAbsent(layer, () {
-      final layerInfo = layerInfoMap[layer]!;
+      final layerInfo = layerInfoMap.putIfAbsent(
+        layer,
+        () => LayerInfo(backgroundSong, backgroundCoverArtColor),
+      );
       return Stack(
         key: GlobalKey(),
 
