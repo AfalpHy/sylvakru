@@ -75,7 +75,7 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
           if (didPop || isTyping) return;
 
           if (portraitKey.currentState?.isDrawerOpen ?? false) {
-            Navigator.of(portraitKey.currentContext!).pop();
+            portraitKey.currentState?.closeDrawer();
             return;
           }
 

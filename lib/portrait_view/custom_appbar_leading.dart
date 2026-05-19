@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:particle_music/layer/layers_manager.dart';
+import 'package:particle_music/portrait_view/portrait_view.dart';
 
 Widget customAppBarLeading(BuildContext context) {
   return IconButton(
@@ -9,7 +10,7 @@ Widget customAppBarLeading(BuildContext context) {
       Platform.isAndroid ? Icons.menu : Icons.arrow_back_ios_new_rounded,
     ),
     onPressed: () => Platform.isAndroid
-        ? Scaffold.of(context).openDrawer()
+        ? portraitKey.currentState?.openDrawer()
         : layersManager.popLayer(),
   );
 }

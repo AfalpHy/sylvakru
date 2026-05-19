@@ -116,7 +116,7 @@ class _PortraitViewState extends State<PortraitView>
                     onHorizontalDragEnd: Platform.isAndroid
                         ? (details) {
                             if ((details.primaryVelocity ?? 0) > 300) {
-                              portraitKey.currentState!.openDrawer();
+                              portraitKey.currentState?.openDrawer();
                             }
                           }
                         : null,
@@ -233,7 +233,7 @@ class _PortraitViewState extends State<PortraitView>
               Expanded(
                 child: Sidebar(
                   closeDrawer: () {
-                    Navigator.of(context).pop();
+                    portraitKey.currentState?.closeDrawer();
                   },
                 ),
               ),
