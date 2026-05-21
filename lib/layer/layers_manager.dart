@@ -62,7 +62,7 @@ class LayersManager {
     return pageMap.putIfAbsent(layer, () {
       final layerInfo = layerInfoMap.putIfAbsent(
         layer,
-        () => LayerInfo(backgroundSong, backgroundCoverArtColor),
+        () => LayerInfo(null, Colors.grey),
       );
       return Stack(
         key: GlobalKey(),
