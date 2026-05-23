@@ -9,7 +9,7 @@
 
 </div>
 
-A cross-platform music player for local libraries and self-hosted media services, supporting Android, iOS, Windows, Linux, and macOS.
+Sylvakru is a cross-platform music player for local libraries and self-hosted media services, supporting Android, iOS, Windows, Linux, and macOS.
 
 Currently supports:
 - Local music libraries
