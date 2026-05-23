@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/emby_client.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
-import 'package:particle_music/base/services/webdav_client.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/services/webdav_client.dart';
 
 final config = Config();
 

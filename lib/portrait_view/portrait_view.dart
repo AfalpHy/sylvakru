@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/landscape_view/sidebar.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/portrait_view/play_bar.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/landscape_view/sidebar.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/portrait_view/play_bar.dart';
 
 final GlobalKey<ScaffoldState> portraitKey = GlobalKey();
 bool isDrawerOpen = false;

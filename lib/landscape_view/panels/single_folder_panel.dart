@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/landscape_view/panels/song_list_panel.dart';
-import 'package:particle_music/base/data/folder.dart';
+import 'package:sylvakru/landscape_view/panels/song_list_panel.dart';
+import 'package:sylvakru/base/data/folder.dart';
 
 class SingleFolderPanel extends StatelessWidget {
   final Folder folder;

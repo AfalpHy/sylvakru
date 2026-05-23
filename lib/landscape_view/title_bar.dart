@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/keyboard.dart';
-import 'package:particle_music/base/services/my_window_listener.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/layer/lyrics_page_layer.dart';
-import 'package:particle_music/mini_view/mini_view.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/keyboard.dart';
+import 'package:sylvakru/base/services/my_window_listener.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/layer/lyrics_page_layer.dart';
+import 'package:sylvakru/mini_view/mini_view.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:window_manager/window_manager.dart';
 

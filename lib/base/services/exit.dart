@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:particle_music/landscape_view/desktop_lyrics.dart';
-import 'package:particle_music/base/extensions/window_controller_extension.dart';
-import 'package:particle_music/base/services/single_instance.dart';
+import 'package:sylvakru/landscape_view/desktop_lyrics.dart';
+import 'package:sylvakru/base/extensions/window_controller_extension.dart';
+import 'package:sylvakru/base/services/single_instance.dart';
 import 'package:window_manager/window_manager.dart';
 
 bool _exited = false;

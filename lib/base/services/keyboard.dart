@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/my_window_listener.dart';
-import 'package:particle_music/layer/lyrics_page_layer.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/my_window_listener.dart';
+import 'package:sylvakru/layer/lyrics_page_layer.dart';
 import 'package:window_manager/window_manager.dart';
 
 bool isTyping = false;

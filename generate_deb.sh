@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---------- CONFIG ----------
-APP_NAME="ParticleMusic"           # Executable name
+APP_NAME="Sylvakru"           # Executable name
 APP_VERSION="2.3.0"               # Debian version
 MAINTAINER="AfalpHy"
 EXECUTABLE="build/linux/x64/release/bundle/$APP_NAME"
@@ -52,7 +52,7 @@ Exec=/usr/local/bin/$APP_NAME
 Icon=$APP_NAME
 Type=Application
 Categories=Utility;
-StartupWMClass=Com.afalphy.particle_music
+StartupWMClass=Com.afalphy.sylvakru
 EOL
 
 # Build .deb

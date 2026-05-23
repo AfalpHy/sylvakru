@@ -1,5 +1,5 @@
 import 'package:lpinyin/lpinyin.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:path/path.dart';
 
 String getTitle(MyAudioMetadata? song) {

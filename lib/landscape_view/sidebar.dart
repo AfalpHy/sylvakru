@@ -1,16 +1,16 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/base/widgets/playlist_widgets.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/layer/layers_manager.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/base/widgets/playlist_widgets.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:super_context_menu/super_context_menu.dart';
 import 'package:window_manager/window_manager.dart';
@@ -101,7 +101,7 @@ class Sidebar extends StatelessWidget {
                     valueListenable: highlightTextColor.valueNotifier,
                     builder: (context, value, child) {
                       return Text(
-                        'Particle Music',
+                        'Sylvakru',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,

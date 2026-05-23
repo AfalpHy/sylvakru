@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/widgets/switchable_song_list.dart';
-import 'package:particle_music/base/data/library.dart';
+import 'package:sylvakru/base/widgets/switchable_song_list.dart';
+import 'package:sylvakru/base/data/library.dart';
 
 class SongsPage extends StatelessWidget {
   const SongsPage({super.key});

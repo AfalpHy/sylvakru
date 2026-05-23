@@ -4,12 +4,12 @@ import 'dart:typed_data';
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as image;
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/services/emby_client.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
-import 'package:particle_music/base/services/webdav_client.dart';
-import 'package:particle_music/base/services/logger.dart';
-import 'package:particle_music/base/services/picture_load_scheduler.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/services/webdav_client.dart';
+import 'package:sylvakru/base/services/logger.dart';
+import 'package:sylvakru/base/services/picture_load_scheduler.dart';
 
 Future<void> loadPictureSafe(MyAudioMetadata? song) async {
   if (song == null || song.pictureLoaded) {

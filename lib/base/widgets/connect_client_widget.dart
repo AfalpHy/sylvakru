@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/config.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/data/loader.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/services/emby_client.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
-import 'package:particle_music/base/services/webdav_client.dart';
-import 'package:particle_music/base/utils/source_type.dart';
-import 'package:particle_music/base/widgets/custom_text_field.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/config.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/data/loader.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/services/webdav_client.dart';
+import 'package:sylvakru/base/utils/source_type.dart';
+import 'package:sylvakru/base/widgets/custom_text_field.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
 
 class ConnectClientWidget extends StatefulWidget {
   final SourceType sourceType;

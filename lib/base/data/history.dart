@@ -1,9 +1,9 @@
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/song_list_manager.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/song_list_manager.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
 
 final History history = History();
 

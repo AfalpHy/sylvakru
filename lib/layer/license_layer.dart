@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/landscape_view/panels/license_panel.dart';
-import 'package:particle_music/portrait_view/pages/my_license_page.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/landscape_view/panels/license_panel.dart';
+import 'package:sylvakru/portrait_view/pages/my_license_page.dart';
 
 class LicenseLayer extends StatelessWidget {
   const LicenseLayer({super.key});

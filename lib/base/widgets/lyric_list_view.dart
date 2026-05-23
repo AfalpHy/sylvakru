@@ -4,11 +4,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/lyric.dart';
-import 'package:particle_music/mini_view/mini_view.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/lyric.dart';
+import 'package:sylvakru/mini_view/mini_view.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 

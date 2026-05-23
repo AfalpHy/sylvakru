@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:charset/charset.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/services/webdav_client.dart';
-import 'package:particle_music/base/services/logger.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
-import 'package:particle_music/landscape_view/desktop_lyrics.dart';
-import 'package:particle_music/base/extensions/window_controller_extension.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/services/webdav_client.dart';
+import 'package:sylvakru/base/services/logger.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/landscape_view/desktop_lyrics.dart';
+import 'package:sylvakru/base/extensions/window_controller_extension.dart';
 
 class LyricToken {
   final Duration start;

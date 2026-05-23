@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/widgets/switchable_song_list.dart';
-import 'package:particle_music/base/data/history.dart';
+import 'package:sylvakru/base/widgets/switchable_song_list.dart';
+import 'package:sylvakru/base/data/history.dart';
 
 class RankingPanel extends StatelessWidget {
   const RankingPanel({super.key});

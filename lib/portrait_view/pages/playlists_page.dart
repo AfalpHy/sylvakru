@@ -1,10 +1,10 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/portrait_view/custom_appbar_leading.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
 
 class PlaylistsPage extends StatelessWidget {
   const PlaylistsPage({super.key});

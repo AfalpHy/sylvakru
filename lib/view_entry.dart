@@ -3,17 +3,17 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/base/services/keyboard.dart';
-import 'package:particle_music/landscape_view/landscape_view.dart';
-import 'package:particle_music/landscape_view/pages/landscape_lyrics_page.dart';
-import 'package:particle_music/landscape_view/sidebar.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/layer/lyrics_page_layer.dart';
-import 'package:particle_music/mini_view/mini_view.dart';
-import 'package:particle_music/portrait_view/portrait_view.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/services/keyboard.dart';
+import 'package:sylvakru/landscape_view/landscape_view.dart';
+import 'package:sylvakru/landscape_view/pages/landscape_lyrics_page.dart';
+import 'package:sylvakru/landscape_view/sidebar.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/layer/lyrics_page_layer.dart';
+import 'package:sylvakru/mini_view/mini_view.dart';
+import 'package:sylvakru/portrait_view/portrait_view.dart';
 
 class ViewEntry extends StatefulWidget {
   const ViewEntry({super.key});

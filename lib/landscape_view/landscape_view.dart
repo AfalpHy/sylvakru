@@ -2,12 +2,12 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/landscape_view/bottom_control.dart';
-import 'package:particle_music/landscape_view/sidebar.dart';
-import 'package:particle_music/layer/layers_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/landscape_view/bottom_control.dart';
+import 'package:sylvakru/landscape_view/sidebar.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
 
 class LandscapeView extends StatelessWidget {
   const LandscapeView({super.key});

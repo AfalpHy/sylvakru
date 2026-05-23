@@ -4,11 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_font_scan/just_font_scan.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/data/setting.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/data/setting.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
 
 abstract class FontPickerBase extends StatefulWidget {
   const FontPickerBase({super.key});

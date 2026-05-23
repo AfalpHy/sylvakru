@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/library.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/library.dart';
 
 bool isFileProviderStorePath(String path) {
   return path.contains('File Provider Storage/');
@@ -13,14 +13,14 @@ String convertIOSPath(String path) {
     return path.split('File Provider Storage/').last;
   } else {
     path = path.substring(path.indexOf('Documents'));
-    return path.replaceFirst('Documents', 'Particle Music');
+    return path.replaceFirst('Documents', 'Sylvakru');
   }
 }
 
 // short path to full path
 String revertIOSPath(String path) {
-  if (path.startsWith('Particle Music')) {
-    return "${appDocsDir.parent.path}/${path.replaceFirst('Particle Music', 'Documents')}";
+  if (path.startsWith('Sylvakru')) {
+    return "${appDocsDir.parent.path}/${path.replaceFirst('Sylvakru', 'Documents')}";
   } else {
     if (library.iosFileProviderStorage == null) {
       return '';

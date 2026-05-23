@@ -1,14 +1,14 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/widgets/play_queue_sheet.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/landscape_view/pages/play_queue_page.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/widgets/play_queue_sheet.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/landscape_view/pages/play_queue_page.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 
 Widget playModeButton(double? size, {Color? iconColor}) {

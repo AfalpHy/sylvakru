@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/data/setting.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/landscape_view/title_bar.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/base/widgets/my_switch.dart';
-import 'package:particle_music/layer/layers_manager.dart';
+import 'package:sylvakru/base/data/setting.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/landscape_view/title_bar.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/widgets/my_switch.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
 
 class PlaylistsPanel extends StatefulWidget {
   const PlaylistsPanel({super.key});

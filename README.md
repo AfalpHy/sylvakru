@@ -2,7 +2,7 @@
     <img src="./app_icons/icon.png" width="256"/>
 </div>
 
-# ParticleMusic
+# sylvakru
 
 A cross-platform local music player supporting Android, iOS, Windows, Linux and macOS. This project is built for learning Flutter and having some fun.
 
@@ -41,8 +41,8 @@ sudo apt install clang lld cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 # audio lib
 sudo apt install libmpv-dev
 
-git clone https://github.com/AfalpHy/ParticleMusic.git
-cd ParticleMusic
+git clone https://github.com/AfalpHy/sylvakru.git
+cd sylvakru
 # check the development environment
 flutter doctor -v
 # run in debug mode
@@ -58,8 +58,8 @@ flutter build linux && ./generate_deb.sh
 ### Windows
 Install [Visual Studio](https://visualstudio.microsoft.com/).
 ```shell
-git clone https://github.com/AfalpHy/ParticleMusic.git
-cd ParticleMusic
+git clone https://github.com/AfalpHy/sylvakru.git
+cd sylvakru
 # check the development environment
 flutter doctor -v
 # run in debug mode
@@ -74,8 +74,8 @@ flutter build windows
 Install Xcode and the Xcode Command Line Tools by following the [official Apple Developer download page](https://developer.apple.com/download/all/).
 
 ```shell
-git clone https://github.com/AfalpHy/ParticleMusic.git
-cd ParticleMusic
+git clone https://github.com/AfalpHy/sylvakru.git
+cd sylvakru
 
 # install CocoaPods
 sudo gem install cocoapods
@@ -95,15 +95,15 @@ flutter build macos
 flutter build ios --release --no-codesign && \
 mkdir -p Payload && \
 cp -r build/ios/iphoneos/Runner.app Payload/ && \
-zip -r ParticleMusic.ipa Payload && \
+zip -r sylvakru.ipa Payload && \
 rm -rf Payload
 ```
 
 ### Android
 Install [Android Studio](https://developer.android.com/studio) and Android SDK Command-line Tools
 ```shell
-git clone https://github.com/AfalpHy/ParticleMusic.git
-cd ParticleMusic
+git clone https://github.com/AfalpHy/sylvakru.git
+cd sylvakru
 # accept the SDK licenses
 flutter doctor --android-licenses
 # check the development environment

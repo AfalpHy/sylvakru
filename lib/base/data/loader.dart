@@ -2,17 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/data/config.dart';
-import 'package:particle_music/base/data/artist_album.dart';
-import 'package:particle_music/base/services/bookmark_service.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/history.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/base/data/setting.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/data/config.dart';
+import 'package:sylvakru/base/data/artist_album.dart';
+import 'package:sylvakru/base/services/bookmark_service.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/history.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/base/data/setting.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class Loader {

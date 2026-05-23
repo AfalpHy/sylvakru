@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/setting.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/widgets/font_picker_base.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/base/widgets/my_sheet.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/portrait_view/custom_appbar_leading.dart';
-import 'package:particle_music/portrait_view/my_search_field.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/setting.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/widgets/font_picker_base.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/base/widgets/my_sheet.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
+import 'package:sylvakru/portrait_view/my_search_field.dart';
 
 class FontPickerPage extends FontPickerBase {
   const FontPickerPage({super.key});

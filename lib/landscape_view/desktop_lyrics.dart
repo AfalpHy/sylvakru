@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/audio_handler.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/audio_handler.dart';
 
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/lyric.dart';
-import 'package:particle_music/base/widgets/lyric_list_view.dart';
-import 'package:particle_music/base/extensions/window_controller_extension.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/lyric.dart';
+import 'package:sylvakru/base/widgets/lyric_list_view.dart';
+import 'package:sylvakru/base/extensions/window_controller_extension.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -93,7 +93,7 @@ class DesktopLyrics extends StatelessWidget {
       builder: (context, value, child) {
         if (currentLyricLine == null) {
           return Text(
-            'Particle Music',
+            'Sylvakru',
             style: TextStyle(
               fontSize: isMobile ? 20 : 30,
               color: Colors.white,

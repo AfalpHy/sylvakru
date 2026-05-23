@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/lyric.dart';
-import 'package:particle_music/base/utils/path.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/lyric.dart';
+import 'package:sylvakru/base/utils/path.dart';
 
 class MyAudioMetadata {
   final String id;

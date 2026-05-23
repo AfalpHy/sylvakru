@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/landscape_view/title_bar.dart';
-import 'package:particle_music/base/widgets/settings_list.dart';
+import 'package:sylvakru/landscape_view/title_bar.dart';
+import 'package:sylvakru/base/widgets/settings_list.dart';
 
 class SettingsPanel extends StatefulWidget {
   const SettingsPanel({super.key});

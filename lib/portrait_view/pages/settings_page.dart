@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/widgets/settings_list.dart';
-import 'package:particle_music/portrait_view/custom_appbar_leading.dart';
+import 'package:sylvakru/base/widgets/settings_list.dart';
+import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

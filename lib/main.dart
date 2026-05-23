@@ -3,20 +3,20 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/logger.dart';
-import 'package:particle_music/landscape_view/desktop_lyrics.dart';
-import 'package:particle_music/base/extensions/window_controller_extension.dart';
-import 'package:particle_music/base/services/keyboard.dart';
-import 'package:particle_music/base/services/my_tray_listener.dart';
-import 'package:particle_music/base/services/my_window_listener.dart';
-import 'package:particle_music/base/services/single_instance.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/l10n/generated/app_localizations_en.dart';
-import 'package:particle_music/base/data/loader.dart';
-import 'package:particle_music/portrait_view/custom_page_transition_builder.dart';
-import 'package:particle_music/view_entry.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/logger.dart';
+import 'package:sylvakru/landscape_view/desktop_lyrics.dart';
+import 'package:sylvakru/base/extensions/window_controller_extension.dart';
+import 'package:sylvakru/base/services/keyboard.dart';
+import 'package:sylvakru/base/services/my_tray_listener.dart';
+import 'package:sylvakru/base/services/my_window_listener.dart';
+import 'package:sylvakru/base/services/single_instance.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/l10n/generated/app_localizations_en.dart';
+import 'package:sylvakru/base/data/loader.dart';
+import 'package:sylvakru/portrait_view/custom_page_transition_builder.dart';
+import 'package:sylvakru/view_entry.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
 import 'package:screen_corner_radius/screen_corner_radius.dart';
@@ -73,7 +73,7 @@ Future<void> main() async {
           locale: localeNotifier.value,
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          title: 'Particle Music',
+          title: 'Sylvaklu',
           theme: ThemeData(
             focusColor: mainPageThemeNotifier.value == .dark
                 ? Colors.white.withAlpha(15)
@@ -244,7 +244,7 @@ Future<void> _setupTray() async {
   );
 
   if (!Platform.isLinux) {
-    await trayManager.setToolTip('Particle Music');
+    await trayManager.setToolTip('Sylvaru');
   }
 
   Locale systemLocale = PlatformDispatcher.instance.locale;

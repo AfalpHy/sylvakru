@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/logger.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/logger.dart';
 
 class BookmarkService {
   static const _channel = MethodChannel('com.afalphy.bookmark_manager');

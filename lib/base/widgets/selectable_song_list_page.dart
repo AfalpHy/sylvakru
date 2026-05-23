@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/utils/source_type.dart';
-import 'package:particle_music/base/widgets/my_auto_size_text.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/base/widgets/playlist_widgets.dart';
-import 'package:particle_music/base/data/folder.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/base/widgets/selectable_song_list_tile.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/portrait_view/my_search_field.dart';
-import 'package:particle_music/base/widgets/my_sheet.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/base/utils/metadata_utils.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/utils/source_type.dart';
+import 'package:sylvakru/base/widgets/my_auto_size_text.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/base/widgets/playlist_widgets.dart';
+import 'package:sylvakru/base/data/folder.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/widgets/selectable_song_list_tile.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/portrait_view/my_search_field.dart';
+import 'package:sylvakru/base/widgets/my_sheet.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/base/utils/metadata_utils.dart';
 
 class SelectableSongListPage extends StatefulWidget {
   final List<MyAudioMetadata> songList;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_switch/flutter_switch.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/services/interaction.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/services/interaction.dart';
 
 class MySwitch extends StatelessWidget {
   final String? trueText;

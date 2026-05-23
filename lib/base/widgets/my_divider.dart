@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/services/color_manager.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
 
 class MyDivider extends StatelessWidget {
   final MyColor color;

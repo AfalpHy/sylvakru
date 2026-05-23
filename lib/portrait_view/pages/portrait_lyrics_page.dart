@@ -1,26 +1,26 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/widgets/buttons.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/base/widgets/my_auto_size_text.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/base/widgets/playlist_widgets.dart';
-import 'package:particle_music/base/data/setting.dart';
-import 'package:particle_music/portrait_view/sleep_timer.dart';
-import 'package:particle_music/base/widgets/my_sheet.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/base/widgets/lyric_list_view.dart';
-import 'package:particle_music/base/widgets/play_queue_sheet.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/base/widgets/seekbar.dart';
-import 'package:particle_music/base/utils/metadata_utils.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/widgets/buttons.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/widgets/my_auto_size_text.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/base/widgets/playlist_widgets.dart';
+import 'package:sylvakru/base/data/setting.dart';
+import 'package:sylvakru/portrait_view/sleep_timer.dart';
+import 'package:sylvakru/base/widgets/my_sheet.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/widgets/lyric_list_view.dart';
+import 'package:sylvakru/base/widgets/play_queue_sheet.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/base/widgets/seekbar.dart';
+import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 
 class PortraitLyricsPage extends StatefulWidget {

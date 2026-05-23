@@ -1,18 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/data/artist_album.dart';
-import 'package:particle_music/base/data/song_list_manager.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/base/data/folder.dart';
-import 'package:particle_music/base/data/history.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/base/utils/metadata_utils.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/artist_album.dart';
+import 'package:sylvakru/base/data/song_list_manager.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/data/folder.dart';
+import 'package:sylvakru/base/data/history.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/base/utils/metadata_utils.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
 
 abstract class BaseSongListWidget extends StatefulWidget {
   final Playlist? playlist;

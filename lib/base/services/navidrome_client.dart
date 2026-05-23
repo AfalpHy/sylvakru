@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:particle_music/base/services/logger.dart';
+import 'package:sylvakru/base/services/logger.dart';
 
 NavidromeClient? navidromeClient;
 
@@ -50,7 +50,7 @@ class NavidromeClient {
       't': token,
       's': salt,
       'v': '1.16.1',
-      'c': 'Particle Music',
+      'c': 'Sylvakru',
       'f': 'json',
     };
   }

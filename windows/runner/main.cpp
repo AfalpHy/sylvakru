@@ -28,7 +28,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   Win32Window::Size size(1050, 700);
   Win32Window::Point origin(0,0);
-  if (!window.Create(L"Particle Music", origin, size)) {
+  if (!window.Create(L"Sylvakru", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

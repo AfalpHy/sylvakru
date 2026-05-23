@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/portrait_view/custom_appbar_leading.dart';
-import 'package:particle_music/portrait_view/my_search_field.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
+import 'package:sylvakru/portrait_view/my_search_field.dart';
 
 class MyLicensePage extends StatefulWidget {
   const MyLicensePage({super.key});
@@ -89,7 +89,7 @@ class _MyLicensePageState extends State<MyLicensePage> {
           valueListenable: highlightTextColor.valueNotifier,
           builder: (context, value, child) {
             return Text(
-              'Particle Music',
+              'Sylvakru',
               style: .new(fontWeight: .bold, fontSize: 20, color: value),
             );
           },

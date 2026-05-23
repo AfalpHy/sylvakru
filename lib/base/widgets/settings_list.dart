@@ -4,28 +4,28 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/emby_client.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/services/logger.dart';
-import 'package:particle_music/base/services/webdav_client.dart';
-import 'package:particle_music/base/utils/source_type.dart';
-import 'package:particle_music/base/widgets/connect_client_widget.dart';
-import 'package:particle_music/base/widgets/equalizer.dart';
-import 'package:particle_music/base/widgets/my_divider.dart';
-import 'package:particle_music/base/widgets/tv_dir_picker.dart';
-import 'package:particle_music/base/data/setting.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/base/widgets/manage_music_folders.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/data/loader.dart';
-import 'package:particle_music/portrait_view/sleep_timer.dart';
-import 'package:particle_music/l10n/generated/app_localizations.dart';
-import 'package:particle_music/base/widgets/my_switch.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/services/logger.dart';
+import 'package:sylvakru/base/services/webdav_client.dart';
+import 'package:sylvakru/base/utils/source_type.dart';
+import 'package:sylvakru/base/widgets/connect_client_widget.dart';
+import 'package:sylvakru/base/widgets/equalizer.dart';
+import 'package:sylvakru/base/widgets/my_divider.dart';
+import 'package:sylvakru/base/widgets/tv_dir_picker.dart';
+import 'package:sylvakru/base/data/setting.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/base/widgets/manage_music_folders.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/data/loader.dart';
+import 'package:sylvakru/portrait_view/sleep_timer.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
+import 'package:sylvakru/base/widgets/my_switch.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -695,7 +695,7 @@ class SettingsList extends StatelessWidget {
       title: Text(l10n.checkUpdate),
       onTap: () async {
         final url = Uri.parse(
-          'https://api.github.com/repos/AfalpHy/ParticleMusic/releases/latest',
+          'https://api.github.com/repos/AfalpHy/sylvakru/releases/latest',
         );
 
         try {
@@ -767,7 +767,7 @@ class SettingsList extends StatelessWidget {
                                 ElevatedButton(
                                   onPressed: () => launchUrl(
                                     Uri.parse(
-                                      "https://github.com/AfalpHy/ParticleMusic/releases/latest",
+                                      "https://github.com/AfalpHy/sylvakru/releases/latest",
                                     ),
                                   ),
                                   style: ElevatedButton.styleFrom(

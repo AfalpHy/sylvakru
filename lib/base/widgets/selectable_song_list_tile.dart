@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/asset_images.dart';
-import 'package:particle_music/base/widgets/cover_art_widget.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/utils/metadata_utils.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/asset_images.dart';
+import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/utils/metadata_utils.dart';
 
 class SelectableSongListTile extends StatelessWidget {
   final int index;

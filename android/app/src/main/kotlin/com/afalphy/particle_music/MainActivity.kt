@@ -1,4 +1,4 @@
-package com.afalphy.particle_music
+package com.afalphy.sylvakru
 
 import io.flutter.embedding.android.FlutterActivity
 

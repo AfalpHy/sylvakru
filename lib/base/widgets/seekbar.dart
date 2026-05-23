@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/utils/format_duration.dart';
-import 'package:particle_music/base/widgets/full_width_track_shape.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/utils/format_duration.dart';
+import 'package:sylvakru/base/widgets/full_width_track_shape.dart';
 
 class SeekBar extends StatefulWidget {
   final Color? color;

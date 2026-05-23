@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:particle_music/base/services/logger.dart';
+import 'package:sylvakru/base/services/logger.dart';
 
 EmbyClient? embyClient;
 
@@ -29,7 +29,7 @@ class EmbyClient {
         headers: {
           'Content-Type': 'application/json',
           'X-Emby-Authorization':
-              'MediaBrowser Client="ParticleMusic", Device="Flutter", DeviceId="particle_music", Version="1.0.0"',
+              'MediaBrowser Client="Sylvakru", Device="Flutter", DeviceId="sylvakru", Version="1.0.0"',
         },
       ),
     );

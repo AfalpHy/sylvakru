@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
 
 class MySearchField extends StatefulWidget {
   final String hintText;

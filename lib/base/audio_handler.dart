@@ -4,28 +4,28 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:particle_music/base/services/emby_client.dart';
-import 'package:particle_music/base/services/metadata_service.dart';
-import 'package:particle_music/base/services/webdav_client.dart';
-import 'package:particle_music/base/services/color_manager.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/services/logger.dart';
-import 'package:particle_music/base/services/lyric.dart';
-import 'package:particle_music/base/widgets/equalizer.dart';
-import 'package:particle_music/base/widgets/lyric_list_view.dart';
-import 'package:particle_music/base/data/history.dart';
-import 'package:particle_music/landscape_view/desktop_lyrics.dart';
-import 'package:particle_music/base/extensions/window_controller_extension.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/base/utils/contrast_color_generator.dart';
-import 'package:particle_music/base/data/library.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
-import 'package:particle_music/base/services/navidrome_client.dart';
-import 'package:particle_music/base/utils/metadata_utils.dart';
-import 'package:particle_music/mini_view/mini_view.dart';
+import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/metadata_service.dart';
+import 'package:sylvakru/base/services/webdav_client.dart';
+import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/logger.dart';
+import 'package:sylvakru/base/services/lyric.dart';
+import 'package:sylvakru/base/widgets/equalizer.dart';
+import 'package:sylvakru/base/widgets/lyric_list_view.dart';
+import 'package:sylvakru/base/data/history.dart';
+import 'package:sylvakru/landscape_view/desktop_lyrics.dart';
+import 'package:sylvakru/base/extensions/window_controller_extension.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/base/utils/contrast_color_generator.dart';
+import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/utils/metadata_utils.dart';
+import 'package:sylvakru/mini_view/mini_view.dart';
 import 'dart:async';
 
-import 'package:particle_music/portrait_view/sleep_timer.dart';
+import 'package:sylvakru/portrait_view/sleep_timer.dart';
 
 late AudioSession _session;
 
@@ -46,8 +46,8 @@ Future<void> initAudioService() async {
     builder: () => MyAudioHandler(),
 
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.afalphy.particle_music',
-      androidNotificationChannelName: 'Particle Music',
+      androidNotificationChannelId: 'com.afalphy.sylvakru',
+      androidNotificationChannelName: 'Sylvakru',
       androidNotificationOngoing: true,
     ),
   );

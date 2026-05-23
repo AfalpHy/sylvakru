@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/utils/contrast_color_generator.dart';
-import 'package:particle_music/layer/layers_manager.dart';
-import 'package:particle_music/layer/lyrics_page_layer.dart';
-import 'package:particle_music/mini_view/mini_view.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/utils/contrast_color_generator.dart';
+import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/layer/lyrics_page_layer.dart';
+import 'package:sylvakru/mini_view/mini_view.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
 
 final colorManager = ColorManager();
 

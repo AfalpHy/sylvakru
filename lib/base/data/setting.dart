@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/audio_handler.dart';
-import 'package:particle_music/base/data/playlist.dart';
-import 'package:particle_music/base/services/interaction.dart';
-import 'package:particle_music/base/widgets/lyric_list_view.dart';
-import 'package:particle_music/base/data/artist_album.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/widgets/manage_music_folders.dart';
+import 'package:sylvakru/base/audio_handler.dart';
+import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/widgets/lyric_list_view.dart';
+import 'package:sylvakru/base/data/artist_album.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/widgets/manage_music_folders.dart';
 
 final exitOnCloseNotifier = ValueNotifier(false);
 

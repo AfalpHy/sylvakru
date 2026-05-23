@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:particle_music/base/app.dart';
-import 'package:particle_music/base/my_audio_metadata.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
 
 class SongListManager {
   List<MyAudioMetadata> localSongList = [];
