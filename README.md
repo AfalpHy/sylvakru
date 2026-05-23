@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./app_icons/icon.png" width="256" alt="Sylvakru Icon"/>
+  <img src="./app_icons/icon.png" width="160" alt="Sylvakru Icon"/>
 
   <br />
 
