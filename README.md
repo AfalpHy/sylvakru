@@ -1,8 +1,13 @@
 <div align="center">
-    <img src="./app_icons/icon.png" width="256"/>
-</div>
+  <img src="./app_icons/icon.png" width="256" alt="Sylvakru Icon"/>
 
-# Sylvakru
+  <br />
+
+  # Sylvakru (森露)
+
+  _“A private music oasis in the digital world.”_
+
+</div>
 
 A cross-platform music player for local libraries and self-hosted media services, supporting Android, iOS, Windows, Linux, and macOS.
 
