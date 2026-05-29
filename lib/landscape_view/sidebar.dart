@@ -90,10 +90,20 @@ class Sidebar extends StatelessWidget {
           children: [
             GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onPanStart: (details) => windowManager.startDragging(),
-              onDoubleTap: () async => await windowManager.isMaximized()
-                  ? windowManager.unmaximize()
-                  : windowManager.maximize(),
+              onPanStart: (details) {
+                if (isMobile) {
+                  return;
+                }
+                windowManager.startDragging();
+              },
+              onDoubleTap: () async {
+                if (isMobile) {
+                  return;
+                }
+                await windowManager.isMaximized()
+                    ? windowManager.unmaximize()
+                    : windowManager.maximize();
+              },
               child: SizedBox(
                 height: 75,
                 child: Center(
