@@ -6,8 +6,6 @@ PODS:
     - Flutter
   - media_kit_libs_ios_audio (1.0.4):
     - Flutter
-  - permission_handler_apple (9.3.0):
-    - Flutter
   - screen_corner_radius (0.0.1):
     - Flutter
   - super_native_extensions (0.0.1):
@@ -18,7 +16,6 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - irondash_engine_context (from `.symlinks/plugins/irondash_engine_context/ios`)
   - media_kit_libs_ios_audio (from `.symlinks/plugins/media_kit_libs_ios_audio/ios`)
-  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - screen_corner_radius (from `.symlinks/plugins/screen_corner_radius/ios`)
   - super_native_extensions (from `.symlinks/plugins/super_native_extensions/ios`)
 
@@ -31,8 +28,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/irondash_engine_context/ios"
   media_kit_libs_ios_audio:
     :path: ".symlinks/plugins/media_kit_libs_ios_audio/ios"
-  permission_handler_apple:
-    :path: ".symlinks/plugins/permission_handler_apple/ios"
   screen_corner_radius:
     :path: ".symlinks/plugins/screen_corner_radius/ios"
   super_native_extensions:
@@ -42,8 +37,7 @@ SPEC CHECKSUMS:
   audio_tags_lofty: 34a8d6f92e388530db0a636955cbb8a60a627639
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   irondash_engine_context: 8e58ca8e0212ee9d1c7dc6a42121849986c88486
-  media_kit_libs_ios_audio: 905e6323b72e65c63ab9262b2e473f52c024a3a8
-  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
+  media_kit_libs_ios_audio: 377fe4ecb953752907a054a8cc36f19b8a191ad3
   screen_corner_radius: 64e0abb3920228a5f91c0680fa890222970025bd
   super_native_extensions: b763c02dc3a8fd078389f410bf15149179020cb4
 
