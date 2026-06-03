@@ -427,13 +427,16 @@ class _MiniViewState extends State<MiniView> {
 
               IconButton(
                 onPressed: () async {
+                  final size = await windowManager.getSize();
+                  if (_lyricsOrPlayQueueNotifier.value &&
+                      size.height > size.width) {
+                    windowManager.setSize(Size(size.width, size.width));
+                    return;
+                  }
                   _lyricsOrPlayQueueNotifier.value = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) async {
-                    final size = await windowManager.getSize();
-                    if (size.height <= size.width) {
-                      windowManager.setSize(Size(size.width, size.width + 300));
-                    }
-                  });
+                  if (size.height <= size.width) {
+                    windowManager.setSize(Size(size.width, size.width + 300));
+                  }
                 },
                 icon: ImageIcon(lyricsImage),
                 color: foregroundColor,
@@ -454,21 +457,24 @@ class _MiniViewState extends State<MiniView> {
 
               IconButton(
                 onPressed: () async {
+                  final size = await windowManager.getSize();
+                  if (!_lyricsOrPlayQueueNotifier.value &&
+                      size.height > size.width) {
+                    windowManager.setSize(Size(size.width, size.width));
+                    return;
+                  }
+
                   _lyricsOrPlayQueueNotifier.value = false;
-                  WidgetsBinding.instance.addPostFrameCallback((_) async {
-                    final size = await windowManager.getSize();
-                    if (size.height <= size.width) {
-                      if (Platform.isWindows) {
-                        windowManager.setSize(
-                          Size(size.width, size.width + 316 - 7),
-                        );
-                      } else {
-                        windowManager.setSize(
-                          Size(size.width, size.width + 316),
-                        );
-                      }
+
+                  if (size.height <= size.width) {
+                    if (Platform.isWindows) {
+                      windowManager.setSize(
+                        Size(size.width, size.width + 316 - 7),
+                      );
+                    } else {
+                      windowManager.setSize(Size(size.width, size.width + 316));
                     }
-                  });
+                  }
                 },
                 icon: const ImageIcon(playQueueImage, size: 25),
                 color: foregroundColor,
