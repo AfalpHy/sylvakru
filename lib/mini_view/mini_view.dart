@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sylvakru/base/audio_handler.dart';
@@ -18,9 +19,10 @@ import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:window_manager/window_manager.dart';
 
-final miniModeDisplayOthersNotifier = ValueNotifier(true);
-Timer? miniModeHideOthersTimer;
+final miniModeDisplayOverlayNotifier = ValueNotifier(true);
+Timer? miniModeHideOverlayTimer;
 final miniModeNotifier = ValueNotifier(false);
+late double miniViewMainHeight;
 
 class MiniView extends StatefulWidget {
   const MiniView({super.key});
@@ -30,8 +32,8 @@ class MiniView extends StatefulWidget {
 }
 
 class _MiniViewState extends State<MiniView> {
-  final displayCoverNotifier = ValueNotifier(true);
   final _lyricsOrPlayQueueNotifier = ValueNotifier(true);
+  bool _displayBottom = false;
 
   @override
   void initState() {
@@ -43,12 +45,26 @@ class _MiniViewState extends State<MiniView> {
   Widget build(BuildContext context) {
     final width = MediaQuery.widthOf(context);
     final height = MediaQuery.heightOf(context);
-    if (height > 150) {
-      displayCoverNotifier.value = true;
+
+    if (!_displayBottom) {
+      if (height > width) {
+        _displayBottom = true;
+      } else {
+        miniViewMainHeight = height;
+      }
     } else {
-      displayCoverNotifier.value = false;
+      if (height - miniViewMainHeight > 950 - width) {
+        miniViewMainHeight = height - (950 - width);
+      }
+      if (width < miniViewMainHeight) {
+        miniViewMainHeight = width;
+      }
+      if (height <= miniViewMainHeight) {
+        _displayBottom = false;
+      }
     }
-    miniModeDisplayOthersNotifier.value = true;
+
+    miniModeDisplayOverlayNotifier.value = true;
     return Column(
       children: [
         Expanded(
@@ -57,18 +73,13 @@ class _MiniViewState extends State<MiniView> {
             builder: (context, value, child) {
               return Material(color: currentCoverArtColor, child: child);
             },
-            child: ValueListenableBuilder(
-              valueListenable: displayCoverNotifier,
-              builder: (context, displayCover, child) {
-                if (displayCover) {
-                  return coverView();
-                }
-                return listTileView(context);
-              },
-            ),
+            child: miniViewMainHeight > 150
+                ? coverView()
+                : listTileView(context),
           ),
         ),
-        if (height > width)
+
+        if (_displayBottom)
           ValueListenableBuilder(
             valueListenable: currentSongNotifier,
             builder: (context, currentSong, child) {
@@ -76,7 +87,7 @@ class _MiniViewState extends State<MiniView> {
                 color: currentCoverArtColor,
                 child: SizedBox(
                   width: width,
-                  height: height - width,
+                  height: height - miniViewMainHeight,
                   child: Stack(
                     children: [
                       ValueListenableBuilder(
@@ -98,7 +109,7 @@ class _MiniViewState extends State<MiniView> {
                                     ),
                             );
                           }
-                          return height - width > 60
+                          return height - miniViewMainHeight > 60
                               ? PlayQueuePage()
                               : SizedBox();
                         },
@@ -125,18 +136,18 @@ class _MiniViewState extends State<MiniView> {
 
       child: MouseRegion(
         onEnter: (event) {
-          miniModeDisplayOthersNotifier.value = true;
-          miniModeHideOthersTimer?.cancel();
-          miniModeHideOthersTimer = null;
+          miniModeDisplayOverlayNotifier.value = true;
+          miniModeHideOverlayTimer?.cancel();
+          miniModeHideOverlayTimer = null;
         },
         onExit: (event) async {
           if (isDragging) {
             return;
           }
-          miniModeHideOthersTimer ??= Timer(
+          miniModeHideOverlayTimer ??= Timer(
             const Duration(milliseconds: 1000),
             () {
-              miniModeDisplayOthersNotifier.value = false;
+              miniModeDisplayOverlayNotifier.value = false;
             },
           );
         },
@@ -144,55 +155,57 @@ class _MiniViewState extends State<MiniView> {
           valueListenable: currentSongNotifier,
           builder: (context, currentSong, child) {
             return ValueListenableBuilder(
-              valueListenable: miniModeDisplayOthersNotifier,
-              builder: (context, displayOthers, child) {
+              valueListenable: miniModeDisplayOverlayNotifier,
+              builder: (context, displayOverlay, child) {
                 return Stack(
                   fit: StackFit.expand,
 
                   children: [
                     CoverArtWidget(song: currentSong),
 
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 0,
-                      height: 100,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              currentCoverArtColor.withAlpha(0),
+                    if (displayOverlay || _displayBottom)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        height: 100,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                currentCoverArtColor.withAlpha(0),
 
-                              currentCoverArtColor,
-                            ],
+                                currentCoverArtColor,
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
 
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 250,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              currentCoverArtColor.withAlpha(0),
+                    if (displayOverlay || _displayBottom)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 250,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                currentCoverArtColor.withAlpha(0),
 
-                              currentCoverArtColor,
-                            ],
+                                currentCoverArtColor,
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
 
-                    if (displayOthers) ...[
+                    if (displayOverlay) ...[
                       topControls(),
                       centerListTile(currentSong),
                       seekBar(),
@@ -220,25 +233,25 @@ class _MiniViewState extends State<MiniView> {
 
       child: MouseRegion(
         onEnter: (event) {
-          miniModeDisplayOthersNotifier.value = true;
-          miniModeHideOthersTimer?.cancel();
-          miniModeHideOthersTimer = null;
+          miniModeDisplayOverlayNotifier.value = true;
+          miniModeHideOverlayTimer?.cancel();
+          miniModeHideOverlayTimer = null;
         },
         onExit: (event) async {
           if (isDragging) {
             return;
           }
-          miniModeHideOthersTimer ??= Timer(
+          miniModeHideOverlayTimer ??= Timer(
             const Duration(milliseconds: 1000),
             () {
-              miniModeDisplayOthersNotifier.value = false;
+              miniModeDisplayOverlayNotifier.value = false;
             },
           );
         },
         child: Stack(
           children: [
             ValueListenableBuilder(
-              valueListenable: miniModeDisplayOthersNotifier,
+              valueListenable: miniModeDisplayOverlayNotifier,
               builder: (context, value, child) {
                 if (value) {
                   return topControls();
@@ -428,14 +441,31 @@ class _MiniViewState extends State<MiniView> {
               IconButton(
                 onPressed: () async {
                   final size = await windowManager.getSize();
-                  if (_lyricsOrPlayQueueNotifier.value &&
-                      size.height > size.width) {
-                    windowManager.setSize(Size(size.width, size.width));
-                    return;
-                  }
-                  _lyricsOrPlayQueueNotifier.value = true;
-                  if (size.height <= size.width) {
-                    windowManager.setSize(Size(size.width, size.width + 300));
+                  if (_displayBottom) {
+                    if (_lyricsOrPlayQueueNotifier.value) {
+                      _displayBottom = false;
+                      windowManager.setSize(
+                        Size(
+                          size.width,
+                          miniViewMainHeight + (Platform.isWindows ? 9 : 0),
+                        ),
+                      );
+                    } else {
+                      _lyricsOrPlayQueueNotifier.value = true;
+                    }
+                  } else {
+                    _displayBottom = true;
+                    _lyricsOrPlayQueueNotifier.value = true;
+
+                    windowManager.setSize(
+                      Size(
+                        size.width,
+                        min(
+                          Platform.isWindows ? 950 + 9 : 950,
+                          size.height + 300,
+                        ),
+                      ),
+                    );
                   }
                 },
                 icon: ImageIcon(lyricsImage),
@@ -458,22 +488,31 @@ class _MiniViewState extends State<MiniView> {
               IconButton(
                 onPressed: () async {
                   final size = await windowManager.getSize();
-                  if (!_lyricsOrPlayQueueNotifier.value &&
-                      size.height > size.width) {
-                    windowManager.setSize(Size(size.width, size.width));
-                    return;
-                  }
-
-                  _lyricsOrPlayQueueNotifier.value = false;
-
-                  if (size.height <= size.width) {
-                    if (Platform.isWindows) {
+                  if (_displayBottom) {
+                    if (!_lyricsOrPlayQueueNotifier.value) {
+                      _displayBottom = false;
                       windowManager.setSize(
-                        Size(size.width, size.width + 316 - 7),
+                        Size(
+                          size.width,
+                          miniViewMainHeight + (Platform.isWindows ? 9 : 0),
+                        ),
                       );
                     } else {
-                      windowManager.setSize(Size(size.width, size.width + 316));
+                      _lyricsOrPlayQueueNotifier.value = false;
                     }
+                  } else {
+                    _displayBottom = true;
+                    _lyricsOrPlayQueueNotifier.value = false;
+
+                    windowManager.setSize(
+                      Size(
+                        size.width,
+                        min(
+                          Platform.isWindows ? 950 + 9 : 950,
+                          size.height + 300,
+                        ),
+                      ),
+                    );
                   }
                 },
                 icon: const ImageIcon(playQueueImage, size: 25),
