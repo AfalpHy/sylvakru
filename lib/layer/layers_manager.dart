@@ -236,14 +236,12 @@ class LayersManager {
       }
     }
 
-    visibleNotifier.value = false;
-
     detailWidgetMap[rootLayer] = detailLayer;
 
-    layersManager.updateBackground();
+    await layersManager.updateBackground();
 
+    visibleNotifier.value = false;
     final detailPage = createPage(detailLayer);
-
     rootKey.currentState?.push(
       DynamicDatailRoute(
         pageBuilder: (context, animation, secondaryAnimation) {
@@ -335,10 +333,10 @@ class LayersManager {
       rootKey = settingsKey;
       visibleNotifier = settingsVisibleNotifier;
     }
+
+    await layersManager.updateBackground();
+
     visibleNotifier.value = true;
-
-    layersManager.updateBackground();
-
     if (rootKey.currentState?.canPop() ?? false) {
       rootKey.currentState?.pop();
     }
@@ -387,7 +385,7 @@ class LayersManager {
     }
   }
 
-  void updateBackground() async {
+  Future<void> updateBackground() async {
     if (topRootLayer == null) {
       return;
     }
