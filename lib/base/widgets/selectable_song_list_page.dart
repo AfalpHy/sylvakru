@@ -285,7 +285,9 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
                                         : 0;
                                   },
                                   shape: const CircleBorder(),
-                                  side: BorderSide(color: Colors.grey),
+                                  side: BorderSide(
+                                    color: iconColor.value.withAlpha(128),
+                                  ),
                                 );
                               },
                             ),
@@ -376,97 +378,122 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () async {
-                        if (valid) {
-                          tryVibrate();
-                          for (int i = isSelectedList.length - 1; i >= 0; i--) {
-                            if (isSelectedList[i].value) {
-                              audioHandler.insert2Next(
-                                currentSongListNotifier.value[i],
-                              );
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: () async {
+                            if (valid) {
+                              tryVibrate();
+                              for (
+                                int i = isSelectedList.length - 1;
+                                i >= 0;
+                                i--
+                              ) {
+                                if (isSelectedList[i].value) {
+                                  audioHandler.insert2Next(
+                                    currentSongListNotifier.value[i],
+                                  );
+                                }
+                              }
+                              showCenterMessage(context, 'Added to Play Queue');
+                              if (audioHandler.currentIndex == -1) {
+                                await audioHandler.skipToNext();
+                                audioHandler.play();
+                              }
+
+                              audioHandler.saveAllStates();
                             }
-                          }
-                          showCenterMessage(context, 'Added to Play Queue');
-                          if (audioHandler.currentIndex == -1) {
-                            await audioHandler.skipToNext();
-                            audioHandler.play();
-                          }
+                          },
+                          icon: Icon(Icons.navigate_next_rounded),
+                          color: color,
+                        ),
 
-                          audioHandler.saveAllStates();
-                        }
-                      },
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.navigate_next_rounded, color: color),
-
-                          Text(
+                        Transform.translate(
+                          offset: Offset(0, -10),
+                          child: Text(
                             l10n.playNext,
                             style: TextStyle(color: color, fontSize: 12),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
 
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () async {
-                        if (valid) {
-                          tryVibrate();
-                          for (int i = 0; i < isSelectedList.length; i++) {
-                            if (isSelectedList[i].value) {
-                              audioHandler.add2Last(
-                                currentSongListNotifier.value[i],
-                              );
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: () async {
+                            if (valid) {
+                              tryVibrate();
+                              for (int i = 0; i < isSelectedList.length; i++) {
+                                if (isSelectedList[i].value) {
+                                  audioHandler.add2Last(
+                                    currentSongListNotifier.value[i],
+                                  );
+                                }
+                              }
+                              showCenterMessage(context, 'Added to Play Queue');
+                              if (audioHandler.currentIndex == -1) {
+                                await audioHandler.skipToNext();
+                                audioHandler.play();
+                              }
+
+                              audioHandler.saveAllStates();
                             }
-                          }
-                          showCenterMessage(context, 'Added to Play Queue');
-                          if (audioHandler.currentIndex == -1) {
-                            await audioHandler.skipToNext();
-                            audioHandler.play();
-                          }
+                          },
+                          icon: Icon(Icons.playlist_add_rounded),
+                          color: color,
+                        ),
 
-                          audioHandler.saveAllStates();
-                        }
-                      },
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.playlist_add_rounded, color: color),
-
-                          Text(
+                        Transform.translate(
+                          offset: Offset(0, -10),
+                          child: Text(
                             l10n.add2Queue,
                             style: TextStyle(color: color, fontSize: 12),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
 
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        if (valid) {
-                          tryVibrate();
-                          List<MyAudioMetadata> tmpSongList = [];
-                          for (int i = isSelectedList.length - 1; i >= 0; i--) {
-                            if (isSelectedList[i].value) {
-                              tmpSongList.add(currentSongListNotifier.value[i]);
-                            }
-                          }
-                          showAddPlaylistDialog(context, tmpSongList);
-                        }
-                      },
+                      onTap: () {},
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_rounded, color: color),
+                          IconButton(
+                            onPressed: () {
+                              if (valid) {
+                                tryVibrate();
+                                List<MyAudioMetadata> tmpSongList = [];
+                                for (
+                                  int i = isSelectedList.length - 1;
+                                  i >= 0;
+                                  i--
+                                ) {
+                                  if (isSelectedList[i].value) {
+                                    tmpSongList.add(
+                                      currentSongListNotifier.value[i],
+                                    );
+                                  }
+                                }
+                                showAddPlaylistDialog(context, tmpSongList);
+                              }
+                            },
+                            icon: Icon(Icons.add_rounded),
+                            color: color,
+                          ),
 
-                          Text(
-                            l10n.add2Playlist,
-                            style: TextStyle(color: color, fontSize: 12),
+                          Transform.translate(
+                            offset: Offset(0, -10),
+                            child: Text(
+                              l10n.add2Playlist,
+                              style: TextStyle(color: color, fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -474,45 +501,52 @@ class SelectableSongListPageState extends State<SelectableSongListPage> {
                   ),
                   if (playlist != null)
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          if (valid) {
-                            tryVibrate();
-                            if (await showConfirmDialog(context, l10n.delete)) {
-                              List<MyAudioMetadata> tmpSongList = [];
-                              for (
-                                int i = isSelectedList.length - 1;
-                                i >= 0;
-                                i--
-                              ) {
-                                if (isSelectedList[i].value) {
-                                  tmpSongList.add(
-                                    currentSongListNotifier.value[i],
-                                  );
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: () async {
+                              if (valid) {
+                                tryVibrate();
+                                if (await showConfirmDialog(
+                                  context,
+                                  l10n.delete,
+                                )) {
+                                  List<MyAudioMetadata> tmpSongList = [];
+                                  for (
+                                    int i = isSelectedList.length - 1;
+                                    i >= 0;
+                                    i--
+                                  ) {
+                                    if (isSelectedList[i].value) {
+                                      tmpSongList.add(
+                                        currentSongListNotifier.value[i],
+                                      );
+                                    }
+                                  }
+                                  playlist!.remove(tmpSongList);
+                                  updateSongList();
+                                  if (context.mounted) {
+                                    showCenterMessage(
+                                      context,
+                                      'Successfully Deleted',
+                                    );
+                                  }
                                 }
                               }
-                              playlist!.remove(tmpSongList);
-                              updateSongList();
-                              if (context.mounted) {
-                                showCenterMessage(
-                                  context,
-                                  'Successfully Deleted',
-                                );
-                              }
-                            }
-                          }
-                        },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.delete_rounded, color: color),
+                            },
+                            icon: Icon(Icons.delete_rounded),
+                            color: color,
+                          ),
 
-                            Text(
+                          Transform.translate(
+                            offset: Offset(0, -10),
+                            child: Text(
                               l10n.delete,
                               style: TextStyle(color: color, fontSize: 12),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                 ],

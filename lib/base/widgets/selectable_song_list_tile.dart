@@ -41,7 +41,7 @@ class SelectableSongListTile extends StatelessWidget {
                 selectedNumNotifier.value += value ? 1 : -1;
               },
               shape: const CircleBorder(),
-              side: BorderSide(color: Colors.grey),
+              side: BorderSide(color: iconColor.value.withAlpha(128)),
             );
           },
         ),

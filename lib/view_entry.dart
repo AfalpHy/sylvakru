@@ -96,6 +96,17 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
         if (await layersManager.popDetail(sidebarHighlighLabel.value)) {
           return;
         }
+        if (isTV) {
+          final label = sidebarHighlighLabel.value;
+          if (label == 'artists' ||
+              label == 'albums' ||
+              label == 'folders' ||
+              label == 'playlists' ||
+              label == 'settings') {
+            songsFocusNode.requestFocus();
+            return;
+          }
+        }
         if (systemCanPop) {
           systemCanPop = false;
           _exitTimer?.cancel();
