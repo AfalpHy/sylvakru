@@ -1004,7 +1004,10 @@ extension _SongListPanel on _SongListState {
                     showArtistEntries(context, artists);
                   } else {
                     await Future.delayed(Duration(milliseconds: 250));
-                    // layersManager.switchRootLayer('artists', content: artists[0]);
+                    layersManager.switchRootLayer('artists');
+                    layersManager.pushDetailIfNeed(
+                      artistAlbumManager.name2Artist[artists[0]],
+                    );
                   }
                 },
               ),
@@ -1019,7 +1022,10 @@ extension _SongListPanel on _SongListState {
                 onTap: () async {
                   Navigator.pop(context);
                   await Future.delayed(Duration(milliseconds: 250));
-                  // layersManager.switchRootLayer('albums', content: getAlbum(song));
+                  layersManager.switchRootLayer('albums');
+                  layersManager.pushDetailIfNeed(
+                    artistAlbumManager.name2Album[getAlbum(songList[index])],
+                  );
                 },
               ),
 
