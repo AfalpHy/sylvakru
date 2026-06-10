@@ -34,7 +34,6 @@ class SettingsLayer extends StatelessWidget {
           Expanded(child: SettingsList()),
         ],
       ),
-      needAnimation: false,
     );
   }
 }

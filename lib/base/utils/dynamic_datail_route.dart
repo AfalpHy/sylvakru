@@ -7,10 +7,10 @@ class DynamicDatailRoute extends PageRouteBuilder {
   DynamicDatailRoute({required super.pageBuilder});
 
   @override
-  Duration get transitionDuration => Duration(milliseconds: 500);
+  Duration get transitionDuration => Duration(milliseconds: 400);
 
   @override
-  Duration get reverseTransitionDuration => Duration(milliseconds: 500);
+  Duration get reverseTransitionDuration => Duration(milliseconds: 400);
 
   @override
   bool get opaque => false;

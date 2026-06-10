@@ -111,7 +111,7 @@ class Sidebar extends StatelessWidget {
                     valueListenable: highlightTextColor.valueNotifier,
                     builder: (context, value, child) {
                       return Text(
-                        'Sylvakru',
+                        l10n.sylvakru,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,

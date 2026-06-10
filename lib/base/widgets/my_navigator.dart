@@ -10,7 +10,6 @@ Widget myNavigator({
   required ValueNotifier visibleNotifier,
   required Widget pageView,
   required Widget panelView,
-  bool needAnimation = true,
 }) {
   return ValueListenableBuilder(
     valueListenable: canFocusNavigatorNotifier,
@@ -31,11 +30,7 @@ Widget myNavigator({
                 return ValueListenableBuilder(
                   valueListenable: visibleNotifier,
                   builder: (context, value, child) {
-                    return AnimatedOpacity(
-                      duration: Duration(milliseconds: needAnimation ? 100 : 0),
-                      opacity: value ? 1 : 0,
-                      child: panelView,
-                    );
+                    return Opacity(opacity: value ? 1 : 0, child: panelView);
                   },
                 );
               }
