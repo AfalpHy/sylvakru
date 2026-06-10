@@ -256,52 +256,40 @@ class LayersManager {
                 bool draging = false;
                 final dragDxNotifier = ValueNotifier(0.0);
 
-                return Stack(
-                  children: [
-                    ValueListenableBuilder(
-                      valueListenable: dragDxNotifier,
-                      builder: (context, value, child) {
-                        return AnimatedContainer(
-                          duration: Duration(milliseconds: draging ? 0 : 250),
-                          curve: Curves.easeOutCubic,
-                          transform: .translationValues(value, 0, 0),
-                          child: detailPage,
-                        );
-                      },
-                    ),
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: GestureDetector(
-                        onHorizontalDragUpdate: (details) {
-                          draging = true;
+                return GestureDetector(
+                  onHorizontalDragUpdate: (details) {
+                    draging = true;
 
-                          dragDxNotifier.value += details.delta.dx;
-                          if (dragDxNotifier.value < 0) {
-                            dragDxNotifier.value = 0;
-                          }
-                        },
-                        onHorizontalDragEnd: (details) async {
-                          final bool isFastSwipe =
-                              (details.primaryVelocity ?? 0) > 500;
-                          final bool isOverThreshold =
-                              dragDxNotifier.value /
-                                  MediaQuery.widthOf(context) >
-                              0.5;
+                    dragDxNotifier.value += details.delta.dx;
+                    if (dragDxNotifier.value < 0) {
+                      dragDxNotifier.value = 0;
+                    }
+                  },
+                  onHorizontalDragEnd: (details) async {
+                    final bool isFastSwipe =
+                        (details.primaryVelocity ?? 0) > 500;
+                    final bool isOverThreshold =
+                        dragDxNotifier.value / MediaQuery.widthOf(context) >
+                        0.5;
 
-                          if (isFastSwipe || isOverThreshold) {
-                            layersManager.popDetail(label);
-                          } else {
-                            draging = false;
-                            dragDxNotifier.value = 0;
-                          }
-                        },
-
-                        child: Container(color: Colors.transparent, width: 30),
-                      ),
-                    ),
-                  ],
+                    if (isFastSwipe || isOverThreshold) {
+                      layersManager.popDetail(label);
+                    } else {
+                      draging = false;
+                      dragDxNotifier.value = 0;
+                    }
+                  },
+                  child: ValueListenableBuilder(
+                    valueListenable: dragDxNotifier,
+                    builder: (context, value, child) {
+                      return AnimatedContainer(
+                        duration: Duration(milliseconds: draging ? 0 : 250),
+                        curve: Curves.easeOutCubic,
+                        transform: .translationValues(value, 0, 0),
+                        child: detailPage,
+                      );
+                    },
+                  ),
                 );
               } else {
                 return detailLayer;
