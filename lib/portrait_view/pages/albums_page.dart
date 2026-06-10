@@ -133,7 +133,7 @@ extension _AlbumsPage on _AlbumsLayerState {
                         valueNotifier: isAscendingNotifier,
                         onToggleCallBack: () {
                           setting.save();
-                          artistAlbumManager.sortArtists();
+                          artistAlbumManager.sortAlbums();
                           updateCurrentList();
                         },
                       ),
