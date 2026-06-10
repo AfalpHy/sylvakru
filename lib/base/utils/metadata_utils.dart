@@ -28,7 +28,7 @@ List<String> getArtists(String artist) {
     if (artistName.isEmpty) {
       return [artist];
     }
-    artists.add(artistName);
+    artists.add(artistName.trim());
   }
   return artists;
 }
