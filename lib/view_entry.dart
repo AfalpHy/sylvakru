@@ -7,7 +7,7 @@ import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
-import 'package:sylvakru/base/utils/dynamic_route.dart';
+import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/landscape_view.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
@@ -36,10 +36,9 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
 
     if (autoPlayOnStartupNotifier.value && currentSongNotifier.value != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).push(DynamicRoute(pageBuilder: (_, _, _) => LyricsPageLayer()));
+        Navigator.of(context, rootNavigator: true).push(
+          DynamicLyricsPageRoute(pageBuilder: (_, _, _) => LyricsPageLayer()),
+        );
       });
     }
   }

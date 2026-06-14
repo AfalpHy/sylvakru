@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sylvakru/base/app.dart';
 
-class DynamicRoute<T> extends PageRouteBuilder<T> {
-  DynamicRoute({required super.pageBuilder}) : super(opaque: false);
+class DynamicLyricsPageRoute<T> extends PageRouteBuilder<T> {
+  DynamicLyricsPageRoute({required super.pageBuilder}) : super(opaque: false);
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 500);

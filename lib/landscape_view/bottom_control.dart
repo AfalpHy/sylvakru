@@ -6,7 +6,7 @@ import 'package:sylvakru/base/asset_images.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/widgets/buttons.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
-import 'package:sylvakru/base/utils/dynamic_route.dart';
+import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
 import 'package:sylvakru/landscape_view/speaker.dart';
 import 'package:sylvakru/landscape_view/volume_bar.dart';
 import 'package:sylvakru/base/widgets/seekbar.dart';
@@ -122,7 +122,9 @@ class BottomControl extends StatelessWidget {
                       return;
                     }
                     Navigator.of(context, rootNavigator: true).push(
-                      DynamicRoute(pageBuilder: (_, _, _) => LyricsPageLayer()),
+                      DynamicLyricsPageRoute(
+                        pageBuilder: (_, _, _) => LyricsPageLayer(),
+                      ),
                     );
                   },
                 );

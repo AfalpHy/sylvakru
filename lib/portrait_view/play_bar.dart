@@ -7,7 +7,7 @@ import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/my_auto_size_text.dart';
 import 'package:sylvakru/base/widgets/play_queue_sheet.dart';
-import 'package:sylvakru/base/utils/dynamic_route.dart';
+import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/layer/lyrics_page_layer.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
@@ -51,7 +51,9 @@ class PlayBar extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    DynamicRoute(pageBuilder: (_, _, _) => LyricsPageLayer()),
+                    DynamicLyricsPageRoute(
+                      pageBuilder: (_, _, _) => LyricsPageLayer(),
+                    ),
                   );
                 },
 
