@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/services/interaction.dart';

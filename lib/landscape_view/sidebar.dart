@@ -11,7 +11,6 @@ import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:window_manager/window_manager.dart';
 
-FocusNode songsFocusNode = FocusNode();
 final ValueNotifier<String> sidebarHighlighLabel = ValueNotifier('');
 
 class Sidebar extends StatelessWidget {
@@ -48,7 +47,6 @@ class Sidebar extends StatelessWidget {
           );
         },
         child: InkWell(
-          focusNode: isTV && label == 'songs' ? songsFocusNode : null,
           child: ListTile(
             leading: leading,
             title: Text(

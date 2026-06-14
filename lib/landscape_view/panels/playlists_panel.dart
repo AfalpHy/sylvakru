@@ -111,10 +111,10 @@ extension _PlaylistsPanel on _PlaylistsLayerState {
           int crossAxisCount;
           double coverArtWidth;
           if (value) {
-            crossAxisCount = (panelWidth / (isTV ? 150 : 240)).toInt();
+            crossAxisCount = (panelWidth / 240).toInt();
             coverArtWidth = panelWidth / crossAxisCount - 45;
           } else {
-            crossAxisCount = (panelWidth / (isTV ? 100 : 120)).toInt();
+            crossAxisCount = (panelWidth / 120).toInt();
             coverArtWidth = panelWidth / crossAxisCount - 35;
           }
           return ValueListenableBuilder(
@@ -132,83 +132,66 @@ extension _PlaylistsPanel on _PlaylistsLayerState {
                     valueListenable: playlist.songListManager.changeNotifier,
                     builder: (context, _, child) {
                       final coverSong = playlist.getCoverSong();
-                      FocusNode focusNode = FocusNode();
 
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return AnimatedScale(
-                            duration: Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            scale: focusNode.hasFocus ? 1.1 : 1.0,
-                            child: Column(
-                              children: [
-                                InkWell(
-                                  focusNode: focusNode,
-                                  onFocusChange: (value) {
-                                    setState(() {});
-                                  },
-                                  mouseCursor: SystemMouseCursors.click,
-                                  focusColor: Colors.transparent,
-                                  splashColor: Colors.transparent,
-                                  hoverColor: Colors.transparent,
-                                  highlightColor: Colors.transparent,
+                      return Column(
+                        children: [
+                          InkWell(
+                            mouseCursor: SystemMouseCursors.click,
+                            focusColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
 
-                                  child: ListenableBuilder(
-                                    listenable: Listenable.merge([
-                                      coverSong?.updateNotifier,
-                                    ]),
-                                    builder: (_, _) {
-                                      return Hero(
-                                        tag:
-                                            (coverSong == null
-                                                ? playlist
-                                                      .songListManager
-                                                      .sourceTypeName
-                                                : coverSong.id) +
-                                            playlist.name,
-                                        curve: Curves.easeInOutCubic,
-                                        flightShuttleBuilder:
-                                            (
-                                              flightContext,
-                                              animation,
-                                              flightDirection,
-                                              fromHeroContext,
-                                              toHeroContext,
-                                            ) => FittedBox(
-                                              child: toHeroContext.widget,
-                                            ),
-                                        child: CoverArtWidget(
-                                          size: coverArtWidth,
-                                          borderRadius: coverArtWidth / 10,
-                                          song: coverSong,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  onTap: () {
-                                    layersManager.pushDetail(
-                                      'playlists',
-                                      playlist,
-                                    );
-                                  },
-                                ),
-                                SizedBox(
-                                  width: coverArtWidth - 5,
-                                  child: Center(
-                                    child: Text(
-                                      playlist == playlistManager.playlists[0]
-                                          ? l10n.favorites
-                                          : playlist.name,
-                                      style: TextStyle(
-                                        overflow: TextOverflow.ellipsis,
+                            child: ListenableBuilder(
+                              listenable: Listenable.merge([
+                                coverSong?.updateNotifier,
+                              ]),
+                              builder: (_, _) {
+                                return Hero(
+                                  tag:
+                                      (coverSong == null
+                                          ? playlist
+                                                .songListManager
+                                                .sourceTypeName
+                                          : coverSong.id) +
+                                      playlist.name,
+                                  curve: Curves.easeInOutCubic,
+                                  flightShuttleBuilder:
+                                      (
+                                        flightContext,
+                                        animation,
+                                        flightDirection,
+                                        fromHeroContext,
+                                        toHeroContext,
+                                      ) => FittedBox(
+                                        child: toHeroContext.widget,
                                       ),
-                                    ),
+                                  child: CoverArtWidget(
+                                    size: coverArtWidth,
+                                    borderRadius: coverArtWidth / 10,
+                                    song: coverSong,
                                   ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
-                          );
-                        },
+                            onTap: () {
+                              layersManager.pushDetail('playlists', playlist);
+                            },
+                          ),
+                          SizedBox(
+                            width: coverArtWidth - 5,
+                            child: Center(
+                              child: Text(
+                                playlist == playlistManager.playlists[0]
+                                    ? l10n.favorites
+                                    : playlist.name,
+                                style: TextStyle(
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );

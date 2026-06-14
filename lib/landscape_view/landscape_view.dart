@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
@@ -62,55 +61,42 @@ class LandscapeView extends StatelessWidget {
             );
           },
         ),
-        FocusScope(
-          child: Column(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Focus(
-                      canRequestFocus: false,
-                      onKeyEvent: (node, event) {
-                        if (event is KeyDownEvent &&
-                            event.logicalKey == .arrowLeft) {
-                          currentSongTileNode.requestFocus();
-                          return .handled;
-                        }
-                        return .ignored;
-                      },
-                      child: Sidebar(),
-                    ),
+        Column(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Sidebar(),
 
-                    Expanded(
+                  Expanded(
+                    child: ValueListenableBuilder(
+                      valueListenable: panelColor.valueNotifier,
+                      builder: (context, value, child) {
+                        return Material(color: value, child: child);
+                      },
                       child: ValueListenableBuilder(
-                        valueListenable: panelColor.valueNotifier,
+                        valueListenable: layersManager.switchNotifier,
                         builder: (context, value, child) {
-                          return Material(color: value, child: child);
+                          return Stack(
+                            children: layersManager.rootLayerMap.values.map((
+                              layer,
+                            ) {
+                              return Visibility(
+                                visible: layer == layersManager.topRootLayer,
+                                maintainState: true,
+                                child: layer,
+                              );
+                            }).toList(),
+                          );
                         },
-                        child: ValueListenableBuilder(
-                          valueListenable: layersManager.switchNotifier,
-                          builder: (context, value, child) {
-                            return Stack(
-                              children: layersManager.rootLayerMap.values.map((
-                                layer,
-                              ) {
-                                return Visibility(
-                                  visible: layer == layersManager.topRootLayer,
-                                  maintainState: true,
-                                  child: layer,
-                                );
-                              }).toList(),
-                            );
-                          },
-                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              BottomControl(),
-            ],
-          ),
+            ),
+            BottomControl(),
+          ],
         ),
       ],
     );

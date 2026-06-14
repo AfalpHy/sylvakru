@@ -14,8 +14,6 @@ import 'package:sylvakru/layer/lyrics_page_layer.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 
-FocusNode currentSongTileNode = FocusNode();
-
 class BottomControl extends StatelessWidget {
   const BottomControl({super.key});
 
@@ -32,7 +30,7 @@ class BottomControl extends StatelessWidget {
               children: [
                 Expanded(flex: 2, child: currentSongTile(context)),
 
-                if (isMobile && !isTV) ...[
+                if (isMobile) ...[
                   Expanded(flex: 2, child: bottomSeekBar()),
                   Expanded(
                     flex: 2,
@@ -57,10 +55,7 @@ class BottomControl extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: isTV ? SizedBox.shrink() : otherControls(context),
-                  ),
+                  Expanded(flex: 2, child: otherControls(context)),
                 ],
               ],
             ),
@@ -91,7 +86,6 @@ class BottomControl extends StatelessWidget {
               listenable: Listenable.merge([currentSong?.updateNotifier]),
               builder: (context, _) {
                 return ListTile(
-                  focusNode: currentSongTileNode,
                   leading: Hero(
                     tag: 'cover',
                     flightShuttleBuilder:
@@ -142,11 +136,7 @@ class BottomControl extends StatelessWidget {
 
   Widget bottomSeekBar() {
     return SizedBox(
-      width: isTV
-          ? .infinity
-          : isMobile
-          ? 300
-          : 400,
+      width: isMobile ? 300 : 400,
       child: ValueListenableBuilder(
         valueListenable: currentSongNotifier,
         builder: (_, _, _) {
@@ -160,15 +150,11 @@ class BottomControl extends StatelessWidget {
     return [
       playModeButton(25),
 
-      if (isTV) rewindButton(25),
-
       skip2PreviousButton(25),
 
       playOrPauseButton(35),
 
       skip2NextButton(25),
-
-      if (isTV) forwardButton(25),
 
       showPlayQueueButton(25),
     ];

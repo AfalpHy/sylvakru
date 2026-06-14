@@ -44,50 +44,26 @@ class MySwitch extends StatelessWidget {
   }
 
   Widget switcher() {
-    FocusNode focusNode = FocusNode();
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return InkWell(
-          focusColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          mouseCursor: SystemMouseCursors.click,
-          focusNode: focusNode,
-          onFocusChange: (value) {
-            setState(() {});
-          },
-          onTap: () {
-            valueNotifier.value = !valueNotifier.value;
-            onToggleCallBack?.call();
-          },
-          child: AnimatedScale(
-            duration: Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
-            scale: focusNode.hasFocus ? 1.3 : 1.0,
-            child: ValueListenableBuilder(
-              valueListenable: valueNotifier,
-              builder: (context, value, child) {
-                return ValueListenableBuilder(
-                  valueListenable: switchColor.valueNotifier,
-                  builder: (_, _, _) {
-                    return FlutterSwitch(
-                      width: 45,
-                      height: 20,
-                      toggleSize: 15,
-                      activeColor: switchColor.value,
-                      inactiveColor: Colors.grey.shade300,
-                      value: value,
-                      onToggle: (value) {
-                        tryVibrate();
-                        valueNotifier.value = value;
-                        onToggleCallBack?.call();
-                      },
-                    );
-                  },
-                );
+    return ValueListenableBuilder(
+      valueListenable: valueNotifier,
+      builder: (context, value, child) {
+        return ValueListenableBuilder(
+          valueListenable: switchColor.valueNotifier,
+          builder: (_, _, _) {
+            return FlutterSwitch(
+              width: 45,
+              height: 20,
+              toggleSize: 15,
+              activeColor: switchColor.value,
+              inactiveColor: Colors.grey.shade300,
+              value: value,
+              onToggle: (value) {
+                tryVibrate();
+                valueNotifier.value = value;
+                onToggleCallBack?.call();
               },
-            ),
-          ),
+            );
+          },
         );
       },
     );

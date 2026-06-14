@@ -150,10 +150,10 @@ extension _ArtistsPanel on _ArtistsLayerState {
               int crossAxisCount;
               double coverArtWidth;
               if (value) {
-                crossAxisCount = (panelWidth / (isTV ? 150 : 240)).toInt();
+                crossAxisCount = (panelWidth / 240).toInt();
                 coverArtWidth = panelWidth / crossAxisCount - 45;
               } else {
-                crossAxisCount = (panelWidth / (isTV ? 100 : 120)).toInt();
+                crossAxisCount = (panelWidth / 120).toInt();
                 coverArtWidth = panelWidth / crossAxisCount - 35;
               }
               return ValueListenableBuilder(
@@ -166,72 +166,52 @@ extension _ArtistsPanel on _ArtistsLayerState {
                     ),
                     itemCount: list.length,
                     itemBuilder: (context, index) {
-                      FocusNode focusNode = FocusNode();
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return AnimatedScale(
-                            duration: Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            scale: focusNode.hasFocus ? 1.1 : 1.0,
-                            child: Column(
-                              children: [
-                                InkWell(
-                                  focusNode: focusNode,
-                                  onFocusChange: (value) {
-                                    setState(() {});
-                                  },
-                                  mouseCursor: SystemMouseCursors.click,
-                                  focusColor: Colors.transparent,
-                                  splashColor: Colors.transparent,
-                                  hoverColor: Colors.transparent,
-                                  highlightColor: Colors.transparent,
+                      return Column(
+                        children: [
+                          InkWell(
+                            mouseCursor: SystemMouseCursors.click,
+                            focusColor: Colors.transparent,
+                            splashColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
 
-                                  child: ValueListenableBuilder(
-                                    valueListenable: list[index]
-                                        .songListManager
-                                        .sourceTypeNotifier,
-                                    builder: (context, value, child) {
-                                      final coverSong = list[index]
-                                          .getCoverSong();
-                                      return ValueListenableBuilder(
-                                        valueListenable:
-                                            coverSong.updateNotifier,
-                                        builder: (_, _, _) {
-                                          return Hero(
-                                            tag:
-                                                coverSong.id + list[index].name,
-                                            child: CoverArtWidget(
-                                              size: coverArtWidth,
-                                              borderRadius: coverArtWidth / 10,
-                                              song: coverSong,
-                                            ),
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-                                  onTap: () {
-                                    layersManager.pushDetail(
-                                      'artists',
-                                      list[index],
+                            child: ValueListenableBuilder(
+                              valueListenable: list[index]
+                                  .songListManager
+                                  .sourceTypeNotifier,
+                              builder: (context, value, child) {
+                                final coverSong = list[index].getCoverSong();
+                                return ValueListenableBuilder(
+                                  valueListenable: coverSong.updateNotifier,
+                                  builder: (_, _, _) {
+                                    return Hero(
+                                      tag: coverSong.id + list[index].name,
+                                      child: CoverArtWidget(
+                                        size: coverArtWidth,
+                                        borderRadius: coverArtWidth / 10,
+                                        song: coverSong,
+                                      ),
                                     );
                                   },
-                                ),
-                                SizedBox(
-                                  width: coverArtWidth - 5,
-                                  child: Center(
-                                    child: Text(
-                                      list[index].name,
-                                      style: TextStyle(
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
-                          );
-                        },
+                            onTap: () {
+                              layersManager.pushDetail('artists', list[index]);
+                            },
+                          ),
+                          SizedBox(
+                            width: coverArtWidth - 5,
+                            child: Center(
+                              child: Text(
+                                list[index].name,
+                                style: TextStyle(
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );

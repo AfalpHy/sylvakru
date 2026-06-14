@@ -3,7 +3,6 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
@@ -20,10 +19,6 @@ import 'package:sylvakru/base/widgets/lyric_list_view.dart';
 import 'package:sylvakru/base/widgets/seekbar.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
-
-final FocusScopeNode playControlScopeNode = FocusScopeNode();
-final FocusScopeNode lyricsScopeNode = FocusScopeNode();
-final FocusScopeNode fontSizeScopeNode = FocusScopeNode();
 
 class LandscapeLyricsPage extends StatefulWidget {
   const LandscapeLyricsPage({super.key});
@@ -175,33 +170,14 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
                                 ).copyWith(scrollbars: false),
                                 child: currentSong == null
                                     ? SizedBox()
-                                    : FocusScope(
-                                        node: lyricsScopeNode,
-                                        onKeyEvent: (node, event) {
-                                          if (!isTV || event is! KeyDownEvent) {
-                                            return .ignored;
-                                          }
-                                          if (event.logicalKey == .arrowLeft) {
-                                            playControlScopeNode.requestFocus();
-                                            return .handled;
-                                          } else if (event.logicalKey ==
-                                              .arrowRight) {
-                                            fontSizeScopeNode.requestFocus();
-                                            return .handled;
-                                          }
-                                          return .ignored;
-                                        },
-                                        child: LyricsListView(
-                                          key: ValueKey(currentSong),
-                                          expanded: pageHight < 600
-                                              ? false
-                                              : true,
-                                          lines:
-                                              currentSong.parsedLyrics!.lines,
-                                          isKaraoke: currentSong
-                                              .parsedLyrics!
-                                              .isKaraoke,
-                                        ),
+                                    : LyricsListView(
+                                        key: ValueKey(currentSong),
+                                        expanded: pageHight < 600
+                                            ? false
+                                            : true,
+                                        lines: currentSong.parsedLyrics!.lines,
+                                        isKaraoke:
+                                            currentSong.parsedLyrics!.isKaraoke,
                                       ),
                               ),
                             ),
@@ -253,29 +229,8 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
                     return Offstage(
                       offstage: value,
                       child: pageHight <= 600
-                          ? FocusScope(
-                              node: fontSizeScopeNode,
-                              onKeyEvent: (node, event) {
-                                if (event is KeyDownEvent &&
-                                    event.logicalKey == .arrowLeft) {
-                                  lyricsScopeNode.requestFocus();
-                                  return .handled;
-                                }
-                                return .ignored;
-                              },
-                              child: Column(children: children),
-                            )
-                          : FocusScope(
-                              node: fontSizeScopeNode,
-                              onKeyEvent: (node, event) {
-                                if (event.logicalKey == .arrowUp) {
-                                  lyricsScopeNode.requestFocus();
-                                  return .handled;
-                                }
-                                return .ignored;
-                              },
-                              child: Row(children: children),
-                            ),
+                          ? Column(children: children)
+                          : Row(children: children),
                     );
                   },
                 ),
@@ -369,34 +324,20 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
 
             SizedBox(
               width: width,
-              child: FocusScope(
-                node: playControlScopeNode,
-                onKeyEvent: (node, event) {
-                  if (event is KeyDownEvent && event.logicalKey == .arrowUp) {
-                    lyricsScopeNode.requestFocus();
-                    return .handled;
-                  }
-                  return .ignored;
-                },
-                child: Row(
-                  children: [
-                    playModeButton(25, iconColor: value),
-                    Spacer(),
+              child: Row(
+                children: [
+                  playModeButton(25, iconColor: value),
+                  Spacer(),
 
-                    if (isTV) rewindButton(25, iconColor: value),
+                  skip2PreviousButton(25, iconColor: value),
 
-                    skip2PreviousButton(25, iconColor: value),
+                  playOrPauseButton(35, iconColor: value),
 
-                    playOrPauseButton(35, iconColor: value),
+                  skip2NextButton(25, iconColor: value),
 
-                    skip2NextButton(25, iconColor: value),
-
-                    if (isTV) forwardButton(25, iconColor: value),
-
-                    Spacer(),
-                    showPlayQueueButton(25, iconColor: value),
-                  ],
-                ),
+                  Spacer(),
+                  showPlayQueueButton(25, iconColor: value),
+                ],
               ),
             ),
             if (!isMobile)

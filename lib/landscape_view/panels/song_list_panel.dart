@@ -263,23 +263,6 @@ extension _SongListPanel on _SongListState {
                               },
                             ),
 
-                          if (isTV && playlist?.isFavorite == false) ...[
-                            SizedBox(width: 15),
-                            ElevatedButton(
-                              onPressed: () async {
-                                if (await showConfirmDialog(
-                                  context,
-                                  l10n.delete,
-                                )) {
-                                  layersManager.removeLayerIfNeed(playlist!);
-                                  playlistManager.deletePlaylist(playlist!);
-                                }
-                              },
-                              style: buttonStyle,
-                              child: Text(l10n.delete),
-                            ),
-                          ],
-
                           if (isLibrary &&
                                   (sourceType == .local ||
                                       sourceType == .webdav) ||
@@ -558,8 +541,6 @@ extension _SongListPanel on _SongListState {
                 child: Text(l10n.times, overflow: TextOverflow.ellipsis),
               ),
             ),
-
-          if (isTV) SizedBox(width: 40),
         ],
       ),
     );
@@ -586,7 +567,6 @@ extension _SongListPanel on _SongListState {
           isSelected: isSelected,
           currentSongList: currentSongList,
           isRanking: isRanking,
-          moreButton: isTV ? moreButtonForSong : null,
           onTap: () async {
             if (ctrlIsPressed) {
               isSelected.value = !isSelected.value;
@@ -633,269 +613,6 @@ extension _SongListPanel on _SongListState {
       },
     );
   }
-
-  Widget moreButtonForSong(
-    BuildContext context,
-    int index,
-    List<MyAudioMetadata> songList,
-    FocusNode focusNode,
-  ) {
-    final song = songList[index];
-    final l10n = AppLocalizations.of(context);
-
-    final options = Builder(
-      builder: (context) {
-        return Column(
-          children: [
-            SizedBox(height: 5),
-
-            ListTile(
-              leading: CoverArtWidget(size: 50, borderRadius: 5, song: song),
-              title: Text(getTitle(song), overflow: TextOverflow.ellipsis),
-              subtitle: Text(
-                "${getArtist(song)} - ${getAlbum(song)}",
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-
-            SizedBox(height: 5),
-            MyDivider(color: dividerColor, thickness: 0.5, height: 1),
-            SizedBox(height: 5),
-
-            Expanded(
-              child: ListView(
-                physics: const ClampingScrollPhysics(),
-                children: [
-                  if (reorderable)
-                    ListTile(
-                      leading: Icon(Icons.vertical_align_top_rounded),
-                      title: Text(
-                        l10n.move2Top,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      visualDensity: const VisualDensity(
-                        horizontal: 0,
-                        vertical: -4,
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-
-                        if (isLibrary) {
-                          final targetSongList = library.songListManager
-                              .getSongList2(sourceType);
-                          final item = targetSongList.removeAt(index);
-                          targetSongList.insert(0, item);
-                          library.update(sourceType);
-                        } else if (folder != null) {
-                          final item = folder!.songList.removeAt(index);
-                          folder!.songList.insert(0, item);
-                          folder!.update();
-                        } else {
-                          final targetSongList = playlist!.songListManager
-                              .getSongList2(song.sourceType);
-                          final item = targetSongList.removeAt(index);
-                          targetSongList.insert(0, item);
-                          playlist!.update(getSourceTypeBitMask(sourceType));
-                        }
-                      },
-                    ),
-                  ListTile(
-                    leading: Icon(Icons.play_arrow_rounded),
-                    title: Text(
-                      l10n.playNow,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () {
-                      audioHandler.singlePlay(songList[index]);
-                      Navigator.pop(context);
-                      audioHandler.saveAllStates();
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.navigate_next_rounded),
-                    title: Text(
-                      l10n.playNext,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () {
-                      if (playQueue.isEmpty) {
-                        audioHandler.singlePlay(songList[index]);
-                      } else {
-                        audioHandler.insert2Next(songList[index]);
-                      }
-                      Navigator.pop(context);
-                      audioHandler.saveAllStates();
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.playlist_add_rounded),
-                    title: Text(
-                      l10n.add2Queue,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () {
-                      if (playQueue.isEmpty) {
-                        audioHandler.singlePlay(songList[index]);
-                      } else {
-                        audioHandler.add2Last(songList[index]);
-                      }
-                      Navigator.pop(context);
-                      audioHandler.saveAllStates();
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.add_rounded),
-                    title: Text(
-                      l10n.add2Playlist,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-
-                      showAddPlaylistDialog(context, [song]);
-                    },
-                  ),
-
-                  ListTile(
-                    leading: Icon(Icons.people),
-                    title: Text(
-                      l10n.go2Artist,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      final artists = getArtists(getArtist(song));
-                      if (artists.length > 1) {
-                        showArtistEntries(context, artists);
-                      } else {
-                        await Future.delayed(Duration(milliseconds: 250));
-                        layersManager.switchRootLayer('artists');
-                        layersManager.pushDetailIfNeed(
-                          artistAlbumManager.name2Artist[artists[0]],
-                        );
-                      }
-                    },
-                  ),
-
-                  ListTile(
-                    leading: Icon(Icons.album_rounded),
-                    title: Text(
-                      l10n.go2Album,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await Future.delayed(Duration(milliseconds: 250));
-                      layersManager.switchRootLayer('albums');
-                      layersManager.pushDetailIfNeed(
-                        artistAlbumManager.name2Album[getAlbum(
-                          songList[index],
-                        )],
-                      );
-                    },
-                  ),
-
-                  ListTile(
-                    leading: Icon(Icons.info_outline_rounded),
-                    title: Text(
-                      l10n.songInfo,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    visualDensity: const VisualDensity(
-                      horizontal: 0,
-                      vertical: -4,
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      showAnimationDialog(
-                        context: context,
-                        child: SongInfo(song: song),
-                      );
-                    },
-                  ),
-
-                  if (song.sourceType != .navidrome)
-                    ListTile(
-                      leading: Icon(Icons.edit_rounded),
-                      title: Text(
-                        l10n.editMetadata,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      visualDensity: const VisualDensity(
-                        horizontal: 0,
-                        vertical: -4,
-                      ),
-                      onTap: () async {
-                        Navigator.pop(context);
-                        showAnimationDialog(
-                          context: context,
-                          child: EditMetadata(song: song),
-                        );
-                      },
-                    ),
-                  if (playlist != null)
-                    ListTile(
-                      leading: Icon(Icons.delete_rounded),
-                      title: Text(
-                        l10n.delete,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      visualDensity: const VisualDensity(
-                        horizontal: 0,
-                        vertical: -4,
-                      ),
-                      onTap: () async {
-                        if (await showConfirmDialog(context, l10n.delete)) {
-                          playlist!.remove([song]);
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                          }
-                        }
-                      },
-                    ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    return IconButton(
-      focusNode: focusNode,
-      icon: Icon(Icons.more_vert, size: 20),
-      onPressed: () {
-        showAnimationDialog(
-          context: context,
-          child: SizedBox(width: 400, height: 460, child: options),
-        );
-      },
-    );
-  }
 }
 
 class SongListItem extends StatefulWidget {
@@ -904,8 +621,6 @@ class SongListItem extends StatefulWidget {
   final List<MyAudioMetadata> currentSongList;
   final bool isRanking;
   final void Function() onTap;
-  final Widget Function(BuildContext, int, List<MyAudioMetadata>, FocusNode)?
-  moreButton;
 
   const SongListItem({
     super.key,
@@ -914,7 +629,6 @@ class SongListItem extends StatefulWidget {
     required this.currentSongList,
     required this.isRanking,
     required this.onTap,
-    this.moreButton,
   });
 
   @override
@@ -923,10 +637,6 @@ class SongListItem extends StatefulWidget {
 
 class SongListItemState extends State<SongListItem> {
   final showPlayButtonNotifier = ValueNotifier(false);
-
-  FocusNode inkWellNode = FocusNode();
-  FocusNode favoriteNode = FocusNode();
-  FocusNode moreNode = FocusNode();
 
   Widget indexOrPlayButton() {
     return ValueListenableBuilder(
@@ -1025,109 +735,72 @@ class SongListItemState extends State<SongListItem> {
         onExit: (event) {
           showPlayButtonNotifier.value = false;
         },
-        child: Focus(
-          canRequestFocus: false,
-          onKeyEvent: (node, event) {
-            if (event is! KeyDownEvent) {
-              return .ignored;
-            }
-            if (event.logicalKey == .arrowRight &&
-                !favoriteNode.hasFocus &&
-                !moreNode.hasFocus) {
-              favoriteNode.requestFocus();
-              return .handled;
-            } else if (event.logicalKey == .arrowLeft &&
-                favoriteNode.hasFocus) {
-              inkWellNode.requestFocus();
-              return .handled;
-            }
-            return .ignored;
-          },
-          child: InkWell(
-            focusNode: inkWellNode,
-            onTap: widget.onTap,
-            child: ValueListenableBuilder(
-              valueListenable: song.updateNotifier,
-              builder: (_, _, _) {
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: 60,
-                      child: Center(child: indexOrPlayButton()),
+        child: InkWell(
+          onTap: widget.onTap,
+          child: ValueListenableBuilder(
+            valueListenable: song.updateNotifier,
+            builder: (_, _, _) {
+              return Row(
+                children: [
+                  SizedBox(
+                    width: 60,
+                    child: Center(child: indexOrPlayButton()),
+                  ),
+
+                  Expanded(flex: 4, child: mainInfo(song)),
+
+                  SizedBox(width: 10),
+
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      getAlbum(song),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
 
-                    Expanded(flex: 4, child: mainInfo(song)),
-
-                    SizedBox(width: 10),
-
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        getAlbum(song),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-
-                    SizedBox(
-                      width: 80,
-                      child: Center(
-                        child: IconButton(
-                          focusNode: favoriteNode,
-                          onPressed: () {
-                            toggleFavoriteState(song);
+                  SizedBox(
+                    width: 80,
+                    child: Center(
+                      child: IconButton(
+                        onPressed: () {
+                          toggleFavoriteState(song);
+                        },
+                        icon: ValueListenableBuilder(
+                          valueListenable: song.isFavoriteNotifier,
+                          builder: (context, value, child) {
+                            return value
+                                ? Icon(
+                                    Icons.favorite_rounded,
+                                    color: Colors.red,
+                                    size: 20,
+                                  )
+                                : Icon(Icons.favorite_outline, size: 20);
                           },
-                          icon: ValueListenableBuilder(
-                            valueListenable: song.isFavoriteNotifier,
-                            builder: (context, value, child) {
-                              return value
-                                  ? Icon(
-                                      Icons.favorite_rounded,
-                                      color: Colors.red,
-                                      size: 20,
-                                    )
-                                  : Icon(Icons.favorite_outline, size: 20);
-                            },
-                          ),
                         ),
                       ),
                     ),
+                  ),
 
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      formatDuration(getDuration(song)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+
+                  if (widget.isRanking)
                     SizedBox(
-                      width: 80,
+                      width: 50,
                       child: Text(
-                        formatDuration(getDuration(song)),
+                        song.playCount.toString(),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-
-                    if (widget.isRanking)
-                      SizedBox(
-                        width: 50,
-                        child: Text(
-                          song.playCount.toString(),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-
-                    if (widget.moreButton != null)
-                      SizedBox(
-                        width: 40,
-                        child: Transform.translate(
-                          offset: Offset(-10, 0),
-                          child: Center(
-                            child: widget.moreButton!(
-                              context,
-                              index,
-                              widget.currentSongList,
-                              moreNode,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
+                ],
+              );
+            },
           ),
         ),
       ),

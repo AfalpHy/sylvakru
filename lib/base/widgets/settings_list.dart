@@ -16,7 +16,6 @@ import 'package:sylvakru/base/utils/source_type.dart';
 import 'package:sylvakru/base/widgets/connect_client_widget.dart';
 import 'package:sylvakru/base/widgets/equalizer.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
-import 'package:sylvakru/base/widgets/tv_dir_picker.dart';
 import 'package:sylvakru/base/data/setting.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/base/widgets/manage_music_folders.dart';
@@ -54,9 +53,7 @@ class SettingsList extends StatelessWidget {
                   ),
                   subtitle: Text(
                     l10n.settingCount(
-                      isTV
-                          ? 12
-                          : Platform.isAndroid
+                      Platform.isAndroid
                           ? 14
                           : Platform.isIOS
                           ? 13
@@ -114,10 +111,10 @@ class SettingsList extends StatelessWidget {
 
         sliverBox(paddingIfNeed(isLandscape, themeListTile(context, l10n))),
 
-        if (isMobile && !isTV)
+        if (isMobile)
           sliverBox(paddingIfNeed(isLandscape, vibrationListTile(l10n))),
 
-        if (isMobile && !isTV)
+        if (isMobile)
           sliverBox(
             paddingIfNeed(
               isLandscape,
@@ -822,14 +819,9 @@ class SettingsList extends StatelessWidget {
       title: Text(l10n.exportLog),
       onTap: () async {
         String? result;
-        if (isTV) {
-          result = await showAnimationDialog(
-            context: context,
-            child: SizedBox(height: 350, width: 300, child: TvDirPicker()),
-          );
-        } else {
-          result = await FilePicker.getDirectoryPath();
-        }
+
+        result = await FilePicker.getDirectoryPath();
+
         if (result == null) {
           return;
         }

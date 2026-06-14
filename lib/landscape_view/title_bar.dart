@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
@@ -39,13 +38,8 @@ class TitleBar extends StatefulWidget {
 
 class _TitleBarState extends State<TitleBar> {
   final displayCancelNotifier = ValueNotifier(false);
-  final backNode = FocusNode();
-  final inkwellNode = FocusNode();
+
   final searchFieldNode = FocusNode();
-  final scrollToTopNode = FocusNode();
-  final findLocationNode = FocusNode();
-  final settingNode = FocusNode();
-  final List<FocusNode> nodeList = [];
 
   void displayCancelOrNot() {
     if (widget.textController!.text != '') {
@@ -61,24 +55,14 @@ class _TitleBarState extends State<TitleBar> {
     widget.textController?.addListener(displayCancelOrNot);
     searchFieldNode.addListener(() {
       isTyping = searchFieldNode.hasFocus;
-      if (!searchFieldNode.hasFocus) {
-        inkwellNode.requestFocus();
-      }
     });
-    nodeList.add(backNode);
-    nodeList.add(inkwellNode);
-    nodeList.add(scrollToTopNode);
-    nodeList.add(findLocationNode);
-    nodeList.add(settingNode);
   }
 
   @override
   void dispose() {
     displayCancelNotifier.dispose();
     widget.textController?.removeListener(displayCancelOrNot);
-    for (final node in nodeList) {
-      node.dispose();
-    }
+
     searchFieldNode.dispose();
     super.dispose();
   }
@@ -113,63 +97,7 @@ class _TitleBarState extends State<TitleBar> {
             child: Container(),
           ),
 
-          Center(
-            child: Focus(
-              canRequestFocus: false,
-              onKeyEvent: (node, event) {
-                if (!isTV) {
-                  return .ignored;
-                }
-                if (event is KeyDownEvent) {
-                  if (inkwellNode.hasFocus) {
-                    if (event.logicalKey == .select ||
-                        event.logicalKey == .enter) {
-                      searchFieldNode.unfocus();
-                      Future.delayed(Duration(milliseconds: 100), () {
-                        searchFieldNode.requestFocus();
-                      });
-                      return .handled;
-                    } else if (event.logicalKey == .goBack &&
-                        searchFieldNode.hasFocus) {
-                      // ensure isTyping is true when onPopInvokedWithResult is invoked
-                      Future.delayed(Duration(milliseconds: 200), () {
-                        searchFieldNode.unfocus();
-                      });
-                      return .handled;
-                    } else if (searchFieldNode.hasFocus) {
-                      return .ignored;
-                    }
-                  }
-                  int index = -1;
-                  for (int i = 0; i < nodeList.length; i++) {
-                    if (nodeList[i].hasFocus) {
-                      index = i;
-                    }
-                  }
-                  if (index == -1) {
-                    return .ignored;
-                  }
-                  if (event.logicalKey == .arrowLeft) {
-                    for (int i = index - 1; i >= 0; i--) {
-                      if (nodeList[i].context != null) {
-                        nodeList[i].requestFocus();
-                        return .handled;
-                      }
-                    }
-                  } else if (event.logicalKey == .arrowRight) {
-                    for (int i = index + 1; i < nodeList.length; i++) {
-                      if (nodeList[i].context != null) {
-                        nodeList[i].requestFocus();
-                        return .handled;
-                      }
-                    }
-                  }
-                }
-                return .ignored;
-              },
-              child: content(),
-            ),
-          ),
+          Center(child: content()),
         ],
       ),
     );
@@ -186,7 +114,6 @@ class _TitleBarState extends State<TitleBar> {
             child: Opacity(
               opacity: widget.backToRoot != null ? 1 : 0,
               child: IconButton(
-                focusNode: backNode,
                 onPressed: () {
                   widget.backToRoot?.call();
                 },
@@ -251,21 +178,18 @@ class _TitleBarState extends State<TitleBar> {
 
         if (widget.scrollToTop != null)
           IconButton(
-            focusNode: scrollToTopNode,
             onPressed: widget.scrollToTop,
             icon: ImageIcon(topArrowImage),
           ),
 
         if (widget.findLocation != null)
           IconButton(
-            focusNode: findLocationNode,
             onPressed: widget.findLocation,
             icon: ImageIcon(locationImage),
           ),
 
         if (widget.isMainPage)
           IconButton(
-            focusNode: settingNode,
             onPressed: () {
               layersManager.switchRootLayer('settings');
             },
@@ -299,43 +223,39 @@ class _TitleBarState extends State<TitleBar> {
             clipBehavior: .antiAlias,
             child: Container(
               color: searchFieldColor.value,
-              child: InkWell(
-                focusNode: inkwellNode,
-                onTap: isTV ? () {} : null,
-                child: TextField(
-                  focusNode: searchFieldNode,
-                  controller: widget.textController,
-                  style: TextStyle(fontSize: 14, color: textColor.value),
-                  onTapOutside: (event) {
-                    searchFieldNode.unfocus();
-                  },
-                  decoration: InputDecoration(
-                    hint: Text(
-                      widget.hintText!,
-                      style: TextStyle(fontSize: 14, color: textColor.value),
-                    ),
-                    contentPadding: EdgeInsets.zero,
-                    prefixIcon: Icon(Icons.search, color: iconColor.value),
-                    suffixIcon: ValueListenableBuilder(
-                      valueListenable: displayCancelNotifier,
-                      builder: (context, value, child) {
-                        return value
-                            ? IconButton(
-                                onPressed: () {
-                                  widget.textController!.clear();
-                                },
-                                icon: Icon(
-                                  Icons.close,
-                                  size: 20,
-                                  color: iconColor.value,
-                                ),
-                              )
-                            : SizedBox.shrink();
-                      },
-                    ),
-                    hoverColor: Colors.transparent,
-                    border: OutlineInputBorder(borderSide: BorderSide.none),
+              child: TextField(
+                focusNode: searchFieldNode,
+                controller: widget.textController,
+                style: TextStyle(fontSize: 14, color: textColor.value),
+                onTapOutside: (event) {
+                  searchFieldNode.unfocus();
+                },
+                decoration: InputDecoration(
+                  hint: Text(
+                    widget.hintText!,
+                    style: TextStyle(fontSize: 14, color: textColor.value),
                   ),
+                  contentPadding: EdgeInsets.zero,
+                  prefixIcon: Icon(Icons.search, color: iconColor.value),
+                  suffixIcon: ValueListenableBuilder(
+                    valueListenable: displayCancelNotifier,
+                    builder: (context, value, child) {
+                      return value
+                          ? IconButton(
+                              onPressed: () {
+                                widget.textController!.clear();
+                              },
+                              icon: Icon(
+                                Icons.close,
+                                size: 20,
+                                color: iconColor.value,
+                              ),
+                            )
+                          : SizedBox.shrink();
+                    },
+                  ),
+                  hoverColor: Colors.transparent,
+                  border: OutlineInputBorder(borderSide: BorderSide.none),
                 ),
               ),
             ),

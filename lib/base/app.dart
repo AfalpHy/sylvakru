@@ -10,7 +10,6 @@ late final Directory appSupportDir;
 late final Directory tmpDir;
 
 final isMobile = Platform.isAndroid || Platform.isIOS;
-const isTV = bool.fromEnvironment('TV', defaultValue: false);
 
 late final ScreenRadius? screenRadius;
 

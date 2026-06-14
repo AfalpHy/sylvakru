@@ -10,7 +10,6 @@ import 'package:sylvakru/base/services/keyboard.dart';
 import 'package:sylvakru/base/utils/dynamic_route.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/landscape_view.dart';
-import 'package:sylvakru/landscape_view/pages/landscape_lyrics_page.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/layer/lyrics_page_layer.dart';
@@ -43,12 +42,6 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
         ).push(DynamicRoute(pageBuilder: (_, _, _) => LyricsPageLayer()));
       });
     }
-
-    if (isTV) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        songsFocusNode.requestFocus();
-      });
-    }
   }
 
   @override
@@ -65,15 +58,7 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
       systemCanPop = false;
       _exitTimer?.cancel();
       // rebuild PopScope to allow it to handle pop
-      setState(() {
-        if (isTV) {
-          if (displayLyricsPage) {
-            playControlScopeNode.requestFocus();
-          } else {
-            songsFocusNode.requestFocus();
-          }
-        }
-      });
+      setState(() {});
     }
   }
 
@@ -96,17 +81,7 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
         if (await layersManager.popDetail(sidebarHighlighLabel.value)) {
           return;
         }
-        if (isTV) {
-          final label = sidebarHighlighLabel.value;
-          if (label == 'artists' ||
-              label == 'albums' ||
-              label == 'folders' ||
-              label == 'playlists' ||
-              label == 'settings') {
-            songsFocusNode.requestFocus();
-            return;
-          }
-        }
+
         if (systemCanPop) {
           systemCanPop = false;
           _exitTimer?.cancel();
