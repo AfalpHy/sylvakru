@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -360,8 +361,12 @@ void showContextMenu(
   List<MenuItem> items,
   Offset globalPosition,
 ) {
-  if (Platform.isIOS || Platform.isMacOS) {
-    // TODO:
+  if (Platform.isIOS) {
+    // TODO
+    return;
+  }
+  if (Platform.isMacOS) {
+    NativeMenu.show(items);
     return;
   }
 
@@ -434,9 +439,9 @@ void showContextMenu(
                                     item.callback?.call();
                                   },
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(
+                                    padding: EdgeInsets.symmetric(
                                       horizontal: 10,
-                                      vertical: 5,
+                                      vertical: Platform.isAndroid ? 8 : 5,
                                     ),
                                     child: Row(
                                       children: [
@@ -500,4 +505,68 @@ class MenuPositionDelegate extends SingleChildLayoutDelegate {
 
   @override
   bool shouldRelayout(covariant SingleChildLayoutDelegate oldDelegate) => true;
+}
+
+class NativeMenu {
+  static const _channel = MethodChannel('com.afalphy.menu');
+
+  static final Map<IconData, Uint8List> _iconMap = {};
+
+  static Future<Uint8List> _iconToPng(IconData icon, {double size = 18}) async {
+    if (_iconMap[icon] != null) {
+      return _iconMap[icon]!;
+    }
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    final painter = TextPainter(
+      textDirection: TextDirection.ltr,
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          fontSize: size,
+          color: Colors.black,
+        ),
+      ),
+    );
+
+    painter.layout();
+    painter.paint(canvas, Offset.zero);
+
+    final image = await recorder.endRecording().toImage(
+      painter.width.ceil(),
+      painter.height.ceil(),
+    );
+
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    final result = data!.buffer.asUint8List();
+    _iconMap[icon] = result;
+    return result;
+  }
+
+  static Future<void> show(List<MenuItem> items) async {
+    final menuData = await Future.wait(
+      items.map((item) async {
+        return {
+          'text': item.text,
+          'isDivider': item.isDivider,
+          'iconBytes': item.iconData != null
+              ? await _iconToPng(item.iconData!)
+              : null,
+        };
+      }),
+    );
+
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == "onMenuItemSelected") {
+        final int index = call.arguments;
+        items[index].callback?.call();
+      }
+    });
+
+    await _channel.invokeMethod('showNativeMenu', {'items': menuData});
+  }
 }

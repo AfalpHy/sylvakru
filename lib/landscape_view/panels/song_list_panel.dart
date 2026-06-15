@@ -661,12 +661,13 @@ extension _SongListPanel on _SongListState {
                 waitForSecondClick = true;
               }
             },
-            onSecondaryTapDown: (details) {
+            onSecondaryTapUp: (details) {
               popContextMenu(index, details.globalPosition);
             },
           ),
           onLongPressStart: (details) {
             if (isMobile) {
+              tryVibrate();
               popContextMenu(index, details.globalPosition);
             }
           },

@@ -2,11 +2,7 @@ PODS:
   - audio_tags_lofty (0.0.4):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - irondash_engine_context (0.0.1):
-    - FlutterMacOS
   - screen_retriever_macos (0.0.1):
-    - FlutterMacOS
-  - super_native_extensions (0.0.1):
     - FlutterMacOS
   - tray_manager (0.0.1):
     - FlutterMacOS
@@ -14,9 +10,7 @@ PODS:
 DEPENDENCIES:
   - audio_tags_lofty (from `Flutter/ephemeral/.symlinks/plugins/audio_tags_lofty/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - irondash_engine_context (from `Flutter/ephemeral/.symlinks/plugins/irondash_engine_context/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
-  - super_native_extensions (from `Flutter/ephemeral/.symlinks/plugins/super_native_extensions/macos`)
   - tray_manager (from `Flutter/ephemeral/.symlinks/plugins/tray_manager/macos`)
 
 EXTERNAL SOURCES:
@@ -24,21 +18,15 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/audio_tags_lofty/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  irondash_engine_context:
-    :path: Flutter/ephemeral/.symlinks/plugins/irondash_engine_context/macos
   screen_retriever_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos
-  super_native_extensions:
-    :path: Flutter/ephemeral/.symlinks/plugins/super_native_extensions/macos
   tray_manager:
     :path: Flutter/ephemeral/.symlinks/plugins/tray_manager/macos
 
 SPEC CHECKSUMS:
   audio_tags_lofty: cb4cbfd45a647369e0ecac280f880c35d55310d0
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  irondash_engine_context: 893c7d96d20ce361d7e996f39d360c4c2f9869ba
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
-  super_native_extensions: c2795d6d9aedf4a79fae25cb6160b71b50549189
   tray_manager: a104b5c81b578d83f3c3d0f40a997c8b10810166
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009

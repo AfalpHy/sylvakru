@@ -251,45 +251,9 @@ class Sidebar extends StatelessWidget {
                             layersManager.switchRootLayer('playlists');
                           },
                         ),
-                        onSecondaryTapDown: (details) {
-                          showContextMenu(context, [
-                            MenuItem(
-                              text: l10n.reorder,
-                              iconData: Icons.reorder_rounded,
-                              callback: () async {
-                                showAnimationDialog(
-                                  context: context,
-
-                                  child: OrientationBuilder(
-                                    builder: (context, orientation) {
-                                      final size = MediaQuery.of(context).size;
-                                      final shortSide = size.shortestSide;
-
-                                      bool isPhone = shortSide < 600;
-                                      return SizedBox(
-                                        height: max(350, size.height * 0.7),
-                                        width: isPhone ? 300 : 400,
-                                        child: Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            10,
-                                            10,
-                                            10,
-                                            0,
-                                          ),
-                                          child: reorderablePlaylistsView(
-                                            context,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ], details.globalPosition);
-                        },
                         onLongPressStart: (details) {
                           if (isMobile) {
+                            tryVibrate();
                             showContextMenu(context, [
                               MenuItem(
                                 text: l10n.reorder,
@@ -416,7 +380,7 @@ class Sidebar extends StatelessWidget {
           layersManager.switchRootLayer('_${playlist.name}');
         },
       ),
-      onSecondaryTapDown: (details) {
+      onSecondaryTapUp: (details) {
         if (index == 0) {
           return;
         }
@@ -446,6 +410,8 @@ class Sidebar extends StatelessWidget {
       },
       onLongPressStart: (details) {
         if (isMobile && index > 0) {
+          tryVibrate();
+
           final menuItems = <MenuItem>[];
 
           menuItems.add(

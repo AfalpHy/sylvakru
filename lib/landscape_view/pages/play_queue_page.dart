@@ -318,7 +318,7 @@ class PlayQueuePageState extends State<PlayQueuePage> {
               }
             },
 
-            onSecondaryTapDown: (details) {
+            onSecondaryTapUp: (details) {
               if (!isSelected.value) {
                 for (var tmp in isSelectedList) {
                   tmp.value = false;

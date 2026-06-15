@@ -2,38 +2,26 @@ PODS:
   - audio_tags_lofty (0.0.4):
     - Flutter
   - Flutter (1.0.0)
-  - irondash_engine_context (0.0.1):
-    - Flutter
   - screen_corner_radius (0.0.1):
-    - Flutter
-  - super_native_extensions (0.0.1):
     - Flutter
 
 DEPENDENCIES:
   - audio_tags_lofty (from `.symlinks/plugins/audio_tags_lofty/ios`)
   - Flutter (from `Flutter`)
-  - irondash_engine_context (from `.symlinks/plugins/irondash_engine_context/ios`)
   - screen_corner_radius (from `.symlinks/plugins/screen_corner_radius/ios`)
-  - super_native_extensions (from `.symlinks/plugins/super_native_extensions/ios`)
 
 EXTERNAL SOURCES:
   audio_tags_lofty:
     :path: ".symlinks/plugins/audio_tags_lofty/ios"
   Flutter:
     :path: Flutter
-  irondash_engine_context:
-    :path: ".symlinks/plugins/irondash_engine_context/ios"
   screen_corner_radius:
     :path: ".symlinks/plugins/screen_corner_radius/ios"
-  super_native_extensions:
-    :path: ".symlinks/plugins/super_native_extensions/ios"
 
 SPEC CHECKSUMS:
   audio_tags_lofty: 34a8d6f92e388530db0a636955cbb8a60a627639
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  irondash_engine_context: 8e58ca8e0212ee9d1c7dc6a42121849986c88486
   screen_corner_radius: 64e0abb3920228a5f91c0680fa890222970025bd
-  super_native_extensions: b763c02dc3a8fd078389f410bf15149179020cb4
 
 PODFILE CHECKSUM: e30f02f9d1c72c47bb6344a0a748c9d268180865
 
