@@ -628,7 +628,8 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   void setVolume(double volume) {
-    _player.setVolume(volume * 100);
+    double adjustedVolume = (math.log(volume * 9 + 1) / math.log(10)) * 100;
+    _player.setVolume(adjustedVolume);
   }
 
   void applyEqualizer() async {
