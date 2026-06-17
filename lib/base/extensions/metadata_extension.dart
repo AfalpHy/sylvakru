@@ -22,6 +22,7 @@ extension MetadataItemMapper on MetadataItem {
         title: title,
         artist: artist,
         album: album,
+        albumArtist: albumArtist,
         genre: genre,
         year: year,
         track: track,
@@ -64,6 +65,7 @@ extension MyAudioMetadataMapper on MyAudioMetadata {
       title: Value(title),
       artist: Value(artist),
       album: Value(album),
+      albumArtist: Value(albumArtist),
       genre: Value(genre),
 
       year: Value(year),

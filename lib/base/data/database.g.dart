@@ -74,6 +74,17 @@ class $MetadataItemsTable extends MetadataItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _albumArtistMeta = const VerificationMeta(
+    'albumArtist',
+  );
+  @override
+  late final GeneratedColumn<String> albumArtist = GeneratedColumn<String>(
+    'album_artist',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _genreMeta = const VerificationMeta('genre');
   @override
   late final GeneratedColumn<String> genre = GeneratedColumn<String>(
@@ -184,6 +195,7 @@ class $MetadataItemsTable extends MetadataItems
     title,
     artist,
     album,
+    albumArtist,
     genre,
     year,
     track,
@@ -240,6 +252,15 @@ class $MetadataItemsTable extends MetadataItems
       context.handle(
         _albumMeta,
         album.isAcceptableOrUnknown(data['album']!, _albumMeta),
+      );
+    }
+    if (data.containsKey('album_artist')) {
+      context.handle(
+        _albumArtistMeta,
+        albumArtist.isAcceptableOrUnknown(
+          data['album_artist']!,
+          _albumArtistMeta,
+        ),
       );
     }
     if (data.containsKey('genre')) {
@@ -341,6 +362,10 @@ class $MetadataItemsTable extends MetadataItems
         DriftSqlType.string,
         data['${effectivePrefix}album'],
       ),
+      albumArtist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}album_artist'],
+      ),
       genre: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}genre'],
@@ -401,6 +426,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   final String? title;
   final String? artist;
   final String? album;
+  final String? albumArtist;
   final String? genre;
   final int? year;
   final int? track;
@@ -419,6 +445,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     this.title,
     this.artist,
     this.album,
+    this.albumArtist,
     this.genre,
     this.year,
     this.track,
@@ -453,6 +480,9 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     }
     if (!nullToAbsent || album != null) {
       map['album'] = Variable<String>(album);
+    }
+    if (!nullToAbsent || albumArtist != null) {
+      map['album_artist'] = Variable<String>(albumArtist);
     }
     if (!nullToAbsent || genre != null) {
       map['genre'] = Variable<String>(genre);
@@ -504,6 +534,9 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       album: album == null && nullToAbsent
           ? const Value.absent()
           : Value(album),
+      albumArtist: albumArtist == null && nullToAbsent
+          ? const Value.absent()
+          : Value(albumArtist),
       genre: genre == null && nullToAbsent
           ? const Value.absent()
           : Value(genre),
@@ -546,6 +579,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       title: serializer.fromJson<String?>(json['title']),
       artist: serializer.fromJson<String?>(json['artist']),
       album: serializer.fromJson<String?>(json['album']),
+      albumArtist: serializer.fromJson<String?>(json['albumArtist']),
       genre: serializer.fromJson<String?>(json['genre']),
       year: serializer.fromJson<int?>(json['year']),
       track: serializer.fromJson<int?>(json['track']),
@@ -571,6 +605,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       'title': serializer.toJson<String?>(title),
       'artist': serializer.toJson<String?>(artist),
       'album': serializer.toJson<String?>(album),
+      'albumArtist': serializer.toJson<String?>(albumArtist),
       'genre': serializer.toJson<String?>(genre),
       'year': serializer.toJson<int?>(year),
       'track': serializer.toJson<int?>(track),
@@ -592,6 +627,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     Value<String?> title = const Value.absent(),
     Value<String?> artist = const Value.absent(),
     Value<String?> album = const Value.absent(),
+    Value<String?> albumArtist = const Value.absent(),
     Value<String?> genre = const Value.absent(),
     Value<int?> year = const Value.absent(),
     Value<int?> track = const Value.absent(),
@@ -610,6 +646,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     title: title.present ? title.value : this.title,
     artist: artist.present ? artist.value : this.artist,
     album: album.present ? album.value : this.album,
+    albumArtist: albumArtist.present ? albumArtist.value : this.albumArtist,
     genre: genre.present ? genre.value : this.genre,
     year: year.present ? year.value : this.year,
     track: track.present ? track.value : this.track,
@@ -632,6 +669,9 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       title: data.title.present ? data.title.value : this.title,
       artist: data.artist.present ? data.artist.value : this.artist,
       album: data.album.present ? data.album.value : this.album,
+      albumArtist: data.albumArtist.present
+          ? data.albumArtist.value
+          : this.albumArtist,
       genre: data.genre.present ? data.genre.value : this.genre,
       year: data.year.present ? data.year.value : this.year,
       track: data.track.present ? data.track.value : this.track,
@@ -659,6 +699,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
           ..write('title: $title, ')
           ..write('artist: $artist, ')
           ..write('album: $album, ')
+          ..write('albumArtist: $albumArtist, ')
           ..write('genre: $genre, ')
           ..write('year: $year, ')
           ..write('track: $track, ')
@@ -682,6 +723,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     title,
     artist,
     album,
+    albumArtist,
     genre,
     year,
     track,
@@ -704,6 +746,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
           other.title == this.title &&
           other.artist == this.artist &&
           other.album == this.album &&
+          other.albumArtist == this.albumArtist &&
           other.genre == this.genre &&
           other.year == this.year &&
           other.track == this.track &&
@@ -724,6 +767,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   final Value<String?> title;
   final Value<String?> artist;
   final Value<String?> album;
+  final Value<String?> albumArtist;
   final Value<String?> genre;
   final Value<int?> year;
   final Value<int?> track;
@@ -743,6 +787,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     this.title = const Value.absent(),
     this.artist = const Value.absent(),
     this.album = const Value.absent(),
+    this.albumArtist = const Value.absent(),
     this.genre = const Value.absent(),
     this.year = const Value.absent(),
     this.track = const Value.absent(),
@@ -763,6 +808,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     this.title = const Value.absent(),
     this.artist = const Value.absent(),
     this.album = const Value.absent(),
+    this.albumArtist = const Value.absent(),
     this.genre = const Value.absent(),
     this.year = const Value.absent(),
     this.track = const Value.absent(),
@@ -784,6 +830,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     Expression<String>? title,
     Expression<String>? artist,
     Expression<String>? album,
+    Expression<String>? albumArtist,
     Expression<String>? genre,
     Expression<int>? year,
     Expression<int>? track,
@@ -804,6 +851,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
       if (title != null) 'title': title,
       if (artist != null) 'artist': artist,
       if (album != null) 'album': album,
+      if (albumArtist != null) 'album_artist': albumArtist,
       if (genre != null) 'genre': genre,
       if (year != null) 'year': year,
       if (track != null) 'track': track,
@@ -826,6 +874,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     Value<String?>? title,
     Value<String?>? artist,
     Value<String?>? album,
+    Value<String?>? albumArtist,
     Value<String?>? genre,
     Value<int?>? year,
     Value<int?>? track,
@@ -846,6 +895,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
       title: title ?? this.title,
       artist: artist ?? this.artist,
       album: album ?? this.album,
+      albumArtist: albumArtist ?? this.albumArtist,
       genre: genre ?? this.genre,
       year: year ?? this.year,
       track: track ?? this.track,
@@ -885,6 +935,9 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     }
     if (album.present) {
       map['album'] = Variable<String>(album.value);
+    }
+    if (albumArtist.present) {
+      map['album_artist'] = Variable<String>(albumArtist.value);
     }
     if (genre.present) {
       map['genre'] = Variable<String>(genre.value);
@@ -932,6 +985,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
           ..write('title: $title, ')
           ..write('artist: $artist, ')
           ..write('album: $album, ')
+          ..write('albumArtist: $albumArtist, ')
           ..write('genre: $genre, ')
           ..write('year: $year, ')
           ..write('track: $track, ')
@@ -968,6 +1022,7 @@ typedef $$MetadataItemsTableCreateCompanionBuilder =
       Value<String?> title,
       Value<String?> artist,
       Value<String?> album,
+      Value<String?> albumArtist,
       Value<String?> genre,
       Value<int?> year,
       Value<int?> track,
@@ -989,6 +1044,7 @@ typedef $$MetadataItemsTableUpdateCompanionBuilder =
       Value<String?> title,
       Value<String?> artist,
       Value<String?> album,
+      Value<String?> albumArtist,
       Value<String?> genre,
       Value<int?> year,
       Value<int?> track,
@@ -1044,6 +1100,11 @@ class $$MetadataItemsTableFilterComposer
 
   ColumnFilters<String> get album => $composableBuilder(
     column: $table.album,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get albumArtist => $composableBuilder(
+    column: $table.albumArtist,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1142,6 +1203,11 @@ class $$MetadataItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get albumArtist => $composableBuilder(
+    column: $table.albumArtist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get genre => $composableBuilder(
     column: $table.genre,
     builder: (column) => ColumnOrderings(column),
@@ -1226,6 +1292,11 @@ class $$MetadataItemsTableAnnotationComposer
   GeneratedColumn<String> get album =>
       $composableBuilder(column: $table.album, builder: (column) => column);
 
+  GeneratedColumn<String> get albumArtist => $composableBuilder(
+    column: $table.albumArtist,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get genre =>
       $composableBuilder(column: $table.genre, builder: (column) => column);
 
@@ -1299,6 +1370,7 @@ class $$MetadataItemsTableTableManager
                 Value<String?> title = const Value.absent(),
                 Value<String?> artist = const Value.absent(),
                 Value<String?> album = const Value.absent(),
+                Value<String?> albumArtist = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<int?> track = const Value.absent(),
@@ -1318,6 +1390,7 @@ class $$MetadataItemsTableTableManager
                 title: title,
                 artist: artist,
                 album: album,
+                albumArtist: albumArtist,
                 genre: genre,
                 year: year,
                 track: track,
@@ -1339,6 +1412,7 @@ class $$MetadataItemsTableTableManager
                 Value<String?> title = const Value.absent(),
                 Value<String?> artist = const Value.absent(),
                 Value<String?> album = const Value.absent(),
+                Value<String?> albumArtist = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<int?> track = const Value.absent(),
@@ -1358,6 +1432,7 @@ class $$MetadataItemsTableTableManager
                 title: title,
                 artist: artist,
                 album: album,
+                albumArtist: albumArtist,
                 genre: genre,
                 year: year,
                 track: track,

@@ -20,6 +20,7 @@ class MetadataItems extends Table {
   TextColumn get title => text().nullable()();
   TextColumn get artist => text().nullable()();
   TextColumn get album => text().nullable()();
+  TextColumn get albumArtist => text().nullable()();
   TextColumn get genre => text().nullable()();
 
   IntColumn get year => integer().nullable()();
@@ -45,7 +46,21 @@ class MetadataDB extends _$MetadataDB {
   MetadataDB(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await m.addColumn(metadataItems, metadataItems.albumArtist);
+        }
+      },
+    );
+  }
 }
 
 LazyDatabase openMetadataDB(String name) {
