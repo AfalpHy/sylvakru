@@ -138,7 +138,7 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
                       width: pageWidth * 0.45,
                       child: Column(
                         children: [
-                          SizedBox(height: pageHight * 0.1),
+                          SizedBox(height: 75),
                           if (pageHight < 600)
                             message(pageWidth * 0.35, pageHight, currentSong),
 
