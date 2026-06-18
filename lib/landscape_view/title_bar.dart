@@ -280,7 +280,7 @@ class _TitleBarState extends State<TitleBar> {
           builder: (context, _) {
             return Row(
               children: [
-                if (widget.isMainPage)
+                if (widget.isMainPage && !isMaximizedNotifier.value)
                   IconButton(
                     color: widget.isMainPage
                         ? iconColor.value
