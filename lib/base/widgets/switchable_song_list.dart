@@ -103,7 +103,7 @@ class SwitchableSongList extends StatelessWidget {
                     .getSongList2(tmpSourcetype)
                     .isNotEmpty;
 
-                if (songListIsNotEmpty || (i == 0 && songListManager.isEmpty)) {
+                if (songListIsNotEmpty || (i == 0 && sourceType == .local)) {
                   widgets.add(
                     Visibility(
                       key: ValueKey(tmpSourcetype.name),
