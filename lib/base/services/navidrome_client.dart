@@ -28,12 +28,6 @@ class NavidromeClient {
         sendTimeout: const Duration(seconds: 10),
       ),
     );
-    _applyAuth();
-  }
-
-  void _applyAuth() {
-    dio.options.headers['authorization'] =
-        'Basic ${base64Encode(utf8.encode('$username:$password'))}';
   }
 
   String _randomSalt() {

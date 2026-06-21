@@ -104,20 +104,31 @@ class Sidebar extends StatelessWidget {
               },
               child: SizedBox(
                 height: 75,
-                child: Center(
-                  child: ValueListenableBuilder(
-                    valueListenable: highlightTextColor.valueNotifier,
-                    builder: (context, value, child) {
-                      return Text(
-                        l10n.sylvakru,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: value,
-                        ),
-                      );
-                    },
-                  ),
+                child: ValueListenableBuilder(
+                  valueListenable: highlightTextColor.valueNotifier,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(-10, 0),
+                      child: Row(
+                        mainAxisAlignment: .center,
+                        children: [
+                          Transform.translate(
+                            offset: Offset(0, 2),
+                            child: ImageIcon(iconImage, size: 28),
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            l10n.sylvakru,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: value,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

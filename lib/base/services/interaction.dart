@@ -247,7 +247,7 @@ Future<T?> showAnimationDialog<T>({
 
               ModalBarrier(
                 dismissible: barrierDismissible,
-                color: Colors.black.withValues(alpha: 0.3 * animation.value),
+                color: Colors.transparent,
                 onDismiss: () {
                   Navigator.pop(context);
                 },
