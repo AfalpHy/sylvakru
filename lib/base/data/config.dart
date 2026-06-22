@@ -12,7 +12,9 @@ final config = Config();
 class Config {
   late final File file;
 
-  static const _secureStorage = FlutterSecureStorage();
+  static const _secureStorage = FlutterSecureStorage(
+    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+  );
 
   Future<void> load() async {
     file = File("${appSupportDir.path}/config.json");
