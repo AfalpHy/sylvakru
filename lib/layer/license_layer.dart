@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
@@ -68,18 +69,13 @@ class _LicenseLayerState extends State<LicenseLayer> {
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        if (isMobile && orientation == Orientation.portrait) {
-          return pageView(context);
-        } else {
-          return ValueListenableBuilder(
-            valueListenable: aboutVisibleNotifier,
-            builder: (context, value, child) {
-              return Opacity(opacity: value ? 0 : 1, child: panelView(context));
-            },
-          );
-        }
+    if (isMobile && isPortrait(context)) {
+      return pageView(context);
+    }
+    return ValueListenableBuilder(
+      valueListenable: aboutVisibleNotifier,
+      builder: (context, value, child) {
+        return Opacity(opacity: value ? 0 : 1, child: panelView(context));
       },
     );
   }

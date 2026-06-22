@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 
 class DynamicDatailRoute extends PageRouteBuilder {
   DynamicDatailRoute({required super.pageBuilder});
@@ -29,20 +30,15 @@ class DynamicDatailRoute extends PageRouteBuilder {
       curve: Curves.easeInOutCubic,
       reverseCurve: Curves.easeInOutCubic,
     );
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        if (isMobile && orientation == Orientation.portrait) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: Offset(Platform.isIOS ? 1.0 : -1.0, 0.0),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          );
-        } else {
-          return child;
-        }
-      },
-    );
+    if (isMobile && isPortrait(context)) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: Offset(Platform.isIOS ? 1.0 : -1.0, 0.0),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      );
+    }
+    return child;
   }
 }

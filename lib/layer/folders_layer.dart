@@ -27,8 +27,8 @@ class FoldersLayer extends StatelessWidget {
     return myNavigator(
       key: foldersKey,
       visibleNotifier: foldersVisibleNotifier,
-      pageView: pageView(context),
-      panelView: panelView(context),
+      pageViewBuilder: () => pageView(context),
+      panelViewBuilder: () => panelView(context),
     );
   }
 }

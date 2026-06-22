@@ -84,8 +84,8 @@ class _ArtistsLayerState extends State<ArtistsLayer> {
     return myNavigator(
       key: artistsKey,
       visibleNotifier: artistsVisibleNotifier,
-      pageView: pageView(context),
-      panelView: panelView(context),
+      pageViewBuilder: () => pageView(context),
+      panelViewBuilder: () => panelView(context),
     );
   }
 }

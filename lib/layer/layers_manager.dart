@@ -9,6 +9,7 @@ import 'package:sylvakru/base/services/metadata_service.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/utils/dynamic_datail_route.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/data/history.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
@@ -253,58 +254,52 @@ class LayersManager {
     rootKey.currentState?.push(
       DynamicDatailRoute(
         pageBuilder: (context, animation, secondaryAnimation) {
-          return OrientationBuilder(
-            builder: (context, orientation) {
-              if (isMobile && orientation == Orientation.portrait) {
-                if (Platform.isAndroid) {
-                  return detailPage;
+          if (isMobile && isPortrait(context)) {
+            if (Platform.isAndroid) {
+              return detailPage;
+            }
+            bool draging = false;
+            final dragDxNotifier = ValueNotifier(0.0);
+
+            return GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                draging = true;
+
+                dragDxNotifier.value += details.delta.dx;
+                if (dragDxNotifier.value < 0) {
+                  dragDxNotifier.value = 0;
                 }
-                bool draging = false;
-                final dragDxNotifier = ValueNotifier(0.0);
+              },
+              onHorizontalDragEnd: (details) async {
+                final velocity = (details.primaryVelocity ?? 0);
+                final bool isOverThreshold =
+                    dragDxNotifier.value / MediaQuery.widthOf(context) > 0.5;
 
-                return GestureDetector(
-                  onHorizontalDragUpdate: (details) {
-                    draging = true;
+                if (dragDxNotifier.value == 0 && velocity < -500) {
+                  portraitKey.currentState?.openEndDrawer();
+                }
 
-                    dragDxNotifier.value += details.delta.dx;
-                    if (dragDxNotifier.value < 0) {
-                      dragDxNotifier.value = 0;
-                    }
-                  },
-                  onHorizontalDragEnd: (details) async {
-                    final velocity = (details.primaryVelocity ?? 0);
-                    final bool isOverThreshold =
-                        dragDxNotifier.value / MediaQuery.widthOf(context) >
-                        0.5;
-
-                    if (dragDxNotifier.value == 0 && velocity < -500) {
-                      portraitKey.currentState?.openEndDrawer();
-                    }
-
-                    if (velocity > 500 || isOverThreshold) {
-                      layersManager.popDetail(label);
-                    } else {
-                      draging = false;
-                      dragDxNotifier.value = 0;
-                    }
-                  },
-                  child: ValueListenableBuilder(
-                    valueListenable: dragDxNotifier,
-                    builder: (context, value, child) {
-                      return AnimatedContainer(
-                        duration: Duration(milliseconds: draging ? 0 : 250),
-                        curve: Curves.easeOutCubic,
-                        transform: .translationValues(value, 0, 0),
-                        child: detailPage,
-                      );
-                    },
-                  ),
-                );
-              } else {
-                return detailLayer;
-              }
-            },
-          );
+                if (velocity > 500 || isOverThreshold) {
+                  layersManager.popDetail(label);
+                } else {
+                  draging = false;
+                  dragDxNotifier.value = 0;
+                }
+              },
+              child: ValueListenableBuilder(
+                valueListenable: dragDxNotifier,
+                builder: (context, value, child) {
+                  return AnimatedContainer(
+                    duration: Duration(milliseconds: draging ? 0 : 250),
+                    curve: Curves.easeOutCubic,
+                    transform: .translationValues(value, 0, 0),
+                    child: detailPage,
+                  );
+                },
+              ),
+            );
+          }
+          return detailLayer;
         },
       ),
     );

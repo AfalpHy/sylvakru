@@ -52,48 +52,56 @@ extension _FontPickerPanel on _FontPickerLayerState {
                 style: TextStyle(fontSize: 12),
               ),
 
-              trailing: SizedBox(
-                width: 325,
-                child: ValueListenableBuilder(
-                  valueListenable: buttonColor.valueNotifier,
+              trailing: LayoutBuilder(
+                builder: (context, constraints) {
+                  // avoid triggering assertion
+                  if (constraints.maxWidth < 325) {
+                    return SizedBox();
+                  }
+                  return SizedBox(
+                    width: 325,
+                    child: ValueListenableBuilder(
+                      valueListenable: buttonColor.valueNotifier,
 
-                  builder: (context, value, child) {
-                    final l10n = AppLocalizations.of(context);
-                    final buttonStyle = ElevatedButton.styleFrom(
-                      backgroundColor: value,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: EdgeInsets.all(10),
-                    );
-                    return Row(
-                      mainAxisAlignment: .end,
-                      children: [
-                        ElevatedButton(
-                          onPressed: restoreDefaultAction,
-                          style: buttonStyle,
-                          child: Text(l10n.restoreDefault),
-                        ),
-                        SizedBox(width: 5),
+                      builder: (context, value, child) {
+                        final l10n = AppLocalizations.of(context);
+                        final buttonStyle = ElevatedButton.styleFrom(
+                          backgroundColor: value,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: EdgeInsets.all(10),
+                        );
+                        return Row(
+                          mainAxisAlignment: .end,
+                          children: [
+                            ElevatedButton(
+                              onPressed: restoreDefaultAction,
+                              style: buttonStyle,
+                              child: Text(l10n.restoreDefault),
+                            ),
+                            SizedBox(width: 5),
 
-                        ElevatedButton(
-                          onPressed: () => addFontAction(context),
-                          style: buttonStyle,
+                            ElevatedButton(
+                              onPressed: () => addFontAction(context),
+                              style: buttonStyle,
 
-                          child: Text(l10n.addFont),
-                        ),
+                              child: Text(l10n.addFont),
+                            ),
 
-                        SizedBox(width: 5),
+                            SizedBox(width: 5),
 
-                        ElevatedButton(
-                          onPressed: () => deleteFontAction(context),
-                          style: buttonStyle,
-                          child: Text(l10n.deleteFont),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                            ElevatedButton(
+                              onPressed: () => deleteFontAction(context),
+                              style: buttonStyle,
+                              child: Text(l10n.deleteFont),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
@@ -24,26 +25,21 @@ class AboutLayer extends StatefulWidget {
 class _AboutLayerState extends State<AboutLayer> {
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        if (isMobile && orientation == Orientation.portrait) {
-          return pageView(context);
-        }
+    if (isMobile && isPortrait(context)) {
+      return pageView(context);
+    }
 
-        return ListenableBuilder(
-          listenable: Listenable.merge([
-            settingsVisibleNotifier,
-            aboutVisibleNotifier,
-          ]),
-          builder: (context, _) {
-            return Opacity(
-              opacity:
-                  !settingsVisibleNotifier.value && aboutVisibleNotifier.value
-                  ? 1
-                  : 0,
-              child: panelView(context),
-            );
-          },
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        settingsVisibleNotifier,
+        aboutVisibleNotifier,
+      ]),
+      builder: (context, _) {
+        return Opacity(
+          opacity: !settingsVisibleNotifier.value && aboutVisibleNotifier.value
+              ? 1
+              : 0,
+          child: panelView(context),
         );
       },
     );

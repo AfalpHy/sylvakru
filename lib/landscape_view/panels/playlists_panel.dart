@@ -26,54 +26,52 @@ extension _PlaylistsPanel on _PlaylistsLayerState {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: Focus(
-                    child: ListTile(
-                      leading: ValueListenableBuilder(
-                        valueListenable: iconColor.valueNotifier,
-                        builder: (_, value, _) {
-                          return ImageIcon(
-                            playlistsImage,
-                            size: 50,
-                            color: value,
-                          );
-                        },
+                  child: ListTile(
+                    leading: ValueListenableBuilder(
+                      valueListenable: iconColor.valueNotifier,
+                      builder: (_, value, _) {
+                        return ImageIcon(
+                          playlistsImage,
+                          size: 50,
+                          color: value,
+                        );
+                      },
+                    ),
+                    title: Text(
+                      l10n.playlists,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                      title: Text(
-                        l10n.playlists,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: ValueListenableBuilder(
-                        valueListenable: playlistsNotifier,
-                        builder: (context, playlists, child) {
-                          return Text(
-                            l10n.playlistCount(playlists.length),
-                            style: TextStyle(fontSize: 12),
-                          );
-                        },
-                      ),
-                      trailing: SizedBox(
-                        width: 120,
-                        child: Column(
-                          children: [
-                            SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Spacer(),
-                                MySwitch(
-                                  trueText: l10n.large,
-                                  falseText: l10n.small,
-                                  valueNotifier:
-                                      playlistManager.useLargePictureNotifier,
-                                  onToggleCallBack: () => setting.save(),
-                                ),
-                                SizedBox(width: 10),
-                              ],
-                            ),
-                          ],
-                        ),
+                    ),
+                    subtitle: ValueListenableBuilder(
+                      valueListenable: playlistsNotifier,
+                      builder: (context, playlists, child) {
+                        return Text(
+                          l10n.playlistCount(playlists.length),
+                          style: TextStyle(fontSize: 12),
+                        );
+                      },
+                    ),
+                    trailing: SizedBox(
+                      width: 120,
+                      child: Column(
+                        children: [
+                          SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Spacer(),
+                              MySwitch(
+                                trueText: l10n.large,
+                                falseText: l10n.small,
+                                valueNotifier:
+                                    playlistManager.useLargePictureNotifier,
+                                onToggleCallBack: () => setting.save(),
+                              ),
+                              SizedBox(width: 10),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),

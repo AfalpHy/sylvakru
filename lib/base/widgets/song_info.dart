@@ -29,18 +29,14 @@ class _SongInfoState extends State<SongInfo> {
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        final size = MediaQuery.of(context).size;
-        final shortSide = size.shortestSide;
+    final size = MediaQuery.of(context).size;
+    final shortSide = size.shortestSide;
 
-        bool isPhone = shortSide < 600;
-        return SizedBox(
-          height: max(350, size.height * 0.7),
-          width: isPhone ? 300 : 400,
-          child: _content(context, isPhone),
-        );
-      },
+    bool isPhone = shortSide < 600;
+    return SizedBox(
+      height: max(350, size.height * 0.7),
+      width: isPhone ? 300 : 400,
+      child: _content(context, isPhone),
     );
   }
 

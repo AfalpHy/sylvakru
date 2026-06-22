@@ -8,6 +8,7 @@ import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
 import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/landscape_view.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
@@ -106,17 +107,16 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
         if (miniMode) {
           return MiniView();
         }
-        return OrientationBuilder(
-          builder: (context, orientation) {
-            if (isMobile && orientation == Orientation.portrait) {
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-              return PortraitView();
-            } else {
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-              return LandscapeView();
-            }
-          },
-        );
+
+        if (isMobile && isPortrait(context)) {
+          SystemChrome.setEnabledSystemUIMode(
+            SystemUiMode.manual,
+            overlays: SystemUiOverlay.values,
+          );
+          return PortraitView();
+        }
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+        return LandscapeView();
       },
     );
   }

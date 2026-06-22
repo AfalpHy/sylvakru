@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/landscape_view/pages/landscape_lyrics_page.dart';
 import 'package:sylvakru/portrait_view/pages/portrait_lyrics_page.dart';
 
@@ -27,14 +28,9 @@ class _LyricsPageLayerState extends State<LyricsPageLayer> {
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        if (isMobile && orientation == Orientation.portrait) {
-          return PortraitLyricsPage();
-        } else {
-          return LandscapeLyricsPage();
-        }
-      },
-    );
+    if (isMobile && isPortrait(context)) {
+      return PortraitLyricsPage();
+    }
+    return LandscapeLyricsPage();
   }
 }

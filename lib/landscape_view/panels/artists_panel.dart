@@ -51,62 +51,70 @@ extension _ArtistsPanel on _ArtistsLayerState {
                   );
                 },
               ),
-              trailing: SizedBox(
-                width: 325,
-                child: Column(
-                  children: [
-                    SizedBox(height: 20),
-                    Row(
+              trailing: LayoutBuilder(
+                builder: (context, constraints) {
+                  // avoid triggering assertion
+                  if (constraints.maxWidth < 325) {
+                    return SizedBox();
+                  }
+                  return SizedBox(
+                    width: 325,
+                    child: Column(
                       children: [
-                        Spacer(),
+                        SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Spacer(),
 
-                        ValueListenableBuilder(
-                          valueListenable: randomizeNotifier,
-                          builder: (context, value, child) {
-                            if (value) {
-                              return SizedBox.shrink();
-                            }
-                            return MySwitch(
-                              trueText: l10n.ascending,
-                              falseText: l10n.descending,
-                              valueNotifier: isAscendingNotifier,
+                            ValueListenableBuilder(
+                              valueListenable: randomizeNotifier,
+                              builder: (context, value, child) {
+                                if (value) {
+                                  return SizedBox.shrink();
+                                }
+                                return MySwitch(
+                                  trueText: l10n.ascending,
+                                  falseText: l10n.descending,
+                                  valueNotifier: isAscendingNotifier,
+                                  onToggleCallBack: () {
+                                    setting.save();
+
+                                    artistAlbumManager.sortArtists();
+
+                                    updateCurrentList();
+                                  },
+                                );
+                              },
+                            ),
+
+                            SizedBox(width: 5),
+
+                            MySwitch(
+                              trueText: l10n.randomize,
+                              falseText: l10n.normal,
+                              valueNotifier: randomizeNotifier,
                               onToggleCallBack: () {
-                                setting.save();
-
-                                artistAlbumManager.sortArtists();
-
                                 updateCurrentList();
                               },
-                            );
-                          },
+                            ),
+
+                            SizedBox(width: 5),
+
+                            MySwitch(
+                              trueText: l10n.large,
+                              falseText: l10n.small,
+                              valueNotifier: useLargePictureNotifier,
+                              onToggleCallBack: () {
+                                setting.save();
+                              },
+                            ),
+                            SizedBox(width: 5),
+                          ],
                         ),
-
-                        SizedBox(width: 5),
-
-                        MySwitch(
-                          trueText: l10n.randomize,
-                          falseText: l10n.normal,
-                          valueNotifier: randomizeNotifier,
-                          onToggleCallBack: () {
-                            updateCurrentList();
-                          },
-                        ),
-
-                        SizedBox(width: 5),
-
-                        MySwitch(
-                          trueText: l10n.large,
-                          falseText: l10n.small,
-                          valueNotifier: useLargePictureNotifier,
-                          onToggleCallBack: () {
-                            setting.save();
-                          },
-                        ),
-                        SizedBox(width: 5),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),

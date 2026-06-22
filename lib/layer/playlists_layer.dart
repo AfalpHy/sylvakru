@@ -57,8 +57,8 @@ class _PlaylistsLayerState extends State<PlaylistsLayer> {
     return myNavigator(
       key: playlistsKey,
       visibleNotifier: playlistsVisibleNotifier,
-      pageView: pageView(context),
-      panelView: panelView(context),
+      pageViewBuilder: () => pageView(context),
+      panelViewBuilder: () => panelView(context),
     );
   }
 }

@@ -82,8 +82,8 @@ class _AlbumsLayerState extends State<AlbumsLayer> {
     return myNavigator(
       key: albumsKey,
       visibleNotifier: albumsVisibleNotifier,
-      pageView: pageView(context),
-      panelView: panelView(context),
+      pageViewBuilder: () => pageView(context),
+      panelViewBuilder: () => panelView(context),
     );
   }
 }

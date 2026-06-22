@@ -11,6 +11,7 @@ import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/data/setting.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
 import 'package:sylvakru/base/widgets/my_sheet.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
@@ -181,18 +182,14 @@ class _FontPickerLayerState extends State<FontPickerLayer> {
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        if (isMobile && orientation == Orientation.portrait) {
-          return pageView(context);
-        } else {
-          return ValueListenableBuilder(
-            valueListenable: settingsVisibleNotifier,
-            builder: (context, value, child) {
-              return Opacity(opacity: value ? 0 : 1, child: panelView(context));
-            },
-          );
-        }
+    if (isMobile && isPortrait(context)) {
+      return pageView(context);
+    }
+
+    return ValueListenableBuilder(
+      valueListenable: settingsVisibleNotifier,
+      builder: (context, value, child) {
+        return Opacity(opacity: value ? 0 : 1, child: panelView(context));
       },
     );
   }

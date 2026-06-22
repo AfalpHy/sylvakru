@@ -16,7 +16,7 @@ class SettingsLayer extends StatelessWidget {
     return myNavigator(
       key: settingsKey,
       visibleNotifier: settingsVisibleNotifier,
-      pageView: Scaffold(
+      pageViewBuilder: () => Scaffold(
         backgroundColor: Colors.transparent,
         resizeToAvoidBottomInset: false,
         appBar: AppBar(
@@ -31,7 +31,7 @@ class SettingsLayer extends StatelessWidget {
         ),
         body: SettingsList(iconSize: 30),
       ),
-      panelView: Column(
+      panelViewBuilder: () => Column(
         children: [
           TitleBar(),
           Expanded(child: SettingsList()),

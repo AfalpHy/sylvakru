@@ -7,6 +7,7 @@ import 'package:sylvakru/base/services/bookmark_service.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/utils/path.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
@@ -54,26 +55,17 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        final appWidth = MediaQuery.widthOf(context);
-        final appHeight = MediaQuery.heightOf(context);
+    final appWidth = MediaQuery.widthOf(context);
+    final appHeight = MediaQuery.heightOf(context);
 
-        if (isMobile && orientation == Orientation.portrait) {
-          return SizedBox(
-            height: appHeight * 0.7,
-            width: max(300, appWidth * 0.5),
-            child: _portraitView(context),
-          );
-        } else {
-          return SizedBox(
-            height: 320,
-            width: 600,
-            child: _landscapeView(context),
-          );
-        }
-      },
-    );
+    if (isMobile && isPortrait(context)) {
+      return SizedBox(
+        height: appHeight * 0.7,
+        width: max(300, appWidth * 0.5),
+        child: _portraitView(context),
+      );
+    }
+    return SizedBox(height: 320, width: 600, child: _landscapeView(context));
   }
 
   Widget _portraitView(BuildContext context) {

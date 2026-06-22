@@ -15,6 +15,7 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
 import 'package:sylvakru/base/utils/format_duration.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/utils/source_type.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/data/folder.dart';
@@ -296,14 +297,9 @@ class _SongListState extends State<SongList> {
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        if (isMobile && orientation == Orientation.portrait) {
-          return pageView(context);
-        } else {
-          return panelView(context);
-        }
-      },
-    );
+    if (isMobile && isPortrait(context)) {
+      return pageView(context);
+    }
+    return panelView(context);
   }
 }
