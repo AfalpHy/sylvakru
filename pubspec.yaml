@@ -86,6 +86,7 @@ dependencies:
   drift: ^2.33.0
   drift_flutter: ^0.3.0
   just_font_scan: ^0.3.0
+  flutter_secure_storage: ^10.3.1
 
 dependency_overrides:
   media_kit_libs_windows_audio:

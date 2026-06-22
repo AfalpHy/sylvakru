@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  flutter_secure_storage_linux
   media_kit_libs_linux
   screen_retriever_linux
   tray_manager

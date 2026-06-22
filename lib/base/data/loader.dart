@@ -121,10 +121,6 @@ class Loader {
 
   static void _handleLegacyVersionData() {
     File tmp = File('${appSupportDir.path}/version.json');
-    if (tmp.existsSync()) {
-      return;
-    } else {
-      tmp.writeAsStringSync(jsonEncode(versionNumber));
-    }
+    tmp.writeAsStringSync(jsonEncode(versionNumber));
   }
 }
