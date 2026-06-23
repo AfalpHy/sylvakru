@@ -57,7 +57,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
 
     return SizedBox(
       width: 300,
-      height: 300,
+      height: isMobile ? 345 : 320,
       child: Padding(
         padding: .fromLTRB(20, 15, 20, 15),
         child: Column(
@@ -71,15 +71,20 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
             ),
 
             SizedBox(height: 10),
-            CustomTextField('Url', baseUrlTmp),
+            CustomTextField('Url', baseUrlTmp, compact: false),
 
             SizedBox(height: 10),
-            CustomTextField(l10n.username, usernameTmp),
+            CustomTextField(l10n.username, usernameTmp, compact: false),
 
             SizedBox(height: 10),
-            CustomTextField(l10n.password, passwordTmp, needObscure: true),
+            CustomTextField(
+              l10n.password,
+              passwordTmp,
+              needObscure: true,
+              compact: false,
+            ),
 
-            SizedBox(height: isMobile ? 10 : 15),
+            SizedBox(height: isMobile ? 10 : 25),
 
             buttons(),
           ],

@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
-import 'package:sylvakru/base/widgets/my_navigator.dart';
 
 class CustomTextField extends StatefulWidget {
   final String? name;
@@ -37,9 +34,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
     super.initState();
     textFieldNode.addListener(() {
       isTyping = textFieldNode.hasFocus;
-      if (Platform.isAndroid) {
-        canFocusNavigatorNotifier.value = !isTyping;
-      }
     });
     obscure = widget.needObscure;
   }
@@ -79,7 +73,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
             keyboardType: widget.onlyNumber ? .number : null,
             minLines: widget.expand ? 3 : 1,
             maxLines: widget.expand ? null : 1,
-            style: TextStyle(fontSize: 12, color: specificTextcolor),
+            style: TextStyle(
+              fontSize: widget.compact ? 12 : 14,
+              color: specificTextcolor,
+            ),
             controller: widget.controller,
             obscureText: obscure,
             obscuringCharacter: '●',
@@ -90,6 +87,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderSide: BorderSide(color: specificTextcolor, width: 1.5),
+              ),
+              suffixIconConstraints: BoxConstraints(
+                maxWidth: 40,
+                maxHeight: 40,
               ),
               suffixIcon: widget.needObscure
                   ? IconButton(
