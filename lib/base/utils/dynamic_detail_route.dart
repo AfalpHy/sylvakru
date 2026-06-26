@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 
-class DynamicDatailRoute extends PageRouteBuilder {
-  DynamicDatailRoute({required super.pageBuilder});
+class DynamicDetailRoute extends PageRouteBuilder {
+  DynamicDetailRoute({required super.pageBuilder});
 
   @override
   Duration get transitionDuration =>

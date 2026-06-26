@@ -80,89 +80,45 @@ class _PremiumLayerState extends State<PremiumLayer> {
 
   Widget premiumContent(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 500),
-      child: ValueListenableBuilder(
-        valueListenable: buttonColor.valueNotifier,
-        builder: (context, value, child) {
-          return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: [
-              ImageIcon(premiumImage, size: 72),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: ValueListenableBuilder(
+          valueListenable: buttonColor.valueNotifier,
+          builder: (context, value, child) {
+            return ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                ImageIcon(premiumImage, size: 72),
 
-              const SizedBox(height: 8),
+                const SizedBox(height: 8),
 
-              Text(
-                l10n.premiumFeatures,
-                textAlign: TextAlign.center,
-                style: .new(fontSize: 24, fontWeight: .bold),
-              ),
+                Text(
+                  l10n.premiumFeatures,
+                  textAlign: TextAlign.center,
+                  style: .new(fontSize: 24, fontWeight: .bold),
+                ),
 
-              const SizedBox(height: 8),
+                const SizedBox(height: 8),
 
-              Text(l10n.premiumDescription, textAlign: TextAlign.center),
+                Text(l10n.premiumDescription, textAlign: TextAlign.center),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              ValueListenableBuilder(
-                valueListenable: isPremiumNotifier,
-                builder: (context, isPremium, child) {
-                  return Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () async {
-                          if (isPremium | isProcessing) {
-                            return;
-                          }
-                          isProcessing = true;
-                          if (await _iapService.checkAvailability()) {
-                            await _iapService.buyProduct();
-                          }
-                          await Future.delayed(Duration(milliseconds: 500));
-                          isProcessing = false;
-                        },
-                        child: Card(
-                          color: buttonColor.value,
-                          shadowColor: mainPageThemeNotifier.value == .vivid
-                              ? Colors.black.withAlpha(10)
-                              : mainPageThemeNotifier.value == .dark
-                              ? Colors.white
-                              : null,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: SmoothRectangleBorder(
-                            smoothness: 1,
-                            borderRadius: .circular(10),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              mainAxisAlignment: .center,
-                              children: [
-                                if (isPremium) ...[
-                                  const Icon(Icons.check_circle, size: 20),
-                                  const SizedBox(width: 8),
-                                ],
-                                Text(
-                                  isPremium
-                                      ? l10n.alreadyPremium
-                                      : l10n.unlockPremium,
-                                  style: .new(fontSize: 15, fontWeight: .bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (!isPremium) ...[
-                        const SizedBox(height: 8),
-
+                ValueListenableBuilder(
+                  valueListenable: isPremiumNotifier,
+                  builder: (context, isPremium, child) {
+                    return Column(
+                      children: [
                         GestureDetector(
                           onTap: () async {
-                            if (isProcessing) {
+                            if (isPremium | isProcessing) {
                               return;
                             }
                             isProcessing = true;
-                            await _iapService.restorePurchases();
+                            if (await _iapService.checkAvailability()) {
+                              await _iapService.buyProduct();
+                            }
                             await Future.delayed(Duration(milliseconds: 500));
                             isProcessing = false;
                           },
@@ -180,57 +136,109 @@ class _PremiumLayerState extends State<PremiumLayer> {
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(12),
-                              child: Center(
-                                child: Text(
-                                  l10n.restorePurchase,
-                                  style: .new(fontSize: 15, fontWeight: .bold),
-                                ),
+                              child: Row(
+                                mainAxisAlignment: .center,
+                                children: [
+                                  if (isPremium) ...[
+                                    const Icon(Icons.check_circle, size: 20),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Text(
+                                    isPremium
+                                        ? l10n.alreadyPremium
+                                        : l10n.unlockPremium,
+                                    style: .new(
+                                      fontSize: 15,
+                                      fontWeight: .bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
+                        if (!isPremium) ...[
+                          const SizedBox(height: 8),
+
+                          GestureDetector(
+                            onTap: () async {
+                              if (isProcessing) {
+                                return;
+                              }
+                              isProcessing = true;
+                              await _iapService.restorePurchases();
+                              await Future.delayed(Duration(milliseconds: 500));
+                              isProcessing = false;
+                            },
+                            child: Card(
+                              color: buttonColor.value,
+                              shadowColor: mainPageThemeNotifier.value == .vivid
+                                  ? Colors.black.withAlpha(10)
+                                  : mainPageThemeNotifier.value == .dark
+                                  ? Colors.white
+                                  : null,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: SmoothRectangleBorder(
+                                smoothness: 1,
+                                borderRadius: .circular(10),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Center(
+                                  child: Text(
+                                    l10n.restorePurchase,
+                                    style: .new(
+                                      fontSize: 15,
+                                      fontWeight: .bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-              Text(
-                l10n.whatPremiumContains,
-                style: .new(fontWeight: .bold, fontSize: 16),
-              ),
+                Text(
+                  l10n.whatPremiumContains,
+                  style: .new(fontWeight: .bold, fontSize: 16),
+                ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              FeatureCard(
-                icon: ImageIcon(themeImage, size: 30),
-                title: l10n.theme,
-                description: l10n.themeDescription,
-              ),
+                FeatureCard(
+                  icon: ImageIcon(themeImage, size: 30),
+                  title: l10n.theme,
+                  description: l10n.themeDescription,
+                ),
 
-              FeatureCard(
-                icon: ImageIcon(fontImage, size: 30),
-                title: l10n.fonts,
-                description: l10n.fontDescription,
-              ),
+                FeatureCard(
+                  icon: ImageIcon(fontImage, size: 30),
+                  title: l10n.fonts,
+                  description: l10n.fontDescription,
+                ),
 
-              FeatureCard(
-                icon: ImageIcon(equalizerImage, size: 30),
-                title: l10n.equalizer,
-                description: l10n.equalizerDescription,
-              ),
+                FeatureCard(
+                  icon: ImageIcon(equalizerImage, size: 30),
+                  title: l10n.equalizer,
+                  description: l10n.equalizerDescription,
+                ),
 
-              FeatureCard(
-                icon: ImageIcon(futurePremiumImage, size: 30),
-                title: l10n.futurePremium,
-                description: l10n.futurePremiumDescription,
-              ),
-              const SizedBox(height: 90),
-            ],
-          );
-        },
+                FeatureCard(
+                  icon: ImageIcon(futurePremiumImage, size: 30),
+                  title: l10n.futurePremium,
+                  description: l10n.futurePremiumDescription,
+                ),
+                const SizedBox(height: 90),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

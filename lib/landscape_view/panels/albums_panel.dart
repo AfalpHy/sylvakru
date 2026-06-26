@@ -193,6 +193,7 @@ extension _AlbumsPanel on _AlbumsLayerState {
                                   builder: (_, _, _) {
                                     return Hero(
                                       tag: coverSong.id + list[index].name,
+                                      transitionOnUserGestures: true,
                                       child: CoverArtWidget(
                                         size: coverArtWidth,
                                         borderRadius: coverArtWidth / 10,

@@ -8,7 +8,7 @@ import 'package:sylvakru/base/data/folder.dart';
 import 'package:sylvakru/base/services/metadata_service.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
-import 'package:sylvakru/base/utils/dynamic_datail_route.dart';
+import 'package:sylvakru/base/utils/dynamic_detail_route.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/data/history.dart';
@@ -255,7 +255,7 @@ class LayersManager {
 
     final detailPage = createPage(detailLayer);
     rootKey.currentState?.push(
-      DynamicDatailRoute(
+      DynamicDetailRoute(
         pageBuilder: (context, animation, secondaryAnimation) {
           if (isMobile && isPortrait(context)) {
             if (Platform.isAndroid) {

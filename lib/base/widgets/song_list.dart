@@ -285,6 +285,7 @@ class _SongListState extends State<SongList> {
                     ? coverArt
                     : Hero(
                         tag: (song == null ? sourceType.name : song.id) + title,
+                        transitionOnUserGestures: true,
                         child: coverArt,
                       );
               },

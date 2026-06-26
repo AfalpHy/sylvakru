@@ -6,6 +6,7 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
 import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
 import 'package:sylvakru/base/widgets/playlist_widgets.dart';
@@ -394,8 +395,7 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
             ),
-            if (isMobile &&
-                MediaQuery.of(context).orientation != .landscape) ...[
+            if (isMobile && isPortrait(context)) ...[
               sidebarItem(
                 label: 'settings',
                 leading: ImageIcon(settingImage, size: 30),

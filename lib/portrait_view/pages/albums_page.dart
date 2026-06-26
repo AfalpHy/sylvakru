@@ -182,6 +182,7 @@ extension _AlbumsPage on _AlbumsLayerState {
                       final coverSong = album.getCoverSong();
                       return Hero(
                         tag: coverSong.id + album.name,
+                        transitionOnUserGestures: true,
                         child: CoverArtWidget(
                           size: coverArtWidth,
                           borderRadius: radius,

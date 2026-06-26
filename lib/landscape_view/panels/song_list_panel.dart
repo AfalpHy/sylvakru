@@ -154,44 +154,6 @@ extension _SongListPanel on _SongListState {
                       );
                       return Row(
                         children: [
-                          SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () async {
-                              if (currentSongListNotifier.value.isEmpty) {
-                                return;
-                              }
-                              audioHandler.currentIndex = 0;
-                              playModeNotifier.value = 0;
-                              await audioHandler.setPlayQueue(
-                                currentSongListNotifier.value,
-                              );
-                              await audioHandler.load();
-                              audioHandler.play();
-                            },
-                            style: buttonStyle,
-                            child: Text(l10n.playAll),
-                          ),
-                          SizedBox(width: 15),
-
-                          ElevatedButton(
-                            onPressed: () async {
-                              if (currentSongListNotifier.value.isEmpty) {
-                                return;
-                              }
-                              audioHandler.currentIndex = Random().nextInt(
-                                currentSongListNotifier.value.length,
-                              );
-                              playModeNotifier.value = 1;
-                              await audioHandler.setPlayQueue(
-                                currentSongListNotifier.value,
-                              );
-                              await audioHandler.load();
-                              audioHandler.play();
-                            },
-                            style: buttonStyle,
-                            child: Text(l10n.shuffle),
-                          ),
-
                           if (isMobile) ...[
                             SizedBox(width: 15),
                             ElevatedButton(
