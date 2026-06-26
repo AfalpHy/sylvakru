@@ -146,7 +146,7 @@ class _PremiumLayerState extends State<PremiumLayer> {
                                   isPremium
                                       ? l10n.alreadyPremium
                                       : l10n.unlockPremium,
-                                  style: .new(fontSize: 16, fontWeight: .bold),
+                                  style: .new(fontSize: 15, fontWeight: .bold),
                                 ),
                               ],
                             ),
@@ -183,7 +183,7 @@ class _PremiumLayerState extends State<PremiumLayer> {
                               child: Center(
                                 child: Text(
                                   l10n.restorePurchase,
-                                  style: .new(fontSize: 16, fontWeight: .bold),
+                                  style: .new(fontSize: 15, fontWeight: .bold),
                                 ),
                               ),
                             ),

@@ -586,7 +586,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Go to Settings > Premium Features to unlock it';
 
   @override
-  String get alreadyPremium => 'Premium features are already unlocked!';
+  String get alreadyPremium => 'Premium features are already unlocked';
 
   @override
   String get pendingPurchase => 'Processing your purchase...';

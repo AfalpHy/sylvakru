@@ -1217,7 +1217,7 @@ abstract class AppLocalizations {
   /// No description provided for @alreadyPremium.
   ///
   /// In en, this message translates to:
-  /// **'Premium features are already unlocked!'**
+  /// **'Premium features are already unlocked'**
   String get alreadyPremium;
 
   /// No description provided for @pendingPurchase.
