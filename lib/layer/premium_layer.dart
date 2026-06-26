@@ -144,7 +144,7 @@ class _PremiumLayerState extends State<PremiumLayer> {
                                 ],
                                 Text(
                                   isPremium
-                                      ? "You are a Premium member!"
+                                      ? l10n.alreadyPremium
                                       : l10n.unlockPremium,
                                   style: .new(fontSize: 16, fontWeight: .bold),
                                 ),
