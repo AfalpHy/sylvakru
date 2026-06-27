@@ -344,7 +344,12 @@ class SettingsList extends StatelessWidget {
 
   Widget webdavListTile(BuildContext context, AppLocalizations l10n) {
     return ListTile(
-      leading: Image(image: webdavImage, width: 30, height: 30),
+      leading: Image(
+        image: webdavImage,
+        width: 30,
+        height: 30,
+        color: iconColor.value,
+      ),
 
       title: Text(l10n.connect2WebDAV),
       onTap: () {
