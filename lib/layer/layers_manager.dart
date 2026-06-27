@@ -399,6 +399,23 @@ class LayersManager {
     }
   }
 
+  void _updateLayerInfo(
+    Widget layer,
+    MyAudioMetadata? bgSong,
+    Color bgCoverArtColor,
+  ) {
+    final layerInfo = layerInfoMap.putIfAbsent(
+      layer,
+      () => LayerInfo(bgSong, bgCoverArtColor),
+    );
+    if (layerInfo.backgroundSong != bgSong ||
+        layerInfo.backgroundCoverArtColor != bgCoverArtColor) {
+      layerInfo.backgroundSong = bgSong;
+      layerInfo.backgroundCoverArtColor = bgCoverArtColor;
+      layerInfo.changeNotifier.value++;
+    }
+  }
+
   Future<void> updateBackground() async {
     if (topRootLayer == null) {
       return;
@@ -409,33 +426,15 @@ class LayersManager {
     if (tmpLayer != null) {
       displayLayer = tmpLayer;
       while ((tmpLayer = parentWidgetMap[tmpLayer]) != null) {
-        final tmpBackgroundSong = _getBackgroundSong(tmpLayer!);
-        final tmpBackgroundCoverArtColor = await computeCoverArtColor(
-          tmpBackgroundSong,
-        );
-        final layerInfo = layerInfoMap[tmpLayer]!;
-        if (layerInfo.backgroundSong != tmpBackgroundSong ||
-            layerInfo.backgroundCoverArtColor != tmpBackgroundCoverArtColor) {
-          layerInfo.backgroundSong = tmpBackgroundSong;
-          layerInfo.backgroundCoverArtColor = tmpBackgroundCoverArtColor;
-          layerInfo.changeNotifier.value++;
-        }
+        final tmpBgSong = _getBackgroundSong(tmpLayer!);
+        final tmpBgCoverArtColor = await computeCoverArtColor(tmpBgSong);
+        _updateLayerInfo(tmpLayer, tmpBgSong, tmpBgCoverArtColor);
       }
     }
 
     backgroundSong = _getBackgroundSong(displayLayer);
     backgroundCoverArtColor = await computeCoverArtColor(backgroundSong);
-
-    final layerInfo = layerInfoMap.putIfAbsent(
-      displayLayer,
-      () => LayerInfo(backgroundSong, backgroundCoverArtColor),
-    );
-    if (layerInfo.backgroundSong != backgroundSong ||
-        layerInfo.backgroundCoverArtColor != backgroundCoverArtColor) {
-      layerInfo.backgroundSong = backgroundSong;
-      layerInfo.backgroundCoverArtColor = backgroundCoverArtColor;
-      layerInfo.changeNotifier.value++;
-    }
+    _updateLayerInfo(displayLayer, backgroundSong, backgroundCoverArtColor);
 
     if (mainPageThemeNotifier.value == .vivid) {
       searchFieldColor.updateColor();
