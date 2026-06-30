@@ -18,6 +18,11 @@ String formatSampleRate(int? sampleRate) {
 }
 
 String formatOutputSampleRate(UsbAudioStatus status) {
+  final exclusive = usbExclusivePlaybackStateNotifier.value;
+  if (exclusive.active && exclusive.sampleRate != null) {
+    return formatSampleRate(exclusive.sampleRate);
+  }
+
   return formatSampleRate(
     status.preferredSampleRate ?? status.outputSampleRate,
   );
@@ -870,6 +875,11 @@ class _InfoRow {
 }
 
 String _shortOutputName(UsbAudioStatus status) {
+  final exclusive = usbExclusivePlaybackStateNotifier.value;
+  if (exclusive.active) {
+    return 'USB 真独占';
+  }
+
   if (!status.supported) {
     return status.outputDeviceName ?? 'Android';
   }
@@ -919,6 +929,11 @@ String _exclusiveStatusLabel(UsbAudioStatus status) {
 }
 
 String _bitDepthLabel(UsbAudioStatus status) {
+  final exclusive = usbExclusivePlaybackStateNotifier.value;
+  if (exclusive.active && exclusive.bitDepth != null) {
+    return '${exclusive.bitDepth} bits';
+  }
+
   final encoding = status.preferredEncoding ?? status.outputEncoding;
   if (encoding == 'pcm_float') return '32 bits';
   if (encoding == 'pcm_32bit') return '32 bits';

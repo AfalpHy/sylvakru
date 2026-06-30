@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 final usbAudioService = UsbAudioService();
 final usbAudioStatusNotifier = ValueNotifier(UsbAudioStatus.unavailable());
 final usbAudioEventNotifier = ValueNotifier<UsbAudioDeviceEvent?>(null);
+final usbExclusivePlaybackStateNotifier = ValueNotifier(
+  UsbExclusivePlaybackState.inactive(),
+);
 
 enum UsbAudioDeviceEventType { added, removed }
 
@@ -102,6 +105,62 @@ class UsbAudioService {
     }
   }
 
+  Future<UsbExclusiveCapability> getExclusiveCapabilities() async {
+    if (!_isAndroid) {
+      return const UsbExclusiveCapability(
+        available: false,
+        permissionGranted: false,
+        deviceName: null,
+        deviceId: null,
+        interfaceNumber: null,
+        alternateSetting: null,
+        endpointAddress: null,
+        maxPacketSize: null,
+        sampleRates: [],
+        bitDepths: [],
+        channelCounts: [],
+        message: 'USB exclusive playback is only available on Android.',
+      );
+    }
+
+    try {
+      final result = await _channel.invokeMapMethod<String, Object?>(
+        'getExclusiveCapabilities',
+      );
+      return UsbExclusiveCapability.fromMap(result ?? const {});
+    } on PlatformException catch (error) {
+      return UsbExclusiveCapability.unavailable(message: error.message);
+    }
+  }
+
+  Future<UsbExclusivePlaybackState> startExclusivePlayback(
+    UsbExclusivePlaybackRequest request,
+  ) {
+    return _invokeExclusiveState('startExclusivePlayback', request.toMap());
+  }
+
+  Future<UsbExclusivePlaybackState> pauseExclusivePlayback() {
+    return _invokeExclusiveState('pauseExclusivePlayback');
+  }
+
+  Future<UsbExclusivePlaybackState> resumeExclusivePlayback() {
+    return _invokeExclusiveState('resumeExclusivePlayback');
+  }
+
+  Future<UsbExclusivePlaybackState> seekExclusivePlayback(Duration position) {
+    return _invokeExclusiveState('seekExclusivePlayback', {
+      'positionMs': position.inMilliseconds,
+    });
+  }
+
+  Future<UsbExclusivePlaybackState> stopExclusivePlayback() {
+    return _invokeExclusiveState('stopExclusivePlayback');
+  }
+
+  Future<UsbExclusivePlaybackState> releaseExclusiveDevice() {
+    return _invokeExclusiveState('releaseExclusiveDevice');
+  }
+
   Future<UsbAudioStatus> _invokeStatus(
     String method, [
     Map<String, Object?>? arguments,
@@ -121,20 +180,200 @@ class UsbAudioService {
     }
   }
 
-  Future<Object?> _handleNativeCall(MethodCall call) async {
-    if (call.method != 'onUsbAudioDeviceEvent') {
-      throw PlatformException(
-        code: 'unimplemented',
-        message: 'Unknown USB audio callback: ${call.method}',
+  Future<UsbExclusivePlaybackState> _invokeExclusiveState(
+    String method, [
+    Map<String, Object?>? arguments,
+  ]) async {
+    if (!_isAndroid) {
+      final state = UsbExclusivePlaybackState.inactive(
+        message: 'USB exclusive playback is only available on Android.',
       );
+      usbExclusivePlaybackStateNotifier.value = state;
+      return state;
     }
 
-    final event = UsbAudioDeviceEvent.fromMap(
-      (call.arguments as Map).cast<String, Object?>(),
+    try {
+      final result = await _channel.invokeMapMethod<String, Object?>(
+        method,
+        arguments,
+      );
+      final state = UsbExclusivePlaybackState.fromMap(result ?? const {});
+      usbExclusivePlaybackStateNotifier.value = state;
+      return state;
+    } on PlatformException catch (error) {
+      final state = UsbExclusivePlaybackState.inactive(message: error.message);
+      usbExclusivePlaybackStateNotifier.value = state;
+      return state;
+    }
+  }
+
+  Future<Object?> _handleNativeCall(MethodCall call) async {
+    if (call.method == 'onUsbAudioDeviceEvent') {
+      final event = UsbAudioDeviceEvent.fromMap(
+        (call.arguments as Map).cast<String, Object?>(),
+      );
+      usbAudioStatusNotifier.value = event.status;
+      usbAudioEventNotifier.value = event;
+      return null;
+    }
+
+    if (call.method == 'onUsbExclusiveStateChanged' ||
+        call.method == 'onUsbExclusivePosition' ||
+        call.method == 'onUsbExclusiveError') {
+      final state = UsbExclusivePlaybackState.fromMap(
+        (call.arguments as Map?)?.cast<String, Object?>() ?? const {},
+      );
+      usbExclusivePlaybackStateNotifier.value = state;
+      return null;
+    }
+
+    throw PlatformException(
+      code: 'unimplemented',
+      message: 'Unknown USB audio callback: ${call.method}',
     );
-    usbAudioStatusNotifier.value = event.status;
-    usbAudioEventNotifier.value = event;
-    return null;
+  }
+}
+
+@immutable
+class UsbExclusiveCapability {
+  final bool available;
+  final bool permissionGranted;
+  final String? deviceName;
+  final int? deviceId;
+  final int? interfaceNumber;
+  final int? alternateSetting;
+  final int? endpointAddress;
+  final int? maxPacketSize;
+  final List<int> sampleRates;
+  final List<int> bitDepths;
+  final List<int> channelCounts;
+  final String? message;
+
+  const UsbExclusiveCapability({
+    required this.available,
+    required this.permissionGranted,
+    required this.deviceName,
+    required this.deviceId,
+    required this.interfaceNumber,
+    required this.alternateSetting,
+    required this.endpointAddress,
+    required this.maxPacketSize,
+    required this.sampleRates,
+    required this.bitDepths,
+    required this.channelCounts,
+    required this.message,
+  });
+
+  factory UsbExclusiveCapability.unavailable({String? message}) {
+    return UsbExclusiveCapability(
+      available: false,
+      permissionGranted: false,
+      deviceName: null,
+      deviceId: null,
+      interfaceNumber: null,
+      alternateSetting: null,
+      endpointAddress: null,
+      maxPacketSize: null,
+      sampleRates: const [],
+      bitDepths: const [],
+      channelCounts: const [],
+      message: message,
+    );
+  }
+
+  factory UsbExclusiveCapability.fromMap(Map<String, Object?> map) {
+    return UsbExclusiveCapability(
+      available: map['available'] == true,
+      permissionGranted: map['permissionGranted'] == true,
+      deviceName: map['deviceName'] as String?,
+      deviceId: _asInt(map['deviceId']),
+      interfaceNumber: _asInt(map['interfaceNumber']),
+      alternateSetting: _asInt(map['alternateSetting']),
+      endpointAddress: _asInt(map['endpointAddress']),
+      maxPacketSize: _asInt(map['maxPacketSize']),
+      sampleRates: _asIntList(map['sampleRates']),
+      bitDepths: _asIntList(map['bitDepths']),
+      channelCounts: _asIntList(map['channelCounts']),
+      message: map['message'] as String?,
+    );
+  }
+}
+
+@immutable
+class UsbExclusivePlaybackRequest {
+  final String filePath;
+  final String? title;
+  final int? sampleRate;
+  final int? bitDepth;
+  final bool startPaused;
+
+  const UsbExclusivePlaybackRequest({
+    required this.filePath,
+    required this.title,
+    required this.sampleRate,
+    required this.bitDepth,
+    required this.startPaused,
+  });
+
+  Map<String, Object?> toMap() {
+    return {
+      'filePath': filePath,
+      'title': title,
+      'sampleRate': sampleRate,
+      'bitDepth': bitDepth,
+      'startPaused': startPaused,
+    };
+  }
+}
+
+@immutable
+class UsbExclusivePlaybackState {
+  final bool active;
+  final bool playing;
+  final Duration position;
+  final Duration? duration;
+  final int? sampleRate;
+  final int? bitDepth;
+  final String? format;
+  final String? message;
+
+  const UsbExclusivePlaybackState({
+    required this.active,
+    required this.playing,
+    required this.position,
+    required this.duration,
+    required this.sampleRate,
+    required this.bitDepth,
+    required this.format,
+    required this.message,
+  });
+
+  factory UsbExclusivePlaybackState.inactive({String? message}) {
+    return UsbExclusivePlaybackState(
+      active: false,
+      playing: false,
+      position: Duration.zero,
+      duration: null,
+      sampleRate: null,
+      bitDepth: null,
+      format: null,
+      message: message,
+    );
+  }
+
+  factory UsbExclusivePlaybackState.fromMap(Map<String, Object?> map) {
+    return UsbExclusivePlaybackState(
+      active: map['active'] == true,
+      playing: map['playing'] == true,
+      position: Duration(milliseconds: _asInt(map['positionMs']) ?? 0),
+      duration: _asInt(map['durationMs']) == null
+          ? null
+          : Duration(milliseconds: _asInt(map['durationMs'])!),
+      sampleRate: _asInt(map['sampleRate']),
+      bitDepth: _asInt(map['bitDepth']),
+      format: map['format'] as String?,
+      message: map['message'] as String?,
+    );
   }
 }
 

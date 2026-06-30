@@ -36,6 +36,7 @@ class MainActivity : AudioServiceActivity() {
     private val superLyricChannelName = "com.afalphy.sylvakru/super_lyric"
     private val usbPermissionAction = "com.afalphy.sylvakru.USB_PERMISSION"
     private lateinit var usbAudioChannel: MethodChannel
+    private lateinit var usbExclusiveAudioEngine: UsbExclusiveAudioEngine
     private var usbAudioDeviceCallback: AudioDeviceCallback? = null
     private var pendingExclusiveProbeResult: MethodChannel.Result? = null
     private var pendingExclusiveProbeDevice: UsbDevice? = null
@@ -45,12 +46,27 @@ class MainActivity : AudioServiceActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         usbAudioChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        usbExclusiveAudioEngine = UsbExclusiveAudioEngine(this) { state ->
+            runOnUiThread {
+                usbAudioChannel.invokeMethod("onUsbExclusiveStateChanged", state)
+            }
+        }
         usbAudioChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(getStatus())
                 "applyPreferredOutput" -> result.success(applyPreferredOutput(call))
                 "clearPreferredOutput" -> result.success(clearPreferredOutput(call))
                 "probeExclusiveAccess" -> probeExclusiveAccess(result)
+                "getExclusiveCapabilities" -> result.success(getExclusiveCapabilities())
+                "startExclusivePlayback" -> result.success(startExclusivePlayback(call))
+                "pauseExclusivePlayback" -> result.success(usbExclusiveAudioEngine.pause())
+                "resumeExclusivePlayback" -> result.success(usbExclusiveAudioEngine.resume())
+                "seekExclusivePlayback" -> {
+                    val positionMs = call.argument<Number>("positionMs")?.toLong() ?: 0L
+                    result.success(usbExclusiveAudioEngine.seek(positionMs))
+                }
+                "stopExclusivePlayback" -> result.success(usbExclusiveAudioEngine.stop())
+                "releaseExclusiveDevice" -> result.success(usbExclusiveAudioEngine.release())
                 else -> result.notImplemented()
             }
         }
@@ -72,6 +88,9 @@ class MainActivity : AudioServiceActivity() {
     override fun onDestroy() {
         unregisterUsbPermissionReceiver()
         unregisterUsbAudioDeviceCallback()
+        if (::usbExclusiveAudioEngine.isInitialized) {
+            usbExclusiveAudioEngine.release()
+        }
         sendSuperLyricStop()
         super.onDestroy()
     }
@@ -297,6 +316,28 @@ class MainActivity : AudioServiceActivity() {
 
     private fun findUsbAudioDevice(usbManager: UsbManager): UsbDevice? {
         return usbManager.deviceList.values.firstOrNull { it.audioInterfaceCount() > 0 }
+    }
+
+    private fun getExclusiveCapabilities(): Map<String, Any?> {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        return usbExclusiveAudioEngine.capabilities(
+            usbManager,
+            findUsbAudioDevice(usbManager),
+        )
+    }
+
+    private fun startExclusivePlayback(call: MethodCall): Map<String, Any?> {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        return usbExclusiveAudioEngine.start(
+            usbManager,
+            findUsbAudioDevice(usbManager),
+            call.argumentsMap(),
+        )
+    }
+
+    private fun MethodCall.argumentsMap(): Map<String, Any?> {
+        val raw = arguments as? Map<*, *> ?: return emptyMap()
+        return raw.entries.associate { (key, value) -> key.toString() to value }
     }
 
     private fun UsbDevice.audioInterfaces(): List<UsbInterface> {

@@ -23,6 +23,7 @@ import 'package:sylvakru/base/utils/contrast_color_generator.dart';
 import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 import 'package:sylvakru/base/services/usb_audio_service.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/mini_view/mini_view.dart';
@@ -84,6 +85,8 @@ class MyAudioHandler extends BaseAudioHandler {
   int _tmpPlayMode = 0;
   DateTime? _playLastSyncTime;
   Duration _playedDuration = Duration.zero;
+  Duration _usbExclusivePosition = Duration.zero;
+  bool _usbExclusiveActive = false;
 
   late final File _playQueueState;
   late final File _playState;
@@ -148,6 +151,8 @@ class MyAudioHandler extends BaseAudioHandler {
       }
       unawaited(_superLyricPublisher.publishAt(position));
     });
+
+    usbExclusivePlaybackStateNotifier.addListener(_handleUsbExclusiveState);
   }
 
   void updateIsPlaying(bool isPlaying) {
@@ -162,6 +167,9 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   void updatePlaybackState({Duration? postion, bool stop = false}) {
+    final position =
+        postion ??
+        (_usbExclusiveActive ? _usbExclusivePosition : _player.state.position);
     playbackState.add(
       PlaybackState(
         controls: [
@@ -172,10 +180,32 @@ class MyAudioHandler extends BaseAudioHandler {
         systemActions: {MediaAction.seek},
         playing: isPlayingNotifier.value,
         processingState: stop ? .idle : .ready,
-        speed: _player.state.rate,
-        updatePosition: postion ?? _player.state.position,
+        speed: _usbExclusiveActive ? 1.0 : _player.state.rate,
+        updatePosition: position,
       ),
     );
+  }
+
+  void _handleUsbExclusiveState() {
+    final state = usbExclusivePlaybackStateNotifier.value;
+    final wasActive = _usbExclusiveActive;
+    _usbExclusivePosition = state.position;
+    _usbExclusiveActive = state.active;
+
+    if (state.active) {
+      if (isPlayingNotifier.value != state.playing) {
+        updateIsPlaying(state.playing);
+      }
+      updatePlaybackState(postion: state.position);
+      if (state.playing) {
+        unawaited(_superLyricPublisher.publishAt(state.position));
+      }
+      return;
+    }
+
+    if (wasActive && state.message?.contains('completed') == true) {
+      unawaited(skipToNext());
+    }
   }
 
   void initStateFiles() {
@@ -523,7 +553,17 @@ class MyAudioHandler extends BaseAudioHandler {
 
     isLoading = true;
     try {
-      if (currentSong.cacheExist) {
+      await usbAudioService.stopExclusivePlayback();
+      _usbExclusiveActive = false;
+      _usbExclusivePosition = Duration.zero;
+
+      final openedExclusive = await _tryOpenUsbExclusive(currentSong);
+      if (openedExclusive) {
+        _player.stop();
+        if (isPlayingNotifier.value) {
+          _playLastSyncTime = DateTime.now();
+        }
+      } else if (currentSong.cacheExist) {
         await _player.open(
           Media(currentSong.cachePath!),
           play: isPlayingNotifier.value,
@@ -581,6 +621,96 @@ class MyAudioHandler extends BaseAudioHandler {
     updatePlaybackState(postion: Duration.zero);
   }
 
+  Future<bool> _tryOpenUsbExclusive(MyAudioMetadata song) async {
+    if (!_shouldTryUsbExclusive(song)) {
+      return false;
+    }
+
+    final capability = await usbAudioService.getExclusiveCapabilities();
+    if (!capability.available || !capability.permissionGranted) {
+      logger.output("usb exclusive unavailable:${capability.message}");
+      return false;
+    }
+
+    final filePath = await _exclusivePlayablePath(song);
+    if (filePath == null) {
+      return false;
+    }
+
+    final state = await usbAudioService.startExclusivePlayback(
+      UsbExclusivePlaybackRequest(
+        filePath: filePath,
+        title: getTitle(song),
+        sampleRate: _preferredExclusiveSampleRate(song),
+        bitDepth: _preferredExclusiveBitDepth(),
+        startPaused: !isPlayingNotifier.value,
+      ),
+    );
+
+    if (!state.active) {
+      logger.output("usb exclusive fallback:${state.message}");
+      return false;
+    }
+
+    _usbExclusiveActive = true;
+    _usbExclusivePosition = state.position;
+    return true;
+  }
+
+  bool _shouldTryUsbExclusive(MyAudioMetadata song) {
+    if (!Platform.isAndroid ||
+        !usbAudioPreferences.performanceModeNotifier.value) {
+      return false;
+    }
+    return _isUsbExclusiveSupportedFormat(song);
+  }
+
+  bool _isUsbExclusiveSupportedFormat(MyAudioMetadata song) {
+    final format = song.format?.toLowerCase().trim();
+    if (format == 'flac' || format == 'wav' || format == 'wave') {
+      return true;
+    }
+    final path = (song.cachePath ?? song.path ?? '').toLowerCase();
+    return path.endsWith('.flac') ||
+        path.endsWith('.wav') ||
+        path.endsWith('.wave');
+  }
+
+  Future<String?> _exclusivePlayablePath(MyAudioMetadata song) async {
+    if (song.sourceType == .local && song.path != null) {
+      return await convertToRealPathIfNeed(song.path!) ?? song.path;
+    }
+
+    if (song.cacheExist && song.cachePath != null) {
+      return song.cachePath;
+    }
+
+    try {
+      await library.tryAddCache(song);
+    } catch (error) {
+      logger.output("usb exclusive cache failed:$error");
+      return null;
+    }
+
+    if (song.cacheExist && song.cachePath != null) {
+      return song.cachePath;
+    }
+    return null;
+  }
+
+  int? _preferredExclusiveBitDepth() {
+    return switch (usbAudioPreferences.bitDepthModeNotifier.value) {
+      UsbBitDepthMode.pcm16 => 16,
+      UsbBitDepthMode.pcm24 => 24,
+      UsbBitDepthMode.pcm32 => 32,
+      UsbBitDepthMode.auto => null,
+    };
+  }
+
+  int? _preferredExclusiveSampleRate(MyAudioMetadata song) {
+    return usbAudioPreferences.preferredFixedSampleRate() ?? song.samplerate;
+  }
+
   void updateServiceMediaItem(MyAudioMetadata currentSong) {
     Uri? artUri;
 
@@ -603,6 +733,14 @@ class MyAudioHandler extends BaseAudioHandler {
   @override
   Future<void> play() async {
     if (playQueue.isEmpty) return;
+    if (_usbExclusiveActive) {
+      final state = await usbAudioService.resumeExclusivePlayback();
+      updateIsPlaying(state.playing);
+      unawaited(_superLyricPublisher.publishAt(state.position));
+      updatePlaybackState(postion: state.position);
+      return;
+    }
+
     _player.play();
 
     updateIsPlaying(true);
@@ -612,6 +750,15 @@ class MyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> pause() async {
+    if (_usbExclusiveActive) {
+      final state = await usbAudioService.pauseExclusivePlayback();
+      unawaited(SuperLyricBridge.sendStop());
+      _superLyricPublisher.reset();
+      updateIsPlaying(state.playing);
+      updatePlaybackState(postion: state.position);
+      return;
+    }
+
     _player.pause();
     unawaited(SuperLyricBridge.sendStop());
     _superLyricPublisher.reset();
@@ -621,6 +768,12 @@ class MyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> stop() async {
+    if (_usbExclusiveActive) {
+      await usbAudioService.stopExclusivePlayback();
+      _usbExclusiveActive = false;
+      _usbExclusivePosition = Duration.zero;
+    }
+
     _player.stop();
     unawaited(SuperLyricBridge.sendStop());
     _superLyricPublisher.reset();
@@ -631,6 +784,16 @@ class MyAudioHandler extends BaseAudioHandler {
   @override
   Future<void> seek(Duration position) async {
     updatePlaybackState(postion: position);
+    if (_usbExclusiveActive) {
+      final state = await usbAudioService.seekExclusivePlayback(position);
+      if (isPlayingNotifier.value) {
+        unawaited(_superLyricPublisher.publishAt(state.position));
+      }
+      updateLyricsNotifier.value++;
+      updatePlaybackState(postion: state.position);
+      return;
+    }
+
     await _player.seek(position);
     // ensure position is updated
     await Future.delayed(Duration(milliseconds: 50));
