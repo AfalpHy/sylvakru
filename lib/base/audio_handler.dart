@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:sylvakru/base/services/emby_client.dart';
 import 'package:sylvakru/base/services/metadata_service.dart';
+import 'package:sylvakru/base/services/super_lyric_bridge.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
@@ -21,6 +22,7 @@ import 'package:sylvakru/base/utils/contrast_color_generator.dart';
 import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/navidrome_client.dart';
+import 'package:sylvakru/base/services/usb_audio_service.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/mini_view/mini_view.dart';
 import 'dart:async';
@@ -55,6 +57,15 @@ Future<void> initAudioService() async {
   await _session.configure(AudioSessionConfiguration.music());
 
   await _session.setActive(true);
+
+  final usbAudioStatus = await usbAudioService.refreshStatus();
+  if (usbAudioStatus.supported) {
+    final optimizedStatus = await usbAudioService.applyPreferredOutput(
+      deviceId: usbAudioStatus.bestAvailableDeviceId,
+      sampleRate: usbAudioStatus.bestAvailableSampleRate,
+    );
+    logger.output("usb audio:${optimizedStatus.message}");
+  }
 
   _session.becomingNoisyEventStream.listen((_) {
     audioHandler.pause();
@@ -587,6 +598,7 @@ class MyAudioHandler extends BaseAudioHandler {
   @override
   Future<void> pause() async {
     _player.pause();
+    unawaited(SuperLyricBridge.sendStop());
     updateIsPlaying(false);
     updatePlaybackState();
   }
@@ -594,6 +606,7 @@ class MyAudioHandler extends BaseAudioHandler {
   @override
   Future<void> stop() async {
     _player.stop();
+    unawaited(SuperLyricBridge.sendStop());
     updateIsPlaying(false);
     updatePlaybackState(stop: true);
   }

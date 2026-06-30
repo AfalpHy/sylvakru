@@ -8,6 +8,9 @@ import 'package:sylvakru/landscape_view/bottom_control.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 
+const double _backgroundBlurSigma = 16;
+const int _backgroundCoverCacheWidth = 160;
+
 class LandscapeView extends StatelessWidget {
   const LandscapeView({super.key});
 
@@ -26,9 +29,19 @@ class LandscapeView extends StatelessWidget {
             return ValueListenableBuilder(
               valueListenable: layersManager.backgroundChangeNotifier,
               builder: (context, value, child) {
-                return CoverArtWidget(
-                  song: backgroundSong,
-                  color: colorManager.getSpecificBgBaseColor(),
+                return RepaintBoundary(
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: _backgroundBlurSigma,
+                      sigmaY: _backgroundBlurSigma,
+                    ),
+                    child: CoverArtWidget(
+                      song: backgroundSong,
+                      color: colorManager.getSpecificBgBaseColor(),
+                      cacheWidth: _backgroundCoverCacheWidth,
+                      filterQuality: FilterQuality.low,
+                    ),
+                  ),
                 );
               },
             );
@@ -40,24 +53,16 @@ class LandscapeView extends StatelessWidget {
             if (value != .vivid) {
               return SizedBox.shrink();
             }
-            final pageWidth = MediaQuery.widthOf(context);
-            final pageHight = MediaQuery.heightOf(context);
 
-            return BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: pageWidth * 0.03,
-                sigmaY: pageHight * 0.03,
-              ),
-              child: ValueListenableBuilder(
-                valueListenable: layersManager.backgroundChangeNotifier,
-                builder: (context, value, child) {
-                  return AnimatedContainer(
-                    duration: Duration(milliseconds: 500),
-                    curve: Curves.easeInOutCubic,
-                    color: backgroundCoverArtColor.withAlpha(180),
-                  );
-                },
-              ),
+            return ValueListenableBuilder(
+              valueListenable: layersManager.backgroundChangeNotifier,
+              builder: (context, value, child) {
+                return AnimatedContainer(
+                  duration: Duration(milliseconds: 500),
+                  curve: Curves.easeInOutCubic,
+                  color: backgroundCoverArtColor.withAlpha(180),
+                );
+              },
             );
           },
         ),

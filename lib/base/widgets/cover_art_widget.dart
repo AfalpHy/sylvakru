@@ -13,6 +13,8 @@ class CoverArtWidget extends StatelessWidget {
   final String? picturePath;
   final double elevation;
   final Color? color;
+  final int? cacheWidth;
+  final FilterQuality filterQuality;
   const CoverArtWidget({
     super.key,
     this.size,
@@ -21,6 +23,8 @@ class CoverArtWidget extends StatelessWidget {
     this.picturePath,
     this.elevation = 0,
     this.color,
+    this.cacheWidth,
+    this.filterQuality = FilterQuality.medium,
   });
 
   @override
@@ -65,6 +69,8 @@ class CoverArtWidget extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
+          cacheWidth: cacheWidth,
+          filterQuality: filterQuality,
           errorBuilder: (context, error, stackTrace) {
             return musicNote();
           },
@@ -79,6 +85,8 @@ class CoverArtWidget extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.cover,
+      cacheWidth: cacheWidth,
+      filterQuality: filterQuality,
       errorBuilder: (context, error, stackTrace) {
         return musicNote();
       },

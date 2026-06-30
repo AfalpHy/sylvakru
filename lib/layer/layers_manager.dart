@@ -38,6 +38,9 @@ import 'package:sylvakru/portrait_view/portrait_view.dart';
 final layersManager = LayersManager();
 MyAudioMetadata? backgroundSong;
 
+const double _backgroundBlurSigma = 16;
+const int _backgroundCoverCacheWidth = 160;
+
 class LayerInfo {
   MyAudioMetadata? backgroundSong;
   Color backgroundCoverArtColor;
@@ -84,9 +87,19 @@ class LayersManager {
             return ValueListenableBuilder(
               valueListenable: layerInfo.changeNotifier,
               builder: (context, value, child) {
-                return CoverArtWidget(
-                  song: layerInfo.backgroundSong,
-                  color: layerInfo.backgroundCoverArtColor,
+                return RepaintBoundary(
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: _backgroundBlurSigma,
+                      sigmaY: _backgroundBlurSigma,
+                    ),
+                    child: CoverArtWidget(
+                      song: layerInfo.backgroundSong,
+                      color: layerInfo.backgroundCoverArtColor,
+                      cacheWidth: _backgroundCoverCacheWidth,
+                      filterQuality: FilterQuality.low,
+                    ),
+                  ),
                 );
               },
             );
@@ -99,19 +112,13 @@ class LayersManager {
               return SizedBox.shrink();
             }
 
-            // ClipRect is important
-            return ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: ValueListenableBuilder(
-                  valueListenable: layerInfo.changeNotifier,
-                  builder: (context, value, child) {
-                    return Container(
-                      color: layerInfo.backgroundCoverArtColor.withAlpha(180),
-                    );
-                  },
-                ),
-              ),
+            return ValueListenableBuilder(
+              valueListenable: layerInfo.changeNotifier,
+              builder: (context, value, child) {
+                return Container(
+                  color: layerInfo.backgroundCoverArtColor.withAlpha(180),
+                );
+              },
             );
           },
         ),

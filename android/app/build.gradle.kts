@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         applicationId = "com.afalphy.sylvakru"
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -51,6 +51,11 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug" 
+        }
+        maybeCreate("profile").apply {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".profile"
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -65,4 +70,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("com.github.HChenX:SuperLyricApi:3.4")
 }

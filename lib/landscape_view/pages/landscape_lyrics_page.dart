@@ -20,6 +20,9 @@ import 'package:sylvakru/base/widgets/seekbar.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 
+const double _backgroundBlurSigma = 16;
+const int _backgroundCoverCacheWidth = 160;
+
 class LandscapeLyricsPage extends StatefulWidget {
   const LandscapeLyricsPage({super.key});
 
@@ -80,20 +83,25 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
             fit: StackFit.expand,
             children: [
               if (lyricsPageThemeNotifier.value == .vivid) ...[
-                CoverArtWidget(
-                  song: currentSong,
-                  color: colorManager.getSpecificLyricsPageCoverArtBaseColor(),
+                RepaintBoundary(
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: _backgroundBlurSigma,
+                      sigmaY: _backgroundBlurSigma,
+                    ),
+                    child: CoverArtWidget(
+                      song: currentSong,
+                      color: colorManager
+                          .getSpecificLyricsPageCoverArtBaseColor(),
+                      cacheWidth: _backgroundCoverCacheWidth,
+                      filterQuality: FilterQuality.low,
+                    ),
+                  ),
                 ),
-                BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: pageWidth * 0.03,
-                    sigmaY: pageHight * 0.03,
-                  ),
-                  child: AnimatedContainer(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeInOutCubic,
-                    color: currentCoverArtColor.withAlpha(180),
-                  ),
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  curve: Curves.easeInOutCubic,
+                  color: currentCoverArtColor.withAlpha(180),
                 ),
               ],
 
@@ -272,7 +280,6 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
               valueListenable: lyricsPageHighlightTextColor.valueNotifier,
               builder: (context, value, child) {
                 return MyAutoSizeText(
-                  key: UniqueKey(),
                   getTitle(currentSong),
                   maxLines: 1,
                   textStyle: TextStyle(
@@ -295,7 +302,6 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
               valueListenable: lyricsPageForegroundColor.valueNotifier,
               builder: (context, value, child) {
                 return MyAutoSizeText(
-                  key: UniqueKey(),
                   '${getArtist(currentSong)} - ${getAlbum(currentSong)}',
                   maxLines: 1,
                   textStyle: TextStyle(fontSize: 14, color: value),
