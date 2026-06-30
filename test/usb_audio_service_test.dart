@@ -157,4 +157,35 @@ void main() {
     expect(event.status.devices.single.name, 'USB DAC');
     expect(usbAudioStatusNotifier.value.activeDeviceId, 18);
   });
+
+  test('probeExclusiveAccess maps native USB claim result', () async {
+    final service = UsbAudioService(channel: channel, isAndroid: true);
+
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'probeExclusiveAccess') {
+        return {
+          'supported': true,
+          'permissionGranted': true,
+          'deviceName': 'USB DAC',
+          'deviceId': 21,
+          'audioInterfaceCount': 2,
+          'claimedInterfaceCount': 1,
+          'rawDescriptorLength': 257,
+          'message': 'USB Audio interface can be claimed.',
+        };
+      }
+      throw PlatformException(code: 'unexpected_method');
+    });
+
+    final result = await service.probeExclusiveAccess();
+
+    expect(result.supported, isTrue);
+    expect(result.permissionGranted, isTrue);
+    expect(result.deviceName, 'USB DAC');
+    expect(result.deviceId, 21);
+    expect(result.audioInterfaceCount, 2);
+    expect(result.claimedInterfaceCount, 1);
+    expect(result.interfaceClaimed, isTrue);
+    expect(result.rawDescriptorLength, 257);
+  });
 }

@@ -1,7 +1,11 @@
 package com.afalphy.sylvakru
 
 import android.annotation.TargetApi
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioDeviceCallback
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
@@ -13,6 +17,11 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.hardware.usb.UsbConstants
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
+import android.hardware.usb.UsbInterface
+import android.hardware.usb.UsbManager
 import com.hchen.superlyricapi.SuperLyricData
 import com.hchen.superlyricapi.SuperLyricHelper
 import com.hchen.superlyricapi.SuperLyricLine
@@ -25,8 +34,12 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : AudioServiceActivity() {
     private val channelName = "com.afalphy.sylvakru/usb_audio"
     private val superLyricChannelName = "com.afalphy.sylvakru/super_lyric"
+    private val usbPermissionAction = "com.afalphy.sylvakru.USB_PERMISSION"
     private lateinit var usbAudioChannel: MethodChannel
     private var usbAudioDeviceCallback: AudioDeviceCallback? = null
+    private var pendingExclusiveProbeResult: MethodChannel.Result? = null
+    private var pendingExclusiveProbeDevice: UsbDevice? = null
+    private var usbPermissionReceiver: BroadcastReceiver? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -37,10 +50,12 @@ class MainActivity : AudioServiceActivity() {
                 "getStatus" -> result.success(getStatus())
                 "applyPreferredOutput" -> result.success(applyPreferredOutput(call))
                 "clearPreferredOutput" -> result.success(clearPreferredOutput(call))
+                "probeExclusiveAccess" -> probeExclusiveAccess(result)
                 else -> result.notImplemented()
             }
         }
         registerUsbAudioDeviceCallback()
+        registerUsbPermissionReceiver()
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, superLyricChannelName)
             .setMethodCallHandler { call, result ->
@@ -55,9 +70,68 @@ class MainActivity : AudioServiceActivity() {
     }
 
     override fun onDestroy() {
+        unregisterUsbPermissionReceiver()
         unregisterUsbAudioDeviceCallback()
         sendSuperLyricStop()
         super.onDestroy()
+    }
+
+    private fun registerUsbPermissionReceiver() {
+        if (usbPermissionReceiver != null) {
+            return
+        }
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action != usbPermissionAction) {
+                    return
+                }
+
+                val result = pendingExclusiveProbeResult ?: return
+                val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                } ?: pendingExclusiveProbeDevice
+                val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+
+                pendingExclusiveProbeResult = null
+                pendingExclusiveProbeDevice = null
+
+                if (device == null || !granted) {
+                    result.success(
+                        exclusiveProbeResult(
+                            supported = device != null,
+                            permissionGranted = false,
+                            device = device,
+                            audioInterfaceCount = device?.audioInterfaceCount() ?: 0,
+                            claimedInterfaceCount = 0,
+                            rawDescriptorLength = 0,
+                            message = "USB permission was denied.",
+                        ),
+                    )
+                    return
+                }
+
+                result.success(runExclusiveProbe(device))
+            }
+        }
+
+        val filter = IntentFilter(usbPermissionAction)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(receiver, filter)
+        }
+        usbPermissionReceiver = receiver
+    }
+
+    private fun unregisterUsbPermissionReceiver() {
+        val receiver = usbPermissionReceiver ?: return
+        unregisterReceiver(receiver)
+        usbPermissionReceiver = null
     }
 
     private fun registerUsbAudioDeviceCallback() {
@@ -102,6 +176,163 @@ class MainActivity : AudioServiceActivity() {
                 ),
             )
         }
+    }
+
+    private fun probeExclusiveAccess(result: MethodChannel.Result) {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val device = findUsbAudioDevice(usbManager)
+        if (device == null) {
+            result.success(
+                exclusiveProbeResult(
+                    supported = false,
+                    permissionGranted = false,
+                    device = null,
+                    audioInterfaceCount = 0,
+                    claimedInterfaceCount = 0,
+                    rawDescriptorLength = 0,
+                    message = "No USB Audio Class device was found.",
+                ),
+            )
+            return
+        }
+
+        if (!usbManager.hasPermission(device)) {
+            if (pendingExclusiveProbeResult != null) {
+                result.success(
+                    exclusiveProbeResult(
+                        supported = true,
+                        permissionGranted = false,
+                        device = device,
+                        audioInterfaceCount = device.audioInterfaceCount(),
+                        claimedInterfaceCount = 0,
+                        rawDescriptorLength = 0,
+                        message = "USB permission request is already pending.",
+                    ),
+                )
+                return
+            }
+
+            pendingExclusiveProbeResult = result
+            pendingExclusiveProbeDevice = device
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_MUTABLE
+            } else {
+                0
+            }
+            val permissionIntent = PendingIntent.getBroadcast(
+                this,
+                0,
+                Intent(usbPermissionAction).setPackage(packageName),
+                flags,
+            )
+            usbManager.requestPermission(device, permissionIntent)
+            return
+        }
+
+        result.success(runExclusiveProbe(device))
+    }
+
+    private fun runExclusiveProbe(device: UsbDevice): Map<String, Any?> {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val audioInterfaces = device.audioInterfaces()
+        val connection = usbManager.openDevice(device)
+            ?: return exclusiveProbeResult(
+                supported = true,
+                permissionGranted = true,
+                device = device,
+                audioInterfaceCount = audioInterfaces.size,
+                claimedInterfaceCount = 0,
+                rawDescriptorLength = 0,
+                message = "Failed to open USB device.",
+            )
+
+        return connection.useConnection {
+            val claimed = mutableListOf<UsbInterface>()
+            var rawDescriptorLength = 0
+            try {
+                rawDescriptorLength = connection.rawDescriptors?.size ?: 0
+                for (usbInterface in audioInterfaces) {
+                    if (connection.claimInterface(usbInterface, true)) {
+                        claimed.add(usbInterface)
+                    }
+                }
+                exclusiveProbeResult(
+                    supported = true,
+                    permissionGranted = true,
+                    device = device,
+                    audioInterfaceCount = audioInterfaces.size,
+                    claimedInterfaceCount = claimed.size,
+                    rawDescriptorLength = rawDescriptorLength,
+                    message = if (claimed.isNotEmpty()) {
+                        "USB Audio interface can be claimed."
+                    } else {
+                        "USB Audio interface was found but could not be claimed."
+                    },
+                )
+            } catch (error: RuntimeException) {
+                exclusiveProbeResult(
+                    supported = true,
+                    permissionGranted = true,
+                    device = device,
+                    audioInterfaceCount = audioInterfaces.size,
+                    claimedInterfaceCount = claimed.size,
+                    rawDescriptorLength = rawDescriptorLength,
+                    message = "USB exclusive probe failed: ${error.message}",
+                )
+            } finally {
+                claimed.forEach { connection.releaseInterface(it) }
+            }
+        }
+    }
+
+    private inline fun UsbDeviceConnection.useConnection(
+        block: () -> Map<String, Any?>,
+    ): Map<String, Any?> {
+        return try {
+            block()
+        } finally {
+            close()
+        }
+    }
+
+    private fun findUsbAudioDevice(usbManager: UsbManager): UsbDevice? {
+        return usbManager.deviceList.values.firstOrNull { it.audioInterfaceCount() > 0 }
+    }
+
+    private fun UsbDevice.audioInterfaces(): List<UsbInterface> {
+        val interfaces = mutableListOf<UsbInterface>()
+        for (index in 0 until interfaceCount) {
+            val usbInterface = getInterface(index)
+            if (usbInterface.interfaceClass == UsbConstants.USB_CLASS_AUDIO) {
+                interfaces.add(usbInterface)
+            }
+        }
+        return interfaces
+    }
+
+    private fun UsbDevice.audioInterfaceCount(): Int {
+        return audioInterfaces().size
+    }
+
+    private fun exclusiveProbeResult(
+        supported: Boolean,
+        permissionGranted: Boolean,
+        device: UsbDevice?,
+        audioInterfaceCount: Int,
+        claimedInterfaceCount: Int,
+        rawDescriptorLength: Int,
+        message: String,
+    ): Map<String, Any?> {
+        return mapOf(
+            "supported" to supported,
+            "permissionGranted" to permissionGranted,
+            "deviceName" to device?.productName,
+            "deviceId" to device?.deviceId,
+            "audioInterfaceCount" to audioInterfaceCount,
+            "claimedInterfaceCount" to claimedInterfaceCount,
+            "rawDescriptorLength" to rawDescriptorLength,
+            "message" to message,
+        )
     }
 
     private fun sendSuperLyric(call: MethodCall): Boolean {

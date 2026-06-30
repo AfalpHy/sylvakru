@@ -69,6 +69,39 @@ class UsbAudioService {
     return _invokeStatus('clearPreferredOutput');
   }
 
+  Future<UsbExclusiveProbeResult> probeExclusiveAccess() async {
+    if (!_isAndroid) {
+      return const UsbExclusiveProbeResult(
+        supported: false,
+        permissionGranted: false,
+        deviceName: null,
+        deviceId: null,
+        audioInterfaceCount: 0,
+        claimedInterfaceCount: 0,
+        rawDescriptorLength: 0,
+        message: 'USB exclusive access probing is only available on Android.',
+      );
+    }
+
+    try {
+      final result = await _channel.invokeMapMethod<String, Object?>(
+        'probeExclusiveAccess',
+      );
+      return UsbExclusiveProbeResult.fromMap(result ?? const {});
+    } on PlatformException catch (error) {
+      return UsbExclusiveProbeResult(
+        supported: false,
+        permissionGranted: false,
+        deviceName: null,
+        deviceId: null,
+        audioInterfaceCount: 0,
+        claimedInterfaceCount: 0,
+        rawDescriptorLength: 0,
+        message: error.message,
+      );
+    }
+  }
+
   Future<UsbAudioStatus> _invokeStatus(
     String method, [
     Map<String, Object?>? arguments,
@@ -103,6 +136,44 @@ class UsbAudioService {
     usbAudioEventNotifier.value = event;
     return null;
   }
+}
+
+@immutable
+class UsbExclusiveProbeResult {
+  final bool supported;
+  final bool permissionGranted;
+  final String? deviceName;
+  final int? deviceId;
+  final int audioInterfaceCount;
+  final int claimedInterfaceCount;
+  final int rawDescriptorLength;
+  final String? message;
+
+  const UsbExclusiveProbeResult({
+    required this.supported,
+    required this.permissionGranted,
+    required this.deviceName,
+    required this.deviceId,
+    required this.audioInterfaceCount,
+    required this.claimedInterfaceCount,
+    required this.rawDescriptorLength,
+    required this.message,
+  });
+
+  factory UsbExclusiveProbeResult.fromMap(Map<String, Object?> map) {
+    return UsbExclusiveProbeResult(
+      supported: map['supported'] == true,
+      permissionGranted: map['permissionGranted'] == true,
+      deviceName: map['deviceName'] as String?,
+      deviceId: _asInt(map['deviceId']),
+      audioInterfaceCount: _asInt(map['audioInterfaceCount']) ?? 0,
+      claimedInterfaceCount: _asInt(map['claimedInterfaceCount']) ?? 0,
+      rawDescriptorLength: _asInt(map['rawDescriptorLength']) ?? 0,
+      message: map['message'] as String?,
+    );
+  }
+
+  bool get interfaceClaimed => claimedInterfaceCount > 0;
 }
 
 @immutable
