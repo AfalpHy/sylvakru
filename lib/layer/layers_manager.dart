@@ -340,6 +340,7 @@ class LayersManager {
 
     final detailLayer = detailWidgetMap.remove(rootLayer);
     final parentLayer = parentWidgetMap.remove(detailLayer);
+    var revealVisibleNotifier = true;
 
     late GlobalKey<NavigatorState> rootKey;
     late ValueNotifier<bool> visibleNotifier;
@@ -358,17 +359,22 @@ class LayersManager {
     } else {
       rootKey = settingsKey;
       visibleNotifier = settingsVisibleNotifier;
-      if (detailLayer is LicenseLayer) {
+      if (parentLayer != null && parentLayer != rootLayer) {
         detailWidgetMap[rootLayer] = parentLayer;
+        revealVisibleNotifier = false;
+      }
+      if (detailLayer is LicenseLayer) {
         visibleNotifier = aboutVisibleNotifier;
+        revealVisibleNotifier = true;
       }
     }
 
-    await layersManager.updateBackground();
-
     rootKey.currentState?.pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      visibleNotifier.value = true;
+      if (revealVisibleNotifier) {
+        visibleNotifier.value = true;
+      }
+      updateBackground();
     });
 
     return true;
