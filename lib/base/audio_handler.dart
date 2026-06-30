@@ -8,6 +8,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:sylvakru/base/services/emby_client.dart';
 import 'package:sylvakru/base/services/metadata_service.dart';
 import 'package:sylvakru/base/services/super_lyric_bridge.dart';
+import 'package:sylvakru/base/services/super_lyric_position_publisher.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
@@ -60,11 +61,7 @@ Future<void> initAudioService() async {
 
   final usbAudioStatus = await usbAudioService.refreshStatus();
   if (usbAudioStatus.supported) {
-    final optimizedStatus = await usbAudioService.applyPreferredOutput(
-      deviceId: usbAudioStatus.bestAvailableDeviceId,
-      sampleRate: usbAudioStatus.bestAvailableSampleRate,
-    );
-    logger.output("usb audio:${optimizedStatus.message}");
+    logger.output("usb audio:${usbAudioStatus.message}");
   }
 
   _session.becomingNoisyEventStream.listen((_) {
@@ -80,6 +77,7 @@ Future<void> initAudioService() async {
 
 class MyAudioHandler extends BaseAudioHandler {
   final _player = Player();
+  late final SuperLyricPositionPublisher _superLyricPublisher;
   bool _started = false;
   int currentIndex = -1;
   List<MyAudioMetadata> _playQueueTmp = [];
@@ -95,6 +93,11 @@ class MyAudioHandler extends BaseAudioHandler {
   bool isSyncing = false;
 
   MyAudioHandler() {
+    _superLyricPublisher = SuperLyricPositionPublisher(
+      sendLyricLine: SuperLyricBridge.sendLyricLine,
+      sendStop: SuperLyricBridge.sendStop,
+    );
+
     // avoid reading .lrc files
     (_player.platform as NativePlayer).setProperty('sub-auto', 'no');
 
@@ -140,6 +143,10 @@ class MyAudioHandler extends BaseAudioHandler {
       if (isLoading || isSyncing) {
         return;
       }
+      if (!isPlayingNotifier.value) {
+        return;
+      }
+      unawaited(_superLyricPublisher.publishAt(position));
     });
   }
 
@@ -510,6 +517,7 @@ class MyAudioHandler extends BaseAudioHandler {
     final currentSong = playQueue[currentIndex];
 
     await _setLyricsAndUpdateColors(currentSong);
+    _superLyricPublisher.updateLines(currentSong.parsedLyrics!.lines);
 
     currentSongNotifier.value = currentSong;
 
@@ -564,6 +572,12 @@ class MyAudioHandler extends BaseAudioHandler {
 
     updateServiceMediaItem(currentSong);
 
+    if (isPlayingNotifier.value) {
+      unawaited(_superLyricPublisher.publishAt(Duration.zero));
+    } else {
+      _superLyricPublisher.reset();
+      unawaited(SuperLyricBridge.sendStop());
+    }
     updatePlaybackState(postion: Duration.zero);
   }
 
@@ -592,6 +606,7 @@ class MyAudioHandler extends BaseAudioHandler {
     _player.play();
 
     updateIsPlaying(true);
+    unawaited(_superLyricPublisher.publishAt(_player.state.position));
     updatePlaybackState();
   }
 
@@ -599,6 +614,7 @@ class MyAudioHandler extends BaseAudioHandler {
   Future<void> pause() async {
     _player.pause();
     unawaited(SuperLyricBridge.sendStop());
+    _superLyricPublisher.reset();
     updateIsPlaying(false);
     updatePlaybackState();
   }
@@ -607,6 +623,7 @@ class MyAudioHandler extends BaseAudioHandler {
   Future<void> stop() async {
     _player.stop();
     unawaited(SuperLyricBridge.sendStop());
+    _superLyricPublisher.reset();
     updateIsPlaying(false);
     updatePlaybackState(stop: true);
   }
@@ -617,6 +634,9 @@ class MyAudioHandler extends BaseAudioHandler {
     await _player.seek(position);
     // ensure position is updated
     await Future.delayed(Duration(milliseconds: 50));
+    if (isPlayingNotifier.value) {
+      unawaited(_superLyricPublisher.publishAt(position));
+    }
     updateLyricsNotifier.value++;
   }
 

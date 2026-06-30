@@ -1,0 +1,127 @@
+import 'package:flutter/foundation.dart';
+
+final usbAudioPreferences = UsbAudioPreferences();
+
+enum UsbDsdMode { pcm, dop, native }
+
+enum UsbVolumeLockMode { off, dsdOnly, always }
+
+enum UsbBusSpeedMode { auto, full, high, superSpeed }
+
+enum UsbBitDepthMode { auto, pcm16, pcm24, pcm32 }
+
+class UsbAudioPreferences {
+  static const sampleRates = [44100, 48000, 88200, 96000, 176400, 192000];
+
+  final fixedSampleRateEnabledNotifier = ValueNotifier(false);
+  final fixedSampleRateNotifier = ValueNotifier<int?>(null);
+  final dsdModeNotifier = ValueNotifier(UsbDsdMode.dop);
+  final dsd64PcmRateNotifier = ValueNotifier(88200);
+  final dsd128PcmRateNotifier = ValueNotifier(88200);
+  final dsd256PcmRateNotifier = ValueNotifier(88200);
+  final dsd512PcmRateNotifier = ValueNotifier(88200);
+  final performanceModeNotifier = ValueNotifier(true);
+  final volumeLockModeNotifier = ValueNotifier(UsbVolumeLockMode.dsdOnly);
+  final dsdGainCompensationNotifier = ValueNotifier(0);
+  final busSpeedModeNotifier = ValueNotifier(UsbBusSpeedMode.auto);
+  final bitDepthModeNotifier = ValueNotifier(UsbBitDepthMode.auto);
+  final releaseUsbBandwidthAfterPlaybackNotifier = ValueNotifier(false);
+  final keepAliveInBackgroundNotifier = ValueNotifier(true);
+
+  void load(Map<String, dynamic> json) {
+    fixedSampleRateEnabledNotifier.value =
+        json['usbFixedSampleRateEnabled'] as bool? ?? false;
+    fixedSampleRateNotifier.value = _validRate(
+      json['usbFixedSampleRate'] as int?,
+    );
+    dsdModeNotifier.value = _enumByName(
+      UsbDsdMode.values,
+      json['usbDsdMode'] as String?,
+      UsbDsdMode.dop,
+    );
+    dsd64PcmRateNotifier.value =
+        _validRate(json['usbDsd64PcmRate'] as int?) ?? 88200;
+    dsd128PcmRateNotifier.value =
+        _validRate(json['usbDsd128PcmRate'] as int?) ?? 88200;
+    dsd256PcmRateNotifier.value =
+        _validRate(json['usbDsd256PcmRate'] as int?) ?? 88200;
+    dsd512PcmRateNotifier.value =
+        _validRate(json['usbDsd512PcmRate'] as int?) ?? 88200;
+    performanceModeNotifier.value = json['usbPerformanceMode'] as bool? ?? true;
+    volumeLockModeNotifier.value = _enumByName(
+      UsbVolumeLockMode.values,
+      json['usbVolumeLockMode'] as String?,
+      UsbVolumeLockMode.dsdOnly,
+    );
+    dsdGainCompensationNotifier.value =
+        json['usbDsdGainCompensation'] as int? ?? 0;
+    busSpeedModeNotifier.value = _enumByName(
+      UsbBusSpeedMode.values,
+      json['usbBusSpeedMode'] as String?,
+      UsbBusSpeedMode.auto,
+    );
+    bitDepthModeNotifier.value = _enumByName(
+      UsbBitDepthMode.values,
+      json['usbBitDepthMode'] as String?,
+      UsbBitDepthMode.auto,
+    );
+    releaseUsbBandwidthAfterPlaybackNotifier.value =
+        json['usbReleaseBandwidthAfterPlayback'] as bool? ?? false;
+    keepAliveInBackgroundNotifier.value =
+        json['usbKeepAliveInBackground'] as bool? ?? true;
+  }
+
+  Map<String, Object?> toMap() {
+    return {
+      'usbFixedSampleRateEnabled': fixedSampleRateEnabledNotifier.value,
+      'usbFixedSampleRate': fixedSampleRateNotifier.value,
+      'usbDsdMode': dsdModeNotifier.value.name,
+      'usbDsd64PcmRate': dsd64PcmRateNotifier.value,
+      'usbDsd128PcmRate': dsd128PcmRateNotifier.value,
+      'usbDsd256PcmRate': dsd256PcmRateNotifier.value,
+      'usbDsd512PcmRate': dsd512PcmRateNotifier.value,
+      'usbPerformanceMode': performanceModeNotifier.value,
+      'usbVolumeLockMode': volumeLockModeNotifier.value.name,
+      'usbDsdGainCompensation': dsdGainCompensationNotifier.value,
+      'usbBusSpeedMode': busSpeedModeNotifier.value.name,
+      'usbBitDepthMode': bitDepthModeNotifier.value.name,
+      'usbReleaseBandwidthAfterPlayback':
+          releaseUsbBandwidthAfterPlaybackNotifier.value,
+      'usbKeepAliveInBackground': keepAliveInBackgroundNotifier.value,
+    };
+  }
+
+  int? preferredFixedSampleRate() {
+    if (!fixedSampleRateEnabledNotifier.value) {
+      return null;
+    }
+    return _validRate(fixedSampleRateNotifier.value);
+  }
+
+  String preferredEncoding() {
+    return switch (bitDepthModeNotifier.value) {
+      UsbBitDepthMode.pcm16 => 'pcm_16bit',
+      UsbBitDepthMode.pcm24 => 'pcm_24bit_packed',
+      UsbBitDepthMode.pcm32 => 'pcm_32bit',
+      UsbBitDepthMode.auto => 'pcm_24bit_packed',
+    };
+  }
+
+  void resetForTest() {
+    load(const {});
+  }
+
+  T _enumByName<T extends Enum>(List<T> values, String? name, T fallback) {
+    for (final value in values) {
+      if (value.name == name) {
+        return value;
+      }
+    }
+    return fallback;
+  }
+
+  int? _validRate(int? rate) {
+    if (rate == null) return null;
+    return sampleRates.contains(rate) ? rate : null;
+  }
+}

@@ -8,7 +8,6 @@ import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/lyric.dart';
-import 'package:sylvakru/base/services/super_lyric_bridge.dart';
 import 'package:sylvakru/mini_view/mini_view.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:smooth_corner/smooth_corner.dart';
@@ -61,14 +60,6 @@ class LyricsListViewState extends State<LyricsListView>
       }
     }
     currentIndexNotifier.value = current;
-
-    if (tmp != current) {
-      if (current >= 0 && current < lines.length) {
-        unawaited(SuperLyricBridge.sendLyric(lines[current].text));
-      } else if (current == -1) {
-        unawaited(SuperLyricBridge.sendStop());
-      }
-    }
 
     if (!userDragging && (tmp != current || userDragged)) {
       userDragged = false;

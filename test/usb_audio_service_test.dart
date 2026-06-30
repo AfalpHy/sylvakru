@@ -28,6 +28,9 @@ void main() {
             'preferredSampleRate': 96000,
             'preferredEncoding': 'pcm_24bit_packed',
             'preferredBitPerfect': true,
+            'outputDeviceName': 'USB DAC',
+            'outputSampleRate': 96000,
+            'outputEncoding': 'pcm_24bit_packed',
             'message': 'USB audio device detected',
             'devices': [
               {
@@ -55,6 +58,9 @@ void main() {
       expect(status.preferredSampleRate, 96000);
       expect(status.preferredEncoding, 'pcm_24bit_packed');
       expect(status.preferredBitPerfect, isTrue);
+      expect(status.outputDeviceName, 'USB DAC');
+      expect(status.outputSampleRate, 96000);
+      expect(status.outputEncoding, 'pcm_24bit_packed');
       expect(status.devices, hasLength(1));
       expect(status.devices.single.name, 'USB DAC');
       expect(status.devices.single.sampleRates, [44100, 48000, 96000]);
@@ -77,6 +83,7 @@ void main() {
             'androidSdk': 35,
             'activeDeviceId': 10,
             'preferredApplied': true,
+            'outputSampleRate': 96000,
             'message': 'Applied preferred USB mixer attributes',
             'devices': const [],
           };
@@ -99,4 +106,55 @@ void main() {
       expect(status.message, 'Applied preferred USB mixer attributes');
     },
   );
+
+  test('native USB added event updates status and event notifier', () async {
+    UsbAudioService(channel: channel, isAndroid: true);
+
+    final eventStatus = {
+      'supported': true,
+      'androidSdk': 35,
+      'activeDeviceId': 18,
+      'preferredApplied': false,
+      'preferredSampleRate': null,
+      'preferredEncoding': null,
+      'preferredBitPerfect': false,
+      'outputDeviceName': 'USB DAC',
+      'outputSampleRate': 48000,
+      'outputEncoding': 'pcm_16bit',
+      'message': 'USB audio device detected.',
+      'devices': [
+        {
+          'id': 18,
+          'name': 'USB DAC',
+          'type': 'usb_device',
+          'address': 'dac-18',
+          'sampleRates': [44100, 48000, 96000],
+          'encodings': ['pcm_16bit', 'pcm_24bit_packed'],
+          'channelCounts': [2],
+          'supportedMixerSampleRates': [44100, 48000, 96000],
+          'supportsBitPerfectMixer': true,
+        },
+      ],
+    };
+
+    await messenger.handlePlatformMessage(
+      channel.name,
+      const StandardMethodCodec().encodeMethodCall(
+        MethodCall('onUsbAudioDeviceEvent', {
+          'type': 'added',
+          'deviceId': 18,
+          'status': eventStatus,
+        }),
+      ),
+      (_) {},
+    );
+
+    final event = usbAudioEventNotifier.value;
+    expect(event, isNotNull);
+    expect(event!.type, UsbAudioDeviceEventType.added);
+    expect(event.deviceId, 18);
+    expect(event.status.supported, isTrue);
+    expect(event.status.devices.single.name, 'USB DAC');
+    expect(usbAudioStatusNotifier.value.activeDeviceId, 18);
+  });
 }

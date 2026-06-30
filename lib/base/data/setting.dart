@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 import 'package:sylvakru/base/widgets/lyric_list_view.dart';
 import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/app.dart';
@@ -29,6 +30,7 @@ class Setting {
         jsonDecode(content) as Map<String, dynamic>;
 
     artistAlbumManager.loadSetting(json);
+    usbAudioPreferences.load(json);
 
     playlistManager.useLargePictureNotifier.value =
         json['playlistsUseLargePicture'] as bool? ??
@@ -76,6 +78,7 @@ class Setting {
     file.writeAsStringSync(
       jsonEncode({
         ...artistAlbumManager.settingToMap(),
+        ...usbAudioPreferences.toMap(),
 
         'playlistsUseLargePicture':
             playlistManager.useLargePictureNotifier.value,

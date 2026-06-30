@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 
 final usbAudioService = UsbAudioService();
 final usbAudioStatusNotifier = ValueNotifier(UsbAudioStatus.unavailable());
+final usbAudioEventNotifier = ValueNotifier<UsbAudioDeviceEvent?>(null);
+
+enum UsbAudioDeviceEventType { added, removed }
 
 class UsbAudioService {
   static const MethodChannel _defaultChannel = MethodChannel(
@@ -16,7 +19,9 @@ class UsbAudioService {
 
   UsbAudioService({MethodChannel channel = _defaultChannel, bool? isAndroid})
     : _channel = channel,
-      _isAndroid = isAndroid ?? Platform.isAndroid;
+      _isAndroid = isAndroid ?? Platform.isAndroid {
+    _channel.setMethodCallHandler(_handleNativeCall);
+  }
 
   Future<UsbAudioStatus> refreshStatus() async {
     if (!_isAndroid) {
@@ -82,6 +87,47 @@ class UsbAudioService {
       return status;
     }
   }
+
+  Future<Object?> _handleNativeCall(MethodCall call) async {
+    if (call.method != 'onUsbAudioDeviceEvent') {
+      throw PlatformException(
+        code: 'unimplemented',
+        message: 'Unknown USB audio callback: ${call.method}',
+      );
+    }
+
+    final event = UsbAudioDeviceEvent.fromMap(
+      (call.arguments as Map).cast<String, Object?>(),
+    );
+    usbAudioStatusNotifier.value = event.status;
+    usbAudioEventNotifier.value = event;
+    return null;
+  }
+}
+
+@immutable
+class UsbAudioDeviceEvent {
+  final UsbAudioDeviceEventType type;
+  final int? deviceId;
+  final UsbAudioStatus status;
+
+  const UsbAudioDeviceEvent({
+    required this.type,
+    required this.deviceId,
+    required this.status,
+  });
+
+  factory UsbAudioDeviceEvent.fromMap(Map<String, Object?> map) {
+    return UsbAudioDeviceEvent(
+      type: map['type'] == 'removed'
+          ? UsbAudioDeviceEventType.removed
+          : UsbAudioDeviceEventType.added,
+      deviceId: _asInt(map['deviceId']),
+      status: UsbAudioStatus.fromMap(
+        (map['status'] as Map?)?.cast<String, Object?>() ?? const {},
+      ),
+    );
+  }
 }
 
 @immutable
@@ -93,6 +139,9 @@ class UsbAudioStatus {
   final int? preferredSampleRate;
   final String? preferredEncoding;
   final bool preferredBitPerfect;
+  final String? outputDeviceName;
+  final int? outputSampleRate;
+  final String? outputEncoding;
   final String? message;
   final List<UsbAudioDevice> devices;
 
@@ -104,6 +153,9 @@ class UsbAudioStatus {
     required this.preferredSampleRate,
     required this.preferredEncoding,
     required this.preferredBitPerfect,
+    required this.outputDeviceName,
+    required this.outputSampleRate,
+    required this.outputEncoding,
     required this.message,
     required this.devices,
   });
@@ -117,6 +169,9 @@ class UsbAudioStatus {
       preferredSampleRate: null,
       preferredEncoding: null,
       preferredBitPerfect: false,
+      outputDeviceName: null,
+      outputSampleRate: null,
+      outputEncoding: null,
       message: message,
       devices: const [],
     );
@@ -142,6 +197,9 @@ class UsbAudioStatus {
       preferredSampleRate: _asInt(map['preferredSampleRate']),
       preferredEncoding: map['preferredEncoding'] as String?,
       preferredBitPerfect: map['preferredBitPerfect'] == true,
+      outputDeviceName: map['outputDeviceName'] as String?,
+      outputSampleRate: _asInt(map['outputSampleRate']),
+      outputEncoding: map['outputEncoding'] as String?,
       message: map['message'] as String?,
       devices: devices,
     );

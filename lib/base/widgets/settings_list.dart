@@ -54,7 +54,7 @@ class SettingsList extends StatelessWidget {
                   subtitle: Text(
                     l10n.settingCount(
                       Platform.isAndroid
-                          ? 14
+                          ? 15
                           : Platform.isIOS
                           ? 14
                           : 12,
@@ -116,6 +116,9 @@ class SettingsList extends StatelessWidget {
           ),
 
         sliverBox(paddingIfNeed(isLandscape, equalizerListTile(context, l10n))),
+
+        if (Platform.isAndroid)
+          sliverBox(paddingIfNeed(isLandscape, audioOutputListTile(context))),
 
         sliverBox(paddingIfNeed(isLandscape, autoPlayOnStartupListTile(l10n))),
 
@@ -481,6 +484,18 @@ class SettingsList extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  Widget audioOutputListTile(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.usb_rounded, size: iconSize),
+      title: const Text('音频输出'),
+      subtitle: const Text('USB 独占、固定采样率、DSD 与位深'),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: () {
+        layersManager.pushDetail('settings', 'audio_output');
+      },
     );
   }
 
