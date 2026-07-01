@@ -18,6 +18,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 object UsbExclusiveNative {
     init {
@@ -43,6 +44,8 @@ object UsbExclusiveNative {
 
     external fun feedbackFramesPerPacketQ16(): Int
 
+    external fun transportTelemetry(): LongArray
+
     external fun close()
 }
 
@@ -55,14 +58,21 @@ private const val USB_RECIP_ENDPOINT = 0x02
 class UsbExclusiveAudioEngine(
     private val context: Context,
     private val emitState: (Map<String, Any?>) -> Unit,
+    private val emitTelemetry: (Map<String, Any?>) -> Unit,
 ) {
     private val tag = "UsbExclusiveAudioEngine"
     private var worker: Thread? = null
     private var connection: UsbDeviceConnection? = null
     private val paused = AtomicBoolean(false)
     private val stopped = AtomicBoolean(false)
+    private val pendingSeekMs = AtomicLong(-1L)
 
     @Volatile private var currentState = inactiveState()
+    private var targetBufferMs = 200
+    private var minimumBufferLevelMs: Long? = null
+    private var lastTelemetryEmitMs = 0L
+    private var lastTelemetryBufferMs: Long? = null
+    private var zeroBufferUnderruns = 0L
 
     fun capabilities(usbManager: UsbManager, device: UsbDevice?): Map<String, Any?> {
         if (!NATIVE_USB_EXCLUSIVE_STREAMING_ENABLED) {
@@ -141,6 +151,11 @@ class UsbExclusiveAudioEngine(
 
         val requestedSampleRate = (arguments["sampleRate"] as? Number)?.toInt()
         val requestedBitDepth = (arguments["bitDepth"] as? Number)?.toInt()
+        targetBufferMs = ((arguments["targetBufferMs"] as? Number)?.toInt() ?: 200).coerceIn(50, 5000)
+        minimumBufferLevelMs = null
+        lastTelemetryEmitMs = 0L
+        lastTelemetryBufferMs = null
+        zeroBufferUnderruns = 0L
         val requestedChannels = 2
         val openedConnection = usbManager.openDevice(device)
             ?: return updateState(inactiveState("Failed to open USB device for exclusive playback."))
@@ -189,6 +204,7 @@ class UsbExclusiveAudioEngine(
         connection = openedConnection
         paused.set(arguments["startPaused"] == true)
         stopped.set(false)
+        pendingSeekMs.set(-1L)
 
         val initialState = mapOf(
             "active" to true,
@@ -201,6 +217,7 @@ class UsbExclusiveAudioEngine(
             "message" to "USB exclusive playback prepared.",
         )
         updateState(initialState)
+        emitTransportTelemetry(target.packetsPerSecond, force = true)
 
         worker = Thread({
             decodeAndWrite(file, target)
@@ -229,10 +246,16 @@ class UsbExclusiveAudioEngine(
     }
 
     fun seek(positionMs: Long): Map<String, Any?> {
+        if (currentState["active"] != true) {
+            Log.w(tag, "seek ignored because exclusive playback is not active: $currentState")
+            return updateState(inactiveState("No exclusive playback is active."))
+        }
+        val safePositionMs = positionMs.coerceAtLeast(0L)
+        pendingSeekMs.set(safePositionMs)
         return updateState(
             currentState + mapOf(
-                "message" to "USB exclusive seek is not supported in this MVP.",
-                "positionMs" to positionMs,
+                "message" to "Seeking.",
+                "positionMs" to safePositionMs,
             ),
         )
     }
@@ -240,6 +263,7 @@ class UsbExclusiveAudioEngine(
     fun stop(): Map<String, Any?> {
         stopped.set(true)
         paused.set(false)
+        pendingSeekMs.set(-1L)
         val thread = worker
         worker = null
         if (thread != null && thread != Thread.currentThread()) {
@@ -252,6 +276,64 @@ class UsbExclusiveAudioEngine(
     }
 
     fun release(): Map<String, Any?> = stop()
+
+    private fun emitTransportTelemetry(packetsPerSecond: Int, force: Boolean = false) {
+        val nowMs = SystemClock.elapsedRealtime()
+        if (!force && nowMs - lastTelemetryEmitMs < 100) {
+            return
+        }
+        lastTelemetryEmitMs = nowMs
+
+        val nativeTelemetry = UsbExclusiveNative.transportTelemetry()
+        val pendingIsoPackets = nativeTelemetry.getOrNull(0) ?: 0L
+        val totalIsoPackets = nativeTelemetry.getOrNull(1) ?: 0L
+        val pendingUrbs = nativeTelemetry.getOrNull(2) ?: 0L
+        val nativeIsoErrors = nativeTelemetry.getOrNull(3) ?: 0L
+        val bufferLevelMs = if (packetsPerSecond > 0) {
+            (pendingIsoPackets * 1000L) / packetsPerSecond
+        } else {
+            0L
+        }
+        val active = currentState["active"] == true
+
+        if (active && lastTelemetryBufferMs != null && lastTelemetryBufferMs!! > 0 && bufferLevelMs == 0L) {
+            zeroBufferUnderruns += 1
+        }
+        lastTelemetryBufferMs = bufferLevelMs
+
+        if (active && bufferLevelMs > 0) {
+            minimumBufferLevelMs = minimumBufferLevelMs?.let { minOf(it, bufferLevelMs) } ?: bufferLevelMs
+        }
+
+        emitTelemetry(
+            mapOf(
+                "active" to active,
+                "bufferLevelMs" to if (active) bufferLevelMs else 0L,
+                "minimumBufferLevelMs" to minimumBufferLevelMs,
+                "targetBufferMs" to targetBufferMs,
+                "isoPacketCount" to totalIsoPackets,
+                "pendingUrbs" to pendingUrbs,
+                "underrunCount" to (nativeIsoErrors + zeroBufferUnderruns),
+                "updatedAtMs" to nowMs,
+            ),
+        )
+    }
+
+    private fun emitInactiveTelemetry() {
+        lastTelemetryBufferMs = null
+        emitTelemetry(
+            mapOf(
+                "active" to false,
+                "bufferLevelMs" to 0,
+                "minimumBufferLevelMs" to null,
+                "targetBufferMs" to targetBufferMs,
+                "isoPacketCount" to 0,
+                "pendingUrbs" to 0,
+                "underrunCount" to 0,
+                "updatedAtMs" to SystemClock.elapsedRealtime(),
+            ),
+        )
+    }
 
     private fun decodeAndWrite(file: File, target: OutputTarget) {
         val extractor = MediaExtractor()
@@ -337,6 +419,25 @@ class UsbExclusiveAudioEngine(
                     Log.i(tag, "exclusive worker resumed.")
                 }
                 if (stopped.get()) break
+
+                consumePendingSeekMs()?.let { seekMs ->
+                    val seekUs = seekMs * 1000
+                    Log.i(tag, "exclusive decoder seek to ${seekMs}ms.")
+                    extractor.seekTo(seekUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                    codec.flush()
+                    packetizer?.reset()
+                    sawInputEos = false
+                    outputDone = false
+                    lastPositionEmitMs = -1L
+                    updateState(
+                        currentState + mapOf(
+                            "active" to true,
+                            "playing" to !paused.get(),
+                            "positionMs" to seekMs,
+                            "message" to "Seeked.",
+                        ),
+                    )
+                }
 
                 if (!sawInputEos) {
                     val inputIndex = codec.dequeueInputBuffer(10_000)
@@ -540,6 +641,23 @@ class UsbExclusiveAudioEngine(
             }
             if (stopped.get()) break
 
+            consumePendingSeekMs()?.let { seekMs ->
+                val seekUs = seekMs * 1000
+                Log.i(tag, "exclusive raw PCM seek to ${seekMs}ms.")
+                extractor.seekTo(seekUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                packetizer.reset()
+                lastPositionEmitMs = -1L
+                lastSampleTimeUs = null
+                updateState(
+                    currentState + mapOf(
+                        "active" to true,
+                        "playing" to !paused.get(),
+                        "positionMs" to seekMs,
+                        "message" to "Seeked.",
+                    ),
+                )
+            }
+
             buffer.clear()
             val sampleTimeUs = extractor.sampleTime
             val sampleSize = extractor.readSampleData(buffer, 0)
@@ -645,6 +763,7 @@ class UsbExclusiveAudioEngine(
             if (error != null) {
                 throw IllegalStateException(error)
             }
+            emitTransportTelemetry(target.packetsPerSecond)
         }
     }
 
@@ -1160,9 +1279,17 @@ class UsbExclusiveAudioEngine(
         updateState(inactiveState(message))
     }
 
+    private fun consumePendingSeekMs(): Long? {
+        val seekMs = pendingSeekMs.getAndSet(-1L)
+        return if (seekMs >= 0L) seekMs else null
+    }
+
     private fun updateState(state: Map<String, Any?>): Map<String, Any?> {
         currentState = state
         emitState(state)
+        if (state["active"] != true) {
+            emitInactiveTelemetry()
+        }
         return state
     }
 
@@ -1285,6 +1412,18 @@ class UsbExclusiveAudioEngine(
 
         fun flush() {
             drain(fullPacketsOnly = false)
+        }
+
+        fun reset() {
+            pending.reset()
+            transfer.reset()
+            transferPacketCount = 0
+            sampleRemainder = 0
+            feedbackRemainderQ16 = 0L
+            packetLogCount = 0
+            feedbackRejectLogCount = 0
+            pcmPreviewLogged = false
+            pcmPreviewAttempts = 0
         }
 
         private fun drain(fullPacketsOnly: Boolean) {

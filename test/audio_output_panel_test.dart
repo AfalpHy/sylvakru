@@ -6,6 +6,9 @@ import 'package:sylvakru/base/widgets/audio_output_panel.dart';
 void main() {
   tearDown(() {
     usbAudioPreferences.resetForTest();
+    usbAudioStatusNotifier.value = UsbAudioStatus.unavailable();
+    usbExclusivePlaybackStateNotifier.value =
+        UsbExclusivePlaybackState.inactive();
   });
 
   test('formatSampleRate displays source rate as kHz', () {
@@ -31,6 +34,42 @@ void main() {
     );
 
     expect(formatOutputSampleRate(status), '48 kHz');
+  });
+
+  test('formatOutputDeviceName prefers connected USB device name', () {
+    const status = UsbAudioStatus(
+      supported: true,
+      androidSdk: 35,
+      activeDeviceId: 7,
+      preferredApplied: true,
+      preferredSampleRate: 96000,
+      preferredEncoding: 'pcm_24bit_packed',
+      preferredBitPerfect: true,
+      outputDeviceName: 'Android USB output',
+      outputSampleRate: 96000,
+      outputEncoding: 'pcm_24bit_packed',
+      message: 'USB audio device detected.',
+      devices: [
+        UsbAudioDevice(
+          id: 7,
+          name: 'iBasso Macaron',
+          type: 'usb_device',
+          address: 'dac',
+          sampleRates: [44100, 48000, 96000],
+          encodings: ['pcm_16bit', 'pcm_24bit_packed'],
+          channelCounts: [2],
+          supportedMixerSampleRates: [48000, 96000],
+          supportsBitPerfectMixer: true,
+        ),
+      ],
+    );
+
+    expect(formatOutputDeviceName(status), 'iBasso Macaron');
+  });
+
+  test('formatBitrate marks tiny metadata bitrate clearly', () {
+    expect(formatBitrate(3000), '约 3 kbps（源文件元数据）');
+    expect(formatBitrate(null), '未知');
   });
 
   test('buildSampleRateOptions prefers USB supported mixer rates', () {

@@ -28,11 +28,22 @@ String formatOutputSampleRate(UsbAudioStatus status) {
   );
 }
 
+String formatOutputDeviceName(UsbAudioStatus status) {
+  if (!status.supported) {
+    return status.outputDeviceName ?? 'Android';
+  }
+  final device = _activeUsbDevice(status);
+  if (device != null) {
+    return device.name;
+  }
+  return status.outputDeviceName ?? 'USB DAC';
+}
+
 String formatBitrate(int? bitrate) {
   if (bitrate == null || bitrate <= 0) {
     return '未知';
   }
-  return '${(bitrate / 1000).round()} kbps';
+  return '约 ${(bitrate / 1000).round()} kbps（源文件元数据）';
 }
 
 List<int?> buildSampleRateOptions(
@@ -440,30 +451,6 @@ class _AudioOutputSheet extends StatefulWidget {
 }
 
 class _AudioOutputSheetState extends State<_AudioOutputSheet> {
-  int? _applyingRate;
-
-  Future<void> _applySampleRate(int? sampleRate) async {
-    setState(() {
-      _applyingRate = sampleRate ?? -1;
-    });
-
-    final status = usbAudioStatusNotifier.value;
-    final nextStatus = await usbAudioService.applyPreferredOutput(
-      deviceId: status.bestAvailableDeviceId,
-      sampleRate: sampleRate,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _applyingRate = null;
-    });
-
-    final message = nextStatus.message ?? '已发送采样率请求';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final foreground = lyricsPageForegroundColor.value;
@@ -476,9 +463,6 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
     return ValueListenableBuilder(
       valueListenable: usbAudioStatusNotifier,
       builder: (context, status, child) {
-        final selectedRate = status.preferredSampleRate;
-        final options = buildSampleRateOptions(status, widget.song?.samplerate);
-
         return Padding(
           padding: EdgeInsets.only(
             left: 12,
@@ -531,7 +515,7 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              status.message ?? '查看当前音频链路与采样率',
+                              formatOutputDeviceName(status),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: muted, fontSize: 13),
@@ -600,39 +584,10 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    '采样率',
-                    style: TextStyle(
-                      color: foreground,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final rate in options)
-                        _SampleRateChoice(
-                          label: rate == null ? '自动' : formatSampleRate(rate),
-                          selected:
-                              rate == selectedRate ||
-                              (rate == null && selectedRate == null),
-                          enabled: status.supported,
-                          applying: _applyingRate == (rate ?? -1),
-                          accent: highlight,
-                          foreground: foreground,
-                          surface: surface,
-                          onTap: () => _applySampleRate(rate),
-                        ),
-                    ],
-                  ),
                   if (!status.supported) ...[
                     const SizedBox(height: 14),
                     Text(
-                      '未检测到 USB DAC。当前显示 Android 系统输出信息；采样率选择会在连接 USB 音频设备后启用。',
+                      '未检测到 USB DAC。当前显示 Android 系统输出信息。',
                       style: TextStyle(
                         color: muted,
                         fontSize: 12,
@@ -766,78 +721,6 @@ class _InfoLine extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SampleRateChoice extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final bool enabled;
-  final bool applying;
-  final Color accent;
-  final Color foreground;
-  final Color surface;
-  final VoidCallback onTap;
-
-  const _SampleRateChoice({
-    required this.label,
-    required this.selected,
-    required this.enabled,
-    required this.applying,
-    required this.accent,
-    required this.foreground,
-    required this.surface,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final displayColor = selected ? accent : foreground;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: enabled && !applying ? onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? accent.withAlpha(42) : surface,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: displayColor.withAlpha(selected ? 160 : 42),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (applying) ...[
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: displayColor,
-                  ),
-                ),
-                const SizedBox(width: 7),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: enabled
-                      ? displayColor.withAlpha(230)
-                      : foreground.withAlpha(96),
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
