@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sylvakru/base/app.dart';
@@ -168,12 +170,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
             _sectionTitle('输出格式'),
             _settingsCard(
               children: [
-                _sourceFileTile(),
-                _infoTile(
-                  'DAC 端点',
-                  _dacEndpointLabel(status),
-                  '播放后显示真实 DAC 端点格式',
-                ),
+                _formatSummaryTile(status),
                 _switchTile(
                   title: '位深兼容',
                   subtitle: '设备不支持源位深时自动回退。',
@@ -254,6 +251,8 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   min: 50,
                   max: 1000,
                   divisions: 19,
+                  onChanged: (value) =>
+                      _applyExclusiveBufferIfActive(foregroundBufferMs: value),
                 ),
                 _bufferSlider(
                   title: '后台缓冲区',
@@ -261,6 +260,8 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   min: 500,
                   max: 5000,
                   divisions: 18,
+                  onChanged: (value) =>
+                      _applyExclusiveBufferIfActive(backgroundBufferMs: value),
                 ),
                 _hintTile('后台打开大型 App 出现卡顿时优先提高后台缓冲；数值越大越稳定，切歌与暂停响应可能稍慢。'),
               ],
@@ -281,7 +282,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   values: const [-12, -9, -6, -3, 0, 3, 6],
                   label: (value) => '$value dB',
                 ),
-                _infoTile('当前媒体音量', '播放开始后检测', '硬件音量与 DAC 反馈可用后显示'),
+                _mediaVolumeTile(),
                 _switchTile(
                   title: '音量平滑交接',
                   subtitle: '切换数字音量与 DAC 硬件音量时保持响度连续。',
@@ -350,9 +351,6 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
           menuColor.value,
         );
         final title = supported ? device?.name ?? 'USB DAC' : '未识别 USB 设备';
-        final subtitle = supported
-            ? _exclusiveStatusLabel(status)
-            : '连接 DAC 后显示设备信息';
         final statusLabel = supported ? '已连接' : '未连接';
         final linkLabel = supported
             ? (exclusive.active ? '独占播放' : '运行中')
@@ -429,17 +427,6 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: foreground.withAlpha(150),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
                 const SizedBox(height: 22),
                 Row(
                   children: [
@@ -494,157 +481,168 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
   }
 
   Widget _transportStatusCard(UsbAudioStatus status) {
-    return ValueListenableBuilder<UsbExclusivePlaybackState>(
-      valueListenable: usbExclusivePlaybackStateNotifier,
-      builder: (context, exclusive, _) {
-        return ValueListenableBuilder<UsbTransportTelemetry>(
-          valueListenable: usbTransportTelemetryNotifier,
-          builder: (context, telemetry, _) {
-            final active = exclusive.active || telemetry.active;
-            final targetMs =
-                telemetry.targetBuffer?.inMilliseconds ??
-                usbAudioPreferences.foregroundBufferMsNotifier.value;
-            final levelMs = telemetry.active
-                ? telemetry.bufferLevel.inMilliseconds
-                : 0;
-            final minimumMs = telemetry.minimumBufferLevel?.inMilliseconds;
-            final clampedLevel = levelMs.clamp(0, targetMs);
-            final progress = targetMs <= 0 ? 0.0 : clampedLevel / targetMs;
-            final health = _transportHealth(
-              active: active,
-              playing: exclusive.playing,
-              levelMs: levelMs,
-              minimumMs: minimumMs,
-              targetMs: targetMs,
-              underrunCount: telemetry.underrunCount,
-            );
-            final accent = _transportHealthAccent(health);
-            final foreground = textColor.value;
-            final background = Color.alphaBlend(
-              accent.withAlpha(mainPageThemeNotifier.value == .dark ? 36 : 24),
-              menuColor.value,
-            );
+    return ValueListenableBuilder<int>(
+      valueListenable: usbAudioPreferences.foregroundBufferMsNotifier,
+      builder: (context, foregroundTargetMs, _) {
+        return ValueListenableBuilder<UsbExclusivePlaybackState>(
+          valueListenable: usbExclusivePlaybackStateNotifier,
+          builder: (context, exclusive, _) {
+            return ValueListenableBuilder<UsbTransportTelemetry>(
+              valueListenable: usbTransportTelemetryNotifier,
+              builder: (context, telemetry, _) {
+                final active = exclusive.active || telemetry.active;
+                final targetMs = _currentExclusiveTargetBufferMs(
+                  foregroundTargetMs: foregroundTargetMs,
+                  backgroundTargetMs:
+                      usbAudioPreferences.backgroundBufferMsNotifier.value,
+                );
+                final levelMs = telemetry.active
+                    ? telemetry.bufferLevel.inMilliseconds
+                    : 0;
+                final minimumMs = telemetry.minimumBufferLevel?.inMilliseconds;
+                final clampedLevel = levelMs.clamp(0, targetMs);
+                final progress = targetMs <= 0 ? 0.0 : clampedLevel / targetMs;
+                final health = _transportHealth(
+                  active: active,
+                  playing: exclusive.playing,
+                  levelMs: levelMs,
+                  minimumMs: minimumMs,
+                  targetMs: targetMs,
+                  underrunCount: telemetry.underrunCount,
+                );
+                final accent = _transportHealthAccent(health);
+                final foreground = textColor.value;
+                final background = Color.alphaBlend(
+                  accent.withAlpha(
+                    mainPageThemeNotifier.value == .dark ? 36 : 24,
+                  ),
+                  menuColor.value,
+                );
 
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: background,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: accent.withAlpha(60)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: accent.withAlpha(60)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: Text(
-                            '传输状态',
-                            style: TextStyle(
-                              color: foreground,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          _transportHealthLabel(health),
-                          style: TextStyle(
-                            color: active ? accent : foreground.withAlpha(170),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Flexible(
-                          flex: 4,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.bottomLeft,
-                            child: Text(
-                              '$levelMs ms',
-                              style: TextStyle(
-                                color: foreground,
-                                fontSize: 34,
-                                height: 0.95,
-                                fontWeight: FontWeight.w900,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '传输状态',
+                                style: TextStyle(
+                                  color: foreground,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
+                            Text(
+                              _transportHealthLabel(health),
+                              style: TextStyle(
+                                color: active
+                                    ? accent
+                                    : foreground.withAlpha(170),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              flex: 4,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.bottomLeft,
+                                child: Text(
+                                  '$levelMs ms',
+                                  style: TextStyle(
+                                    color: foreground,
+                                    fontSize: 34,
+                                    height: 0.95,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 3,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: Text(
+                                  '缓冲区水位',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: foreground.withAlpha(145),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Text(
+                                'ISO ${telemetry.active ? telemetry.isoPacketCount : 0}',
+                                style: TextStyle(
+                                  color: foreground.withAlpha(175),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 8,
+                            backgroundColor: foreground.withAlpha(28),
+                            valueColor: AlwaysStoppedAnimation<Color>(accent),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 3),
-                            child: Text(
-                              '缓冲区水位',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                active ? '目标 $targetMs ms' : '播放时建立目标水位',
+                                style: TextStyle(
+                                  color: foreground.withAlpha(135),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              active && minimumMs != null
+                                  ? '最低 $minimumMs ms'
+                                  : '最低 --',
                               style: TextStyle(
-                                color: foreground.withAlpha(145),
-                                fontSize: 15,
+                                color: foreground.withAlpha(135),
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: Text(
-                            'ISO ${telemetry.active ? telemetry.isoPacketCount : 0}',
-                            style: TextStyle(
-                              color: foreground.withAlpha(175),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 8,
-                        backgroundColor: foreground.withAlpha(28),
-                        valueColor: AlwaysStoppedAnimation<Color>(accent),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            active ? '目标 $targetMs ms' : '播放时建立目标水位',
-                            style: TextStyle(
-                              color: foreground.withAlpha(135),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          active && minimumMs != null
-                              ? '最低 $minimumMs ms'
-                              : '最低 --',
-                          style: TextStyle(
-                            color: foreground.withAlpha(135),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -804,37 +802,126 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     );
   }
 
-  Widget _infoTile(String title, String value, String subtitle) {
-    return ListTile(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 190),
-        child: Text(
-          value,
-          textAlign: TextAlign.right,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: textColor.value.withAlpha(210),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _sourceFileTile() {
+  Widget _formatSummaryTile(UsbAudioStatus status) {
     return ValueListenableBuilder<MyAudioMetadata?>(
       valueListenable: currentSongNotifier,
       builder: (context, song, _) {
-        return _infoTile(
-          '源文件',
-          _sourceFileTitle(song),
-          _sourceFileSubtitle(song),
+        final channel = _channelCountLabel(status);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _formatMetricRow('源文件', [
+                _sourceFormatLabel(song),
+                formatSampleRate(song?.samplerate),
+                channel,
+                _compactDepthLabel(status),
+              ]),
+              const SizedBox(height: 24),
+              _formatMetricRow('DAC 端点', [
+                'PCM',
+                formatOutputSampleRate(status),
+                channel,
+                _compactDepthLabel(status),
+              ]),
+            ],
+          ),
         );
       },
     );
+  }
+
+  Widget _formatMetricRow(String label, List<String> values) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: textColor.value.withAlpha(145),
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (var index = 0; index < values.length; index++) ...[
+              Expanded(
+                child: Text(
+                  values[index],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textColor.value.withAlpha(220),
+                    fontSize: 22,
+                    height: 1.05,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (index != values.length - 1) const SizedBox(width: 12),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _mediaVolumeTile() {
+    return ValueListenableBuilder<double>(
+      valueListenable: volumeNotifier,
+      builder: (context, volume, _) {
+        final percent = (volume.clamp(0.0, 1.0) * 100).round();
+        final sliderValue = volume.clamp(0.0, 1.0);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '当前媒体音量',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    '$percent%',
+                    style: TextStyle(
+                      color: textColor.value.withAlpha(180),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              Slider(
+                value: sliderValue,
+                min: 0,
+                max: 1,
+                divisions: 100,
+                label: '$percent%',
+                onChanged: (next) {
+                  volumeNotifier.value = next;
+                  _setPlayerVolumeIfReady(next);
+                },
+                onChangeEnd: (_) => setting.save(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _setPlayerVolumeIfReady(double volume) {
+    try {
+      audioHandler.setVolume(volume);
+    } on Error catch (error) {
+      if (!error.toString().contains('LateInitializationError')) rethrow;
+    }
   }
 
   Widget _noticeTile({
@@ -883,6 +970,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     required double min,
     required double max,
     required int divisions,
+    ValueChanged<int>? onChanged,
   }) {
     return ValueListenableBuilder<int>(
       valueListenable: notifier,
@@ -917,7 +1005,9 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                 divisions: divisions,
                 label: '${sliderValue.round()} ms',
                 onChanged: (next) {
-                  notifier.value = next.round();
+                  final rounded = next.round();
+                  notifier.value = rounded;
+                  onChanged?.call(rounded);
                 },
                 onChangeEnd: (_) => setting.save(),
               ),
@@ -1080,6 +1170,47 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     );
   }
 
+  void _applyExclusiveBufferIfActive({
+    int? foregroundBufferMs,
+    int? backgroundBufferMs,
+  }) {
+    final exclusive = usbExclusivePlaybackStateNotifier.value;
+    if (!exclusive.active) return;
+
+    final targetBufferMs = _currentExclusiveTargetBufferMs(
+      foregroundTargetMs:
+          foregroundBufferMs ??
+          usbAudioPreferences.foregroundBufferMsNotifier.value,
+      backgroundTargetMs:
+          backgroundBufferMs ??
+          usbAudioPreferences.backgroundBufferMsNotifier.value,
+    );
+    unawaited(usbAudioService.setExclusiveTargetBufferMs(targetBufferMs));
+  }
+
+  int _currentExclusiveTargetBufferMs({
+    required int foregroundTargetMs,
+    required int backgroundTargetMs,
+  }) {
+    if (_usesBackgroundExclusiveBuffer()) {
+      return backgroundTargetMs;
+    }
+    return foregroundTargetMs;
+  }
+
+  bool _usesBackgroundExclusiveBuffer() {
+    if (!usbAudioPreferences.keepAliveInBackgroundNotifier.value) {
+      return false;
+    }
+    return switch (WidgetsBinding.instance.lifecycleState) {
+      AppLifecycleState.resumed || null => false,
+      AppLifecycleState.inactive ||
+      AppLifecycleState.hidden ||
+      AppLifecycleState.paused ||
+      AppLifecycleState.detached => true,
+    };
+  }
+
   Future<void> _refreshStatus() async {
     setState(() {
       _refreshingStatus = true;
@@ -1125,32 +1256,19 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     return result.message ?? '未能 claim USB Audio Interface。';
   }
 
-  String _dacEndpointLabel(UsbAudioStatus status) {
-    final exclusive = usbExclusivePlaybackStateNotifier.value;
-    if (exclusive.active) {
-      return '${formatSampleRate(exclusive.sampleRate)} / ${exclusive.bitDepth ?? '未知'} bits';
-    }
+  String _sourceFormatLabel(MyAudioMetadata? song) {
+    final format = song?.format;
+    if (format == null || format.isEmpty) return '未知';
+    return format.toUpperCase();
+  }
+
+  String _channelCountLabel(UsbAudioStatus status) {
     final device = _activeUsbDevice(status);
-    if (device == null) return '播放后显示';
-    return '${_supportedRatesLabel(status)} · ${_bitDepthLabel(status)}';
-  }
-
-  String _sourceFileTitle(MyAudioMetadata? song) {
-    if (song == null) return '等待播放';
-    return formatSourceFileName(song.path ?? song.cachePath);
-  }
-
-  String _sourceFileSubtitle(MyAudioMetadata? song) {
-    if (song == null) return '采样率未知 · 格式未知 · 码率未知';
-    final parts = [
-      formatSampleRate(song.samplerate),
-      if (song.format?.isNotEmpty == true)
-        song.format!.toUpperCase()
-      else
-        '格式未知',
-      formatBitrate(song.bitrate),
-    ];
-    return parts.join(' · ');
+    final channels = device?.channelCounts.isNotEmpty == true
+        ? device!.channelCounts.first
+        : null;
+    if (channels == null || channels <= 0) return '未知';
+    return '$channels ch';
   }
 
   String _compactDepthLabel(UsbAudioStatus status) {
@@ -1223,18 +1341,6 @@ String _supportedRatesLabel(UsbAudioStatus status) {
       : device?.sampleRates ?? const <int>[];
   if (rates.isEmpty) return '未知';
   return rates.map(formatSampleRate).join(' / ');
-}
-
-String _exclusiveStatusLabel(UsbAudioStatus status) {
-  if (!status.supported) return '未连接 USB 音频设备';
-  if (status.androidSdk < 34) return '当前系统不支持 USB 独占请求';
-  if (status.preferredBitPerfect && status.preferredSampleRate != null) {
-    return '已请求 USB 独占输出';
-  }
-  if (_activeUsbDevice(status)?.supportsBitPerfectMixer == true) {
-    return '可启用 USB 独占输出';
-  }
-  return '已连接 USB DAC，但未确认支持独占';
 }
 
 String _bitDepthLabel(UsbAudioStatus status) {

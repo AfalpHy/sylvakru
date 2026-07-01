@@ -47,7 +47,8 @@ String formatBitrate(int? bitrate) {
   if (bitrate == null || bitrate <= 0) {
     return '未知';
   }
-  return '${(bitrate / 1000).round()} kbps';
+  final kbps = bitrate >= 100000 ? (bitrate / 1000).round() : bitrate;
+  return '$kbps kbps';
 }
 
 String formatSourceFileName(String? path) {
@@ -63,8 +64,12 @@ String formatOutputPortLabel(UsbAudioStatus status) {
   if (!status.supported) {
     return formatOutputDeviceName(status);
   }
+  final exclusive = usbExclusivePlaybackStateNotifier.value;
+  if (exclusive.active) {
+    return 'USB 独占';
+  }
   final name = _shortOutputName(status);
-  return status.preferredApplied ? '$name · 已应用偏好' : '$name · 系统输出';
+  return status.preferredApplied ? '$name · 已应用偏好' : '$name · USB 输出';
 }
 
 List<int?> buildSampleRateOptions(

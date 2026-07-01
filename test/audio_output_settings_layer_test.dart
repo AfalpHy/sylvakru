@@ -234,6 +234,42 @@ void main() {
     });
 
     usbAudioPreferences.load(const {});
+    usbAudioStatusNotifier.value = const UsbAudioStatus(
+      supported: true,
+      androidSdk: 35,
+      activeDeviceId: 7,
+      preferredApplied: false,
+      preferredSampleRate: null,
+      preferredEncoding: 'pcm_24bit_packed',
+      preferredBitPerfect: false,
+      outputDeviceName: 'USB-Audio - Macaron',
+      outputSampleRate: 44100,
+      outputEncoding: 'pcm_24bit_packed',
+      message: null,
+      devices: [
+        UsbAudioDevice(
+          id: 7,
+          name: 'USB-Audio - Macaron',
+          type: 'usb_headset',
+          address: 'usb_headset',
+          sampleRates: [44100, 48000],
+          encodings: ['pcm_16bit', 'pcm_24bit_packed'],
+          channelCounts: [2],
+          supportedMixerSampleRates: [44100, 48000],
+          supportsBitPerfectMixer: false,
+        ),
+      ],
+    );
+    usbExclusivePlaybackStateNotifier.value = const UsbExclusivePlaybackState(
+      active: true,
+      playing: true,
+      position: Duration.zero,
+      duration: Duration(minutes: 3),
+      sampleRate: 44100,
+      bitDepth: 24,
+      format: 'FLAC',
+      message: null,
+    );
     currentSongNotifier.value = MyAudioMetadata(
       AudioMetadata(
         format: 'FLAC',
@@ -250,8 +286,13 @@ void main() {
     );
 
     expect(find.text('源文件'), findsOneWidget);
-    expect(find.text('TOMOO - LUCKY.flac'), findsOneWidget);
-    expect(find.text('44.1 kHz · FLAC · 822 kbps'), findsOneWidget);
+    expect(find.text('TOMOO - LUCKY.flac'), findsNothing);
+    expect(find.text('FLAC'), findsOneWidget);
+    expect(find.text('44.1 kHz'), findsWidgets);
+    expect(find.text('2 ch'), findsWidgets);
+    expect(find.text('24-bit'), findsWidgets);
+    expect(find.text('PCM'), findsOneWidget);
+    expect(find.text('44.1 kHz · FLAC · 822 kbps'), findsNothing);
     expect(find.text('等待播放'), findsNothing);
   });
 
@@ -302,6 +343,7 @@ void main() {
     expect(find.text('FORMAT'), findsOneWidget);
     expect(find.text('DEPTH'), findsOneWidget);
     expect(find.text('USB ID'), findsOneWidget);
+    expect(find.text('已连接 USB DAC，但未确认支持独占'), findsNothing);
   });
 
   testWidgets('后台稳定性移动到输出格式之后', (tester) async {
@@ -322,5 +364,56 @@ void main() {
     final stabilityTop = tester.getTopLeft(find.text('后台稳定性')).dy;
 
     expect(stabilityTop, greaterThan(outputTop));
+  });
+
+  testWidgets('媒体音量显示真实播放器音量', (tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    usbAudioPreferences.load(const {});
+    volumeNotifier.value = 0.42;
+
+    await tester.pumpWidget(
+      const MaterialApp(home: AudioOutputSettingsLayer()),
+    );
+
+    expect(find.text('42%'), findsOneWidget);
+    expect(find.text('播放开始后检测'), findsNothing);
+  });
+
+  testWidgets('调整前台缓冲区后传输目标实时刷新', (tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    usbAudioPreferences.load(const {});
+    usbExclusivePlaybackStateNotifier.value = const UsbExclusivePlaybackState(
+      active: true,
+      playing: true,
+      position: Duration.zero,
+      duration: Duration(minutes: 3),
+      sampleRate: 96000,
+      bitDepth: 24,
+      format: 'PCM',
+      message: null,
+    );
+    usbTransportTelemetryNotifier.value = UsbTransportTelemetry.inactive();
+
+    await tester.pumpWidget(
+      const MaterialApp(home: AudioOutputSettingsLayer()),
+    );
+
+    usbAudioPreferences.foregroundBufferMsNotifier.value = 350;
+    await tester.pump();
+
+    expect(find.text('350 ms'), findsWidgets);
+    expect(find.text('目标 350 ms'), findsOneWidget);
   });
 }

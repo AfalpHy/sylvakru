@@ -86,10 +86,14 @@ void main() {
     expect(formatOutputDeviceName(status), 'iBasso Macaron');
   });
 
-  test('formatBitrate displays concrete value without source metadata note', () {
-    expect(formatBitrate(3000), '3 kbps');
-    expect(formatBitrate(null), '未知');
-  });
+  test(
+    'formatBitrate displays concrete value without source metadata note',
+    () {
+      expect(formatBitrate(3489), '3489 kbps');
+      expect(formatBitrate(822000), '822 kbps');
+      expect(formatBitrate(null), '未知');
+    },
+  );
 
   test('formatSourceFileName strips directory and keeps only file name', () {
     expect(
@@ -139,8 +143,9 @@ void main() {
       ],
     );
 
-    expect(formatOutputPortLabel(status), 'USB · 系统输出');
+    expect(formatOutputPortLabel(status), 'USB 独占');
     expect(formatOutputPortLabel(status), isNot(contains('真独占')));
+    expect(formatOutputPortLabel(status), isNot(contains('系统输出')));
   });
 
   test('buildSampleRateOptions prefers USB supported mixer rates', () {
