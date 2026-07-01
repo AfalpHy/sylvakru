@@ -13,6 +13,7 @@ import android.media.MediaFormat
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.Locale
@@ -29,17 +30,33 @@ object UsbExclusiveNative {
         alternateSetting: Int,
         endpointAddress: Int,
         maxPacketSize: Int,
+        feedbackEndpointAddress: Int,
+        feedbackMaxPacketSize: Int,
+        interfaceAlreadyClaimed: Boolean,
     ): String?
 
     external fun writePcm(bytes: ByteArray, length: Int): String?
 
+    external fun writeIsoPackets(bytes: ByteArray, packetLengths: IntArray, packetCount: Int): String?
+
+    external fun setIsoPacketSize(packetSize: Int)
+
+    external fun feedbackFramesPerPacketQ16(): Int
+
     external fun close()
 }
+
+private const val NATIVE_USB_EXCLUSIVE_STREAMING_ENABLED = true
+private const val NATIVE_USB_EXCLUSIVE_DISABLED_MESSAGE =
+    "真独占 USB 流式输出暂未启用，已回退到系统 USB 输出。"
+private const val USB_RECIP_INTERFACE = 0x01
+private const val USB_RECIP_ENDPOINT = 0x02
 
 class UsbExclusiveAudioEngine(
     private val context: Context,
     private val emitState: (Map<String, Any?>) -> Unit,
 ) {
+    private val tag = "UsbExclusiveAudioEngine"
     private var worker: Thread? = null
     private var connection: UsbDeviceConnection? = null
     private val paused = AtomicBoolean(false)
@@ -48,6 +65,16 @@ class UsbExclusiveAudioEngine(
     @Volatile private var currentState = inactiveState()
 
     fun capabilities(usbManager: UsbManager, device: UsbDevice?): Map<String, Any?> {
+        if (!NATIVE_USB_EXCLUSIVE_STREAMING_ENABLED) {
+            return capability(
+                available = false,
+                permissionGranted = device?.let { usbManager.hasPermission(it) } ?: false,
+                device = device,
+                target = null,
+                message = NATIVE_USB_EXCLUSIVE_DISABLED_MESSAGE,
+            )
+        }
+
         if (device == null) {
             return capability(
                 available = false,
@@ -79,6 +106,10 @@ class UsbExclusiveAudioEngine(
     ): Map<String, Any?> {
         stop()
 
+        if (!NATIVE_USB_EXCLUSIVE_STREAMING_ENABLED) {
+            return updateState(inactiveState(NATIVE_USB_EXCLUSIVE_DISABLED_MESSAGE))
+        }
+
         if (device == null) {
             return updateState(inactiveState("No USB Audio Class device was found."))
         }
@@ -87,6 +118,10 @@ class UsbExclusiveAudioEngine(
         }
 
         val filePath = arguments["filePath"] as? String
+        val sourceFormat = (arguments["sourceFormat"] as? String)
+            ?.lowercase(Locale.ROOT)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
         if (filePath.isNullOrBlank()) {
             return updateState(inactiveState("Exclusive playback requires a local audio file path."))
         }
@@ -95,14 +130,41 @@ class UsbExclusiveAudioEngine(
         if (!file.exists()) {
             return updateState(inactiveState("Exclusive playback file does not exist: $filePath"))
         }
-        if (!isSupportedFile(filePath)) {
+        Log.i(
+            tag,
+            "start exclusive playback file=${file.name}, sourceFormat=$sourceFormat, size=${file.length()}",
+        )
+
+        if (!isSupportedFile(filePath, sourceFormat)) {
             return updateState(inactiveState("Exclusive playback currently supports FLAC and WAV only."))
         }
 
-        val target = findOutputTarget(device)
-            ?: return updateState(inactiveState("No isochronous USB Audio OUT endpoint was found."))
+        val requestedSampleRate = (arguments["sampleRate"] as? Number)?.toInt()
+        val requestedBitDepth = (arguments["bitDepth"] as? Number)?.toInt()
+        val requestedChannels = 2
         val openedConnection = usbManager.openDevice(device)
             ?: return updateState(inactiveState("Failed to open USB device for exclusive playback."))
+        val descriptors = openedConnection.rawDescriptors
+        val streamingFormats = parseStreamingFormatInfo(descriptors)
+        val target = findOutputTarget(
+            device,
+            streamingFormats = streamingFormats,
+            sampleRate = requestedSampleRate,
+            channels = requestedChannels,
+            bitDepth = requestedBitDepth,
+        )
+            ?: run {
+                openedConnection.close()
+                return updateState(inactiveState("No isochronous USB Audio OUT endpoint was found."))
+            }
+        Log.i(
+            tag,
+            "exclusive target interface=${target.usbInterface.id}, alt=${target.alternateSetting}, " +
+                "endpoint=0x${target.endpoint.address.toString(16)}, maxPacket=${target.endpoint.maxPacketSize}, " +
+                "feedback=${target.feedbackEndpointLabel}, " +
+                "requestedSampleRate=$requestedSampleRate, requestedBitDepth=${requestedBitDepth ?: "auto"}, " +
+                "usbFormat=${target.formatInfo}",
+        )
 
         val openError = UsbExclusiveNative.open(
             openedConnection.fileDescriptor,
@@ -110,10 +172,18 @@ class UsbExclusiveAudioEngine(
             target.alternateSetting,
             target.endpoint.address,
             target.endpoint.maxPacketSize,
+            target.feedbackEndpoint?.address ?: 0,
+            target.feedbackEndpoint?.maxPacketSize ?: 0,
+            false,
         )
         if (openError != null) {
             openedConnection.close()
             return updateState(inactiveState(openError))
+        }
+        Log.i(tag, "native USB exclusive endpoint opened.")
+
+        if (requestedSampleRate != null) {
+            configureUsbAudioClock(openedConnection, device, target, requestedSampleRate)
         }
 
         connection = openedConnection
@@ -127,7 +197,7 @@ class UsbExclusiveAudioEngine(
             "durationMs" to null,
             "sampleRate" to arguments["sampleRate"],
             "bitDepth" to arguments["bitDepth"],
-            "format" to file.extension.lowercase(Locale.ROOT),
+            "format" to (sourceFormat ?: file.extension.lowercase(Locale.ROOT)),
             "message" to "USB exclusive playback prepared.",
         )
         updateState(initialState)
@@ -140,14 +210,20 @@ class UsbExclusiveAudioEngine(
     }
 
     fun pause(): Map<String, Any?> {
+        Log.i(tag, "pause exclusive playback.")
         paused.set(true)
         return updateState(currentState + mapOf("playing" to false, "message" to "Paused."))
     }
 
     fun resume(): Map<String, Any?> {
         if (currentState["active"] != true) {
+            Log.w(tag, "resume ignored because exclusive playback is not active: $currentState")
             return updateState(inactiveState("No exclusive playback is active."))
         }
+        Log.i(
+            tag,
+            "resume exclusive playback position=${currentState["positionMs"]}, wasPaused=${paused.get()}",
+        )
         paused.set(false)
         return updateState(currentState + mapOf("playing" to true, "message" to "Playing."))
     }
@@ -185,6 +261,7 @@ class UsbExclusiveAudioEngine(
         val info = MediaCodec.BufferInfo()
         val startMs = SystemClock.elapsedRealtime()
         var lastPositionEmitMs = 0L
+        var packetizer: PcmIsoPacketizer? = null
 
         try {
             extractor.setDataSource(file.absolutePath)
@@ -202,10 +279,6 @@ class UsbExclusiveAudioEngine(
                 return
             }
 
-            codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(format, null, null, 0)
-            codec.start()
-
             val durationMs = if (format.containsKey(MediaFormat.KEY_DURATION)) {
                 format.getLong(MediaFormat.KEY_DURATION) / 1000
             } else {
@@ -222,20 +295,46 @@ class UsbExclusiveAudioEngine(
                 null
             }
 
+            Log.i(
+                tag,
+                "decoder input format=$format, mime=$mime, sampleRate=$sampleRate, channels=$channels, " +
+                    "durationMs=$durationMs, endpointInterval=${target.endpoint.interval}",
+            )
+
+            if (mime == "audio/raw") {
+                writeRawPcm(extractor, file, format, sampleRate, channels, durationMs, target, startMs)
+                return
+            }
+
+            codec = MediaCodec.createDecoderByType(mime)
+            codec.configure(format, null, null, 0)
+            codec.start()
+
+            if (sampleRate != null && channels != null) {
+                packetizer = createPacketizer(sampleRate, channels, 16, target)
+            }
+
             updateState(
                 currentState + mapOf(
                     "active" to true,
                     "playing" to !paused.get(),
                     "durationMs" to durationMs,
                     "sampleRate" to sampleRate,
-                    "bitDepth" to 16,
+                    "bitDepth" to (target.usbBitResolution ?: 16),
                     "message" to "USB exclusive decoding ${file.name} to ${target.endpointLabel}, channels=$channels.",
                 ),
             )
 
             while (!stopped.get() && !outputDone) {
+                val wasPaused = paused.get()
+                if (wasPaused) {
+                    Log.i(tag, "exclusive worker waiting because playback is paused.")
+                }
                 while (paused.get() && !stopped.get()) {
                     Thread.sleep(25)
+                }
+                if (wasPaused && !stopped.get()) {
+                    Log.i(tag, "exclusive worker resumed.")
                 }
                 if (stopped.get()) break
 
@@ -274,7 +373,14 @@ class UsbExclusiveAudioEngine(
                 if (outputIndex >= 0) {
                     val outputBuffer = codec.getOutputBuffer(outputIndex)
                     if (outputBuffer != null && info.size > 0) {
-                        writeOutputBuffer(outputBuffer, info)
+                        val writer = packetizer
+                            ?: createPacketizer(
+                                sampleRate ?: 48000,
+                                channels ?: 2,
+                                16,
+                                target,
+                            ).also { packetizer = it }
+                        writeOutputBuffer(outputBuffer, info, writer)
                     }
                     if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                         outputDone = true
@@ -311,15 +417,36 @@ class UsbExclusiveAudioEngine(
                     } else {
                         null
                     }
+                    val outputChannels = if (outputFormat.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                        outputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                    } else {
+                        channels
+                    }
+                    val outputBitDepth = bitDepthFromPcmEncoding(pcmEncoding)
+                    Log.i(
+                        tag,
+                        "decoder output format changed: $outputFormat, pcmEncoding=$pcmEncoding, " +
+                            "decoderBitDepth=$outputBitDepth, usbBitDepth=${target.usbBitResolution}",
+                    )
+                    if (outputSampleRate != null && outputChannels != null) {
+                        packetizer?.flush()
+                        packetizer = createPacketizer(
+                            outputSampleRate,
+                            outputChannels,
+                            outputBitDepth,
+                            target,
+                        )
+                    }
                     updateState(
                         currentState + mapOf(
                             "sampleRate" to outputSampleRate,
-                            "bitDepth" to bitDepthFromPcmEncoding(pcmEncoding),
+                            "bitDepth" to (target.usbBitResolution ?: outputBitDepth),
                         ),
                     )
                 }
             }
 
+            packetizer?.flush()
             if (!stopped.get()) {
                 updateState(inactiveState("USB exclusive playback completed."))
             }
@@ -339,15 +466,332 @@ class UsbExclusiveAudioEngine(
         }
     }
 
-    private fun writeOutputBuffer(outputBuffer: ByteBuffer, info: MediaCodec.BufferInfo) {
+    private fun writeRawPcm(
+        extractor: MediaExtractor,
+        file: File,
+        format: MediaFormat,
+        sampleRate: Int?,
+        channels: Int?,
+        durationMs: Long?,
+        target: OutputTarget,
+        startMs: Long,
+    ) {
+        if (sampleRate == null || channels == null) {
+            emitError("Raw PCM stream is missing sample rate or channel count.")
+            return
+        }
+
+        val pcmEncoding = if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+            format.containsKey(MediaFormat.KEY_PCM_ENCODING)
+        ) {
+            format.getInteger(MediaFormat.KEY_PCM_ENCODING)
+        } else {
+            null
+        }
+        val containerBitDepth = if (format.containsKey("bits-per-sample")) {
+            format.getInteger("bits-per-sample")
+        } else {
+            null
+        }
+        val sourceBitDepth = pcmEncoding
+            ?.let { bitDepthFromPcmEncoding(it) }
+            ?: containerBitDepth
+            ?: 16
+        val maxInputSize = if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+            format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE).coerceAtLeast(4096)
+        } else {
+            64 * 1024
+        }
+        val buffer = ByteBuffer.allocate(maxInputSize)
+        val packetizer = createPacketizer(sampleRate, channels, sourceBitDepth, target)
+        var lastPositionEmitMs = 0L
+        var lastSampleTimeUs: Long? = null
+        var rawChunkLogCount = 0
+
+        Log.i(
+            tag,
+            "raw PCM direct path sampleRate=$sampleRate, channels=$channels, " +
+                "sourceBitDepth=$sourceBitDepth, pcmEncoding=$pcmEncoding, " +
+                "containerBitDepth=$containerBitDepth, maxInputSize=$maxInputSize, " +
+                "targetBitDepth=${target.usbBitResolution}",
+        )
+        updateState(
+            currentState + mapOf(
+                "active" to true,
+                "playing" to !paused.get(),
+                "durationMs" to durationMs,
+                "sampleRate" to sampleRate,
+                "bitDepth" to (target.usbBitResolution ?: sourceBitDepth),
+                "message" to "USB exclusive streaming raw PCM ${file.name} to ${target.endpointLabel}.",
+            ),
+        )
+
+        while (!stopped.get()) {
+            val wasPaused = paused.get()
+            if (wasPaused) {
+                Log.i(tag, "exclusive worker waiting because playback is paused.")
+            }
+            while (paused.get() && !stopped.get()) {
+                Thread.sleep(25)
+            }
+            if (wasPaused && !stopped.get()) {
+                Log.i(tag, "exclusive worker resumed.")
+            }
+            if (stopped.get()) break
+
+            buffer.clear()
+            val sampleTimeUs = extractor.sampleTime
+            val sampleSize = extractor.readSampleData(buffer, 0)
+            if (sampleSize < 0) {
+                break
+            }
+            val data = ByteArray(sampleSize)
+            buffer.position(0)
+            buffer.limit(sampleSize)
+            buffer.get(data)
+            if (rawChunkLogCount < 12) {
+                val frameBytes = channels * bytesPerSampleForBitDepth(sourceBitDepth)
+                val frames = if (frameBytes > 0) sampleSize / frameBytes else 0
+                val deltaUs = lastSampleTimeUs?.let { sampleTimeUs - it }
+                Log.i(
+                    tag,
+                    "raw PCM chunk size=$sampleSize, sampleTimeUs=$sampleTimeUs, " +
+                        "deltaUs=${deltaUs ?: "n/a"}, frames=$frames, frameBytes=$frameBytes, " +
+                        "sourceBitDepth=$sourceBitDepth",
+                )
+                rawChunkLogCount++
+            }
+            lastSampleTimeUs = sampleTimeUs
+            packetizer.write(data)
+
+            val positionMs = if (sampleTimeUs > 0) {
+                sampleTimeUs / 1000
+            } else {
+                SystemClock.elapsedRealtime() - startMs
+            }
+            if (positionMs - lastPositionEmitMs >= 250) {
+                lastPositionEmitMs = positionMs
+                updateState(
+                    currentState + mapOf(
+                        "active" to true,
+                        "playing" to !paused.get(),
+                        "positionMs" to positionMs,
+                    ),
+                )
+            }
+            extractor.advance()
+        }
+
+        packetizer.flush()
+        if (!stopped.get()) {
+            updateState(inactiveState("USB exclusive playback completed."))
+        }
+    }
+
+    private fun createPacketizer(
+        sampleRate: Int,
+        channels: Int,
+        bitDepth: Int,
+        target: OutputTarget,
+    ): PcmIsoPacketizer {
+        val inputBytesPerSample = bytesPerSampleForBitDepth(bitDepth)
+        val usbBytesPerSample = target.usbBytesPerSample
+        val usbBitResolution = target.usbBitResolution ?: (usbBytesPerSample * 8)
+        Log.i(
+            tag,
+            "USB PCM packetizer sampleRate=$sampleRate, channels=$channels, " +
+                "decoderBitDepth=$bitDepth, inputBytesPerSample=$inputBytesPerSample, " +
+                "usbBytesPerSample=$usbBytesPerSample, usbBitResolution=$usbBitResolution, " +
+                "packetsPerSecond=${target.packetsPerSecond}, endpointInterval=${target.endpoint.interval}, " +
+                "format=${target.formatInfo}",
+        )
+        val packetBytes = requiredIsoPacketBytes(
+            sampleRate,
+            target.packetsPerSecond,
+            channels,
+            usbBytesPerSample,
+        )
+        UsbExclusiveNative.setIsoPacketSize(packetBytes)
+        val outputIntervalMicroframes = isoIntervalMicroframes(target.endpoint.interval)
+        val feedbackOutputPacketDivisor = target.feedbackEndpoint?.let {
+            val feedbackIntervalMicroframes = isoIntervalMicroframes(it.interval)
+            Log.i(
+                tag,
+                "USB feedback intervals outputMicroframes=$outputIntervalMicroframes, " +
+                    "feedbackMicroframes=$feedbackIntervalMicroframes",
+            )
+            1
+        } ?: 1
+        Log.i(
+            tag,
+            "USB feedback scaling outputIntervalMicroframes=$outputIntervalMicroframes, " +
+                "feedbackDivisor=$feedbackOutputPacketDivisor, feedback=${target.feedbackEndpointLabel}",
+        )
+        return PcmIsoPacketizer(
+            sampleRate,
+            target.packetsPerSecond,
+            channels,
+            inputBytesPerSample,
+            bitDepth,
+            usbBytesPerSample,
+            usbBitResolution,
+            feedbackOutputPacketDivisor,
+            feedbackFramesPerPacketQ16 = target.feedbackEndpoint?.let {
+                { UsbExclusiveNative.feedbackFramesPerPacketQ16() }
+            },
+        ) { data, packetLengths, packetCount ->
+            val error = UsbExclusiveNative.writeIsoPackets(data, packetLengths, packetCount)
+            if (error != null) {
+                throw IllegalStateException(error)
+            }
+        }
+    }
+
+    private fun configureUsbAudioClock(
+        connection: UsbDeviceConnection,
+        device: UsbDevice,
+        target: OutputTarget,
+        sampleRate: Int,
+    ) {
+        val controlInterface = findAudioControlInterface(device)
+        val controlInterfaceNumber = controlInterface?.id ?: target.usbInterface.id
+        val clockSourceId = findUac2ClockSourceId(
+            connection.rawDescriptors,
+            streamingInterfaceNumber = target.usbInterface.id,
+            streamingAlternateSetting = target.alternateSetting,
+        )
+
+        val claimedControl = controlInterface?.let {
+            runCatching { connection.claimInterface(it, true) }.getOrDefault(false)
+        } == true
+        try {
+            if (clockSourceId != null) {
+                readUac2ClockSampleRate(
+                    connection,
+                    clockSourceId,
+                    controlInterfaceNumber,
+                    "before",
+                )
+                val data = byteArrayOf(
+                    (sampleRate and 0xff).toByte(),
+                    ((sampleRate ushr 8) and 0xff).toByte(),
+                    ((sampleRate ushr 16) and 0xff).toByte(),
+                    ((sampleRate ushr 24) and 0xff).toByte(),
+                )
+                val result = connection.controlTransfer(
+                    UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
+                    0x01,
+                    0x01 shl 8,
+                    (clockSourceId shl 8) or controlInterfaceNumber,
+                    data,
+                    data.size,
+                    1000,
+                )
+                Log.i(
+                    tag,
+                    "UAC2 clock SET_CUR sampleRate=$sampleRate, clockSourceId=$clockSourceId, " +
+                    "controlInterface=$controlInterfaceNumber, result=$result",
+                )
+                readUac2ClockSampleRate(
+                    connection,
+                    clockSourceId,
+                    controlInterfaceNumber,
+                    "after",
+                )
+                return
+            }
+
+            val data = byteArrayOf(
+                (sampleRate and 0xff).toByte(),
+                ((sampleRate ushr 8) and 0xff).toByte(),
+                ((sampleRate ushr 16) and 0xff).toByte(),
+            )
+            val result = connection.controlTransfer(
+                UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_CLASS or USB_RECIP_ENDPOINT,
+                0x01,
+                0x01 shl 8,
+                target.endpoint.address,
+                data,
+                data.size,
+                1000,
+            )
+            Log.i(
+                tag,
+                "UAC1 endpoint SET_CUR sampleRate=$sampleRate, endpoint=0x${
+                    target.endpoint.address.toString(16)
+                }, result=$result",
+            )
+        } catch (error: RuntimeException) {
+            Log.w(tag, "USB audio clock configuration failed.", error)
+        } finally {
+            if (claimedControl && controlInterface != null) {
+                runCatching { connection.releaseInterface(controlInterface) }
+            }
+        }
+    }
+
+    private fun readUac2ClockSampleRate(
+        connection: UsbDeviceConnection,
+        clockSourceId: Int,
+        controlInterfaceNumber: Int,
+        label: String,
+    ): Int? {
+        val data = ByteArray(4)
+        val result = connection.controlTransfer(
+            UsbConstants.USB_DIR_IN or UsbConstants.USB_TYPE_CLASS or USB_RECIP_INTERFACE,
+            0x81,
+            0x01 shl 8,
+            (clockSourceId shl 8) or controlInterfaceNumber,
+            data,
+            data.size,
+            1000,
+        )
+        val sampleRate = if (result == 4) {
+            (data[0].toInt() and 0xff) or
+                ((data[1].toInt() and 0xff) shl 8) or
+                ((data[2].toInt() and 0xff) shl 16) or
+                ((data[3].toInt() and 0xff) shl 24)
+        } else {
+            null
+        }
+        Log.i(
+            tag,
+            "UAC2 clock GET_CUR $label result=$result, clockSourceId=$clockSourceId, " +
+                "controlInterface=$controlInterfaceNumber, sampleRate=${sampleRate ?: "n/a"}, " +
+                "raw=${hexPreview(data)}",
+        )
+        return sampleRate
+    }
+
+    private fun hexPreview(data: ByteArray, limit: Int = 16): String =
+        data.take(minOf(data.size, limit)).joinToString(" ") { byte ->
+            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+
+    private fun findAudioControlInterface(device: UsbDevice): UsbInterface? {
+        for (index in 0 until device.interfaceCount) {
+            val usbInterface = device.getInterface(index)
+            if (
+                usbInterface.interfaceClass == UsbConstants.USB_CLASS_AUDIO &&
+                usbInterface.interfaceSubclass == 1
+            ) {
+                return usbInterface
+            }
+        }
+        return null
+    }
+
+    private fun writeOutputBuffer(
+        outputBuffer: ByteBuffer,
+        info: MediaCodec.BufferInfo,
+        packetizer: PcmIsoPacketizer,
+    ) {
         val data = ByteArray(info.size)
         outputBuffer.position(info.offset)
         outputBuffer.limit(info.offset + info.size)
         outputBuffer.get(data)
-        val error = UsbExclusiveNative.writePcm(data, data.size)
-        if (error != null) {
-            throw IllegalStateException(error)
-        }
+        packetizer.write(data)
     }
 
     private fun findAudioTrack(extractor: MediaExtractor): Int {
@@ -361,7 +805,14 @@ class UsbExclusiveAudioEngine(
         return -1
     }
 
-    private fun findOutputTarget(device: UsbDevice): OutputTarget? {
+    private fun findOutputTarget(
+        device: UsbDevice,
+        streamingFormats: Map<Pair<Int, Int>, StreamingFormatInfo> = emptyMap(),
+        sampleRate: Int? = null,
+        channels: Int = 2,
+        bitDepth: Int? = null,
+    ): OutputTarget? {
+        val candidates = mutableListOf<OutputTarget>()
         for (index in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(index)
             if (usbInterface.interfaceClass != UsbConstants.USB_CLASS_AUDIO) {
@@ -373,14 +824,311 @@ class UsbExclusiveAudioEngine(
                     endpoint.direction == UsbConstants.USB_DIR_OUT &&
                     endpoint.type == UsbConstants.USB_ENDPOINT_XFER_ISOC
                 ) {
-                    return OutputTarget(usbInterface, endpoint)
+                    val alt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        usbInterface.alternateSetting
+                    } else {
+                        0
+                    }
+                    candidates += OutputTarget(
+                        usbInterface = usbInterface,
+                        endpoint = endpoint,
+                        feedbackEndpoint = findFeedbackEndpoint(usbInterface),
+                        formatInfo = streamingFormats[usbInterface.id to alt],
+                    )
                 }
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            return null
+        }
+
+        if (sampleRate == null) {
+            return candidates.minWith(compareBy<OutputTarget> {
+                it.endpoint.maxPacketSize
+            }.thenBy { it.alternateSetting })
+        }
+
+        val sortedCandidates = candidates.sortedWith(compareBy<OutputTarget> {
+            it.endpoint.maxPacketSize
+        }.thenBy { it.alternateSetting })
+        val fittingCandidates = sortedCandidates.filter {
+            it.endpoint.maxPacketSize >= requiredIsoPacketBytes(
+                sampleRate,
+                it.packetsPerSecond,
+                channels,
+                it.usbBytesPerSample,
+            )
+        }
+        val exactBitDepthCandidates = bitDepth?.let { requested ->
+            fittingCandidates.filter { it.usbBitResolution == requested }
+        } ?: emptyList()
+        val autoBitDepthCandidates = if (bitDepth == null) {
+            listOf(24, 32, 16)
+                .firstNotNullOfOrNull { preferred ->
+                    fittingCandidates.filter { it.usbBitResolution == preferred }.takeIf { it.isNotEmpty() }
+                }
+                ?: fittingCandidates
+        } else {
+            emptyList()
+        }
+        val selectedPool = when {
+            exactBitDepthCandidates.isNotEmpty() -> exactBitDepthCandidates
+            autoBitDepthCandidates.isNotEmpty() -> autoBitDepthCandidates
+            fittingCandidates.isNotEmpty() -> fittingCandidates
+            else -> sortedCandidates
+        }
+        val selected = selectedPool.minWith(
+            compareBy<OutputTarget> { it.usbBytesPerSample }
+                .thenBy { it.endpoint.maxPacketSize }
+                .thenBy { it.alternateSetting },
+        )
+        val selectedRequiredPacketBytes = requiredIsoPacketBytes(
+            sampleRate,
+            selected.packetsPerSecond,
+            channels,
+            selected.usbBytesPerSample,
+        )
+        if (selected.endpoint.maxPacketSize < selectedRequiredPacketBytes) {
+            Log.w(
+                tag,
+                "selected USB alt may be too small: requiredPacketBytes=$selectedRequiredPacketBytes, " +
+                    "selectedMaxPacket=${selected.endpoint.maxPacketSize}, sampleRate=$sampleRate, " +
+                    "channels=$channels, bitDepth=${bitDepth ?: "auto"}",
+            )
+        }
+        Log.i(
+            tag,
+            "selected USB alt=${selected.alternateSetting}, maxPacket=${selected.endpoint.maxPacketSize}, " +
+                "requiredPacketBytes=$selectedRequiredPacketBytes, " +
+                "requestedBitDepth=${bitDepth ?: "auto"}, selectedBitDepth=${selected.usbBitResolution}, " +
+                "packetsPerSecond=${selected.packetsPerSecond}, candidates=${sortedCandidates.joinToString { candidate ->
+                    val required = requiredIsoPacketBytes(
+                        sampleRate,
+                        candidate.packetsPerSecond,
+                        channels,
+                        candidate.usbBytesPerSample,
+                    )
+                    "alt=${candidate.alternateSetting}/max=${candidate.endpoint.maxPacketSize}/" +
+                        "outAttr=0x${candidate.endpoint.attributes.toString(16)}/" +
+                        "feedback=${candidate.feedbackEndpointLabel}/" +
+                        "usbBytes=${candidate.usbBytesPerSample}/bits=${candidate.usbBitResolution}/" +
+                        "required=$required/format=${candidate.formatInfo}"
+                }}",
+        )
+        return selected
+    }
+
+    private fun findFeedbackEndpoint(usbInterface: UsbInterface): UsbEndpoint? {
+        for (endpointIndex in 0 until usbInterface.endpointCount) {
+            val endpoint = usbInterface.getEndpoint(endpointIndex)
+            val isIsochronous = endpoint.type == UsbConstants.USB_ENDPOINT_XFER_ISOC
+            val isInput = endpoint.direction == UsbConstants.USB_DIR_IN
+            val usageType = endpoint.attributes and 0x30
+            if (isIsochronous && isInput && usageType == 0x10) {
+                return endpoint
             }
         }
         return null
     }
 
-    private fun isSupportedFile(filePath: String): Boolean {
+    private fun parseStreamingFormatInfo(descriptors: ByteArray?): Map<Pair<Int, Int>, StreamingFormatInfo> {
+        if (descriptors == null) {
+            Log.w(tag, "USB raw descriptors unavailable; cannot parse AS format descriptors.")
+            return emptyMap()
+        }
+
+        val formats = mutableMapOf<Pair<Int, Int>, StreamingFormatInfo>()
+        var offset = 0
+        var currentInterfaceNumber = -1
+        var currentAlternateSetting = -1
+        var currentInterfaceSubclass = -1
+        var currentInterfaceProtocol = -1
+
+        while (offset + 1 < descriptors.size) {
+            val length = descriptors[offset].toInt() and 0xff
+            val descriptorType = descriptors[offset + 1].toInt() and 0xff
+            if (length < 2 || offset + length > descriptors.size) {
+                break
+            }
+
+            if (descriptorType == 0x04 && length >= 9) {
+                currentInterfaceNumber = descriptors[offset + 2].toInt() and 0xff
+                currentAlternateSetting = descriptors[offset + 3].toInt() and 0xff
+                currentInterfaceSubclass = descriptors[offset + 6].toInt() and 0xff
+                currentInterfaceProtocol = descriptors[offset + 8].toInt() and 0xff
+            } else if (
+                descriptorType == 0x24 &&
+                currentInterfaceSubclass == 2 &&
+                length >= 3
+            ) {
+                val key = currentInterfaceNumber to currentAlternateSetting
+                val subtype = descriptors[offset + 2].toInt() and 0xff
+                val existing = formats[key] ?: StreamingFormatInfo(
+                    interfaceNumber = currentInterfaceNumber,
+                    alternateSetting = currentAlternateSetting,
+                    protocol = currentInterfaceProtocol,
+                )
+                when (subtype) {
+                    0x01 -> {
+                        val terminalLink = if (length >= 4) {
+                            descriptors[offset + 3].toInt() and 0xff
+                        } else {
+                            existing.terminalLink
+                        }
+                        val formatType = if (length >= 6) {
+                            descriptors[offset + 5].toInt() and 0xff
+                        } else {
+                            existing.formatType
+                        }
+                        val channels = if (length >= 11) {
+                            descriptors[offset + 10].toInt() and 0xff
+                        } else {
+                            existing.channels
+                        }
+                        formats[key] = existing.copy(
+                            terminalLink = terminalLink,
+                            formatType = formatType,
+                            channels = channels,
+                        )
+                    }
+                    0x02 -> {
+                        if (length >= 6) {
+                            formats[key] = existing.copy(
+                                formatType = descriptors[offset + 3].toInt() and 0xff,
+                                subslotSize = descriptors[offset + 4].toInt() and 0xff,
+                                bitResolution = descriptors[offset + 5].toInt() and 0xff,
+                            )
+                        } else if (length >= 7) {
+                            formats[key] = existing.copy(
+                                formatType = descriptors[offset + 3].toInt() and 0xff,
+                                channels = descriptors[offset + 4].toInt() and 0xff,
+                                subslotSize = descriptors[offset + 5].toInt() and 0xff,
+                                bitResolution = descriptors[offset + 6].toInt() and 0xff,
+                            )
+                        }
+                    }
+                }
+            }
+
+            offset += length
+        }
+
+        Log.i(
+            tag,
+            "USB AS formats parsed: ${formats.values.sortedWith(
+                compareBy<StreamingFormatInfo> { it.interfaceNumber }.thenBy { it.alternateSetting },
+            ).joinToString()}",
+        )
+        return formats
+    }
+
+    private fun findUac2ClockSourceId(
+        descriptors: ByteArray?,
+        streamingInterfaceNumber: Int,
+        streamingAlternateSetting: Int,
+    ): Int? {
+        if (descriptors == null) {
+            return null
+        }
+
+        var offset = 0
+        var currentInterfaceNumber = -1
+        var currentAlternateSetting = -1
+        var currentInterfaceSubclass = -1
+        var terminalLink: Int? = null
+        var firstClockSourceId: Int? = null
+        val inputTerminalClockIds = mutableMapOf<Int, Int>()
+        val outputTerminalClockIds = mutableMapOf<Int, Int>()
+
+        while (offset + 1 < descriptors.size) {
+            val length = descriptors[offset].toInt() and 0xff
+            val descriptorType = descriptors[offset + 1].toInt() and 0xff
+            if (length < 2 || offset + length > descriptors.size) {
+                break
+            }
+
+            if (descriptorType == 0x04 && length >= 9) {
+                currentInterfaceNumber = descriptors[offset + 2].toInt() and 0xff
+                currentAlternateSetting = descriptors[offset + 3].toInt() and 0xff
+                currentInterfaceSubclass = descriptors[offset + 6].toInt() and 0xff
+            } else if (descriptorType == 0x24 && length >= 3) {
+                val subtype = descriptors[offset + 2].toInt() and 0xff
+                when (subtype) {
+                    0x0a -> {
+                        if (length >= 4 && firstClockSourceId == null) {
+                            firstClockSourceId = descriptors[offset + 3].toInt() and 0xff
+                        }
+                    }
+                    0x02 -> {
+                        if (length >= 8) {
+                            val terminalId = descriptors[offset + 3].toInt() and 0xff
+                            inputTerminalClockIds[terminalId] =
+                                descriptors[offset + 7].toInt() and 0xff
+                        }
+                    }
+                    0x03 -> {
+                        if (length >= 9) {
+                            val terminalId = descriptors[offset + 3].toInt() and 0xff
+                            outputTerminalClockIds[terminalId] =
+                                descriptors[offset + 8].toInt() and 0xff
+                        }
+                    }
+                    0x01 -> {
+                        if (
+                            currentInterfaceNumber == streamingInterfaceNumber &&
+                            currentAlternateSetting == streamingAlternateSetting &&
+                            currentInterfaceSubclass == 2 &&
+                            length >= 4
+                        ) {
+                            terminalLink = descriptors[offset + 3].toInt() and 0xff
+                        }
+                    }
+                }
+            }
+
+            offset += length
+        }
+
+        val linkedTerminal = terminalLink
+        val result = linkedTerminal?.let {
+            inputTerminalClockIds[it] ?: outputTerminalClockIds[it]
+        } ?: firstClockSourceId
+        Log.i(
+            tag,
+            "parsed UAC2 clock source: streamingInterface=$streamingInterfaceNumber, " +
+                "alt=$streamingAlternateSetting, terminalLink=$terminalLink, clockSourceId=$result",
+        )
+        return result
+    }
+
+    private fun requiredIsoPacketBytes(
+        sampleRate: Int,
+        packetsPerSecond: Int,
+        channels: Int,
+        bytesPerSample: Int,
+    ): Int {
+        val maxFramesPerPacket = (sampleRate + packetsPerSecond - 1) / packetsPerSecond
+        return maxFramesPerPacket * channels * bytesPerSample
+    }
+
+    private fun isoIntervalMicroframes(interval: Int): Int {
+        return 1 shl (interval.coerceIn(1, 4) - 1)
+    }
+
+    private fun bytesPerSampleForBitDepth(bitDepth: Int): Int {
+        return when {
+            bitDepth <= 8 -> 1
+            bitDepth <= 16 -> 2
+            bitDepth <= 24 -> 3
+            else -> 4
+        }
+    }
+
+    private fun isSupportedFile(filePath: String, sourceFormat: String?): Boolean {
+        if (sourceFormat == "flac" || sourceFormat == "wav" || sourceFormat == "wave") {
+            return true
+        }
         val lower = filePath.lowercase(Locale.ROOT)
         return lower.endsWith(".flac") || lower.endsWith(".wav") || lower.endsWith(".wave")
     }
@@ -443,6 +1191,8 @@ class UsbExclusiveAudioEngine(
     private data class OutputTarget(
         val usbInterface: UsbInterface,
         val endpoint: UsbEndpoint,
+        val feedbackEndpoint: UsbEndpoint? = null,
+        val formatInfo: StreamingFormatInfo? = null,
     ) {
         val alternateSetting: Int
             get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -455,5 +1205,264 @@ class UsbExclusiveAudioEngine(
             get() = "interface=${usbInterface.id}, alt=$alternateSetting, endpoint=0x${
                 endpoint.address.toString(16)
             }"
+
+        val feedbackEndpointLabel: String
+            get() = feedbackEndpoint?.let {
+                "0x${it.address.toString(16)}/max=${it.maxPacketSize}/interval=${it.interval}/attr=0x${
+                    it.attributes.toString(16)
+                }"
+            } ?: "none"
+
+        val packetsPerSecond: Int
+            get() {
+                if (usbInterface.interfaceProtocol == 32) {
+                    val interval = endpoint.interval.coerceIn(1, 4)
+                    return 8000 / (1 shl (interval - 1))
+                }
+                return 1000
+            }
+
+        val usbBytesPerSample: Int
+            get() = formatInfo?.subslotSize?.takeIf { it > 0 } ?: 2
+
+        val usbBitResolution: Int?
+            get() = formatInfo?.bitResolution?.takeIf { it > 0 }
+    }
+
+    private data class StreamingFormatInfo(
+        val interfaceNumber: Int,
+        val alternateSetting: Int,
+        val protocol: Int,
+        val terminalLink: Int? = null,
+        val formatType: Int? = null,
+        val channels: Int? = null,
+        val subslotSize: Int? = null,
+        val bitResolution: Int? = null,
+    )
+
+    private class PcmIsoPacketizer(
+        private val sampleRate: Int,
+        private val packetsPerSecond: Int,
+        channels: Int,
+        private val inputBytesPerSample: Int,
+        private val inputBitDepth: Int,
+        private val usbBytesPerSample: Int,
+        private val usbBitResolution: Int,
+        private val feedbackOutputPacketDivisor: Int,
+        private val feedbackFramesPerPacketQ16: (() -> Int)? = null,
+        private val writePackets: (ByteArray, IntArray, Int) -> Unit,
+    ) {
+        private val pending = ByteArrayOutputStream()
+        private val transfer = ByteArrayOutputStream()
+        private val transferPacketLengths = IntArray(16)
+        private val bytesPerFrame = channels * usbBytesPerSample
+        private val inputBytesPerFrame = channels * inputBytesPerSample
+        private var sampleRemainder = 0
+        private var feedbackRemainderQ16 = 0L
+        private var transferPacketCount = 0
+        private var packetLogCount = 0
+        private var feedbackRejectLogCount = 0
+        private var pcmPreviewLogged = false
+        private var pcmPreviewAttempts = 0
+
+        fun write(data: ByteArray) {
+            val converted = convertPcmToUsbSlots(data)
+            if (!pcmPreviewLogged) {
+                pcmPreviewAttempts++
+                val forcePreview = pcmPreviewAttempts >= 64
+                if (hasAudibleSamples(data) || forcePreview) {
+                    pcmPreviewLogged = true
+                    logPcmPreview(
+                        data,
+                        converted,
+                        if (forcePreview) "forced-after-silence" else "first-nonzero",
+                    )
+                }
+            }
+            pending.write(converted)
+            drain(fullPacketsOnly = true)
+        }
+
+        fun flush() {
+            drain(fullPacketsOnly = false)
+        }
+
+        private fun drain(fullPacketsOnly: Boolean) {
+            while (pending.size() > 0) {
+                val packetBytes = nextPacketBytes()
+                if (fullPacketsOnly && pending.size() < packetBytes) {
+                    return
+                }
+                val source = pending.toByteArray()
+                val length = minOf(packetBytes, source.size)
+                val packet = ByteArray(packetBytes)
+                System.arraycopy(source, 0, packet, 0, length)
+                pending.reset()
+                if (source.size > length) {
+                    pending.write(source, length, source.size - length)
+                }
+                if (packetLogCount < 5) {
+                    ++packetLogCount
+                    Log.d(
+                        "UsbExclusiveAudioEngine",
+                        "USB PCM packet bytes=${packet.size}, filled=$length",
+                    )
+                }
+                transfer.write(packet)
+                transferPacketLengths[transferPacketCount] = packet.size
+                transferPacketCount++
+                if (transferPacketCount >= transferPacketLengths.size) {
+                    flushTransfer()
+                }
+            }
+
+            if (!fullPacketsOnly) {
+                flushTransfer()
+            }
+        }
+
+        private fun flushTransfer() {
+            if (transferPacketCount == 0) {
+                return
+            }
+            writePackets(
+                transfer.toByteArray(),
+                transferPacketLengths.copyOf(transferPacketCount),
+                transferPacketCount,
+            )
+            transfer.reset()
+            transferPacketCount = 0
+        }
+
+        private fun nextPacketBytes(): Int {
+            val feedbackQ16 = feedbackFramesPerPacketQ16?.invoke() ?: 0
+            if (feedbackQ16 > 0) {
+                val outputFeedbackQ16 = feedbackQ16 / feedbackOutputPacketDivisor
+                val nominalFramesQ16 = ((sampleRate.toLong() shl 16) / packetsPerSecond).toInt()
+                val minFeedbackQ16 = nominalFramesQ16 - (nominalFramesQ16 / 8)
+                val maxFeedbackQ16 = nominalFramesQ16 + (nominalFramesQ16 / 2)
+                if (outputFeedbackQ16 in minFeedbackQ16..maxFeedbackQ16) {
+                    feedbackRemainderQ16 += outputFeedbackQ16.toLong()
+                    val frames = (feedbackRemainderQ16 ushr 16).toInt()
+                    feedbackRemainderQ16 = feedbackRemainderQ16 and 0xffff
+                    if (frames > 0) {
+                        return maxOf(bytesPerFrame, frames * bytesPerFrame)
+                    }
+                } else if (feedbackRejectLogCount < 8) {
+                    ++feedbackRejectLogCount
+                    Log.w(
+                        "UsbExclusiveAudioEngine",
+                        "USB feedback ignored outputFrames=${q16ToFrames(outputFeedbackQ16)}, " +
+                            "nominalFrames=${q16ToFrames(nominalFramesQ16)}, " +
+                            "sampleRate=$sampleRate, packetsPerSecond=$packetsPerSecond",
+                    )
+                }
+            }
+
+            sampleRemainder += sampleRate
+            val frames = sampleRemainder / packetsPerSecond
+            sampleRemainder %= packetsPerSecond
+            return maxOf(bytesPerFrame, frames * bytesPerFrame)
+        }
+
+        private fun q16ToFrames(value: Int): String =
+            String.format(Locale.US, "%.6f", value.toDouble() / 65536.0)
+
+        private fun convertPcmToUsbSlots(data: ByteArray): ByteArray {
+            if (inputBytesPerSample == usbBytesPerSample && inputBitDepth == usbBitResolution) {
+                return data
+            }
+
+            val frames = data.size / inputBytesPerFrame
+            val output = ByteArray(frames * bytesPerFrame)
+            var inputOffset = 0
+            var outputOffset = 0
+            repeat(frames) {
+                repeat(inputBytesPerFrame / inputBytesPerSample) {
+                    val sample = readSignedLittleEndian(data, inputOffset, inputBytesPerSample, inputBitDepth)
+                    val shifted = if (usbBitResolution >= inputBitDepth) {
+                        sample shl (usbBitResolution - inputBitDepth)
+                    } else {
+                        sample shr (inputBitDepth - usbBitResolution)
+                    }
+                    writeLittleEndian(output, outputOffset, usbBytesPerSample, shifted)
+                    inputOffset += inputBytesPerSample
+                    outputOffset += usbBytesPerSample
+                }
+            }
+            return output
+        }
+
+        private fun hasAudibleSamples(input: ByteArray): Boolean {
+            val frames = input.size / inputBytesPerFrame
+            val samplesPerFrame = inputBytesPerFrame / inputBytesPerSample
+            val samplesToInspect = minOf(4096, frames * samplesPerFrame)
+            var sumAbs = 0L
+            for (index in 0 until samplesToInspect) {
+                val offset = index * inputBytesPerSample
+                val sample = readSignedLittleEndian(input, offset, inputBytesPerSample, inputBitDepth)
+                val abs = kotlin.math.abs(sample.toLong())
+                sumAbs += abs
+                if (abs > 512) {
+                    return true
+                }
+            }
+            return samplesToInspect > 0 && (sumAbs / samplesToInspect) > 64
+        }
+
+        private fun logPcmPreview(input: ByteArray, converted: ByteArray, reason: String) {
+            val frames = input.size / inputBytesPerFrame
+            val samplesPerFrame = inputBytesPerFrame / inputBytesPerSample
+            val samplesToInspect = minOf(4096, frames * samplesPerFrame)
+            var minSample = 0
+            var maxSample = 0
+            var sumAbs = 0L
+            for (index in 0 until samplesToInspect) {
+                val offset = index * inputBytesPerSample
+                val sample = readSignedLittleEndian(input, offset, inputBytesPerSample, inputBitDepth)
+                if (index == 0 || sample < minSample) minSample = sample
+                if (index == 0 || sample > maxSample) maxSample = sample
+                sumAbs += kotlin.math.abs(sample.toLong())
+            }
+            val averageAbs = if (samplesToInspect > 0) sumAbs / samplesToInspect else 0
+            Log.i(
+                "UsbExclusiveAudioEngine",
+                "USB PCM preview reason=$reason, inputBytes=${input.size}, convertedBytes=${converted.size}, frames=$frames, " +
+                    "inputBitDepth=$inputBitDepth, usbBytesPerSample=$usbBytesPerSample, " +
+                    "usbBitResolution=$usbBitResolution, min=$minSample, max=$maxSample, avgAbs=$averageAbs, " +
+                    "inputHead=${input.toHexPreview()}, usbHead=${converted.toHexPreview()}",
+            )
+        }
+
+        private fun ByteArray.toHexPreview(limit: Int = 64): String {
+            return take(minOf(size, limit)).joinToString(" ") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+        }
+
+        private fun readSignedLittleEndian(
+            data: ByteArray,
+            offset: Int,
+            bytes: Int,
+            bitDepth: Int,
+        ): Int {
+            var value = 0
+            for (index in 0 until bytes) {
+                value = value or ((data[offset + index].toInt() and 0xff) shl (index * 8))
+            }
+            val shift = (32 - bitDepth).coerceIn(0, 31)
+            return (value shl shift) shr shift
+        }
+
+        private fun writeLittleEndian(
+            data: ByteArray,
+            offset: Int,
+            bytes: Int,
+            value: Int,
+        ) {
+            for (index in 0 until bytes) {
+                data[offset + index] = ((value ushr (index * 8)) and 0xff).toByte()
+            }
+        }
     }
 }
