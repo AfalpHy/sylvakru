@@ -30,7 +30,11 @@ String formatOutputSampleRate(UsbAudioStatus status) {
 
 String formatOutputDeviceName(UsbAudioStatus status) {
   if (!status.supported) {
-    return status.outputDeviceName ?? 'Android';
+    final name = status.outputDeviceName?.toLowerCase();
+    if (name == null || name.contains('speaker') || name.contains('扬声器')) {
+      return '扬声器';
+    }
+    return status.outputDeviceName!;
   }
   final device = _activeUsbDevice(status);
   if (device != null) {
@@ -43,7 +47,24 @@ String formatBitrate(int? bitrate) {
   if (bitrate == null || bitrate <= 0) {
     return '未知';
   }
-  return '约 ${(bitrate / 1000).round()} kbps（源文件元数据）';
+  return '${(bitrate / 1000).round()} kbps';
+}
+
+String formatSourceFileName(String? path) {
+  if (path == null || path.isEmpty) {
+    return '未知';
+  }
+  final normalized = path.replaceAll('\\', '/');
+  final parts = normalized.split('/');
+  return parts.isEmpty ? normalized : parts.last;
+}
+
+String formatOutputPortLabel(UsbAudioStatus status) {
+  if (!status.supported) {
+    return formatOutputDeviceName(status);
+  }
+  final name = _shortOutputName(status);
+  return status.preferredApplied ? '$name · 已应用偏好' : '$name · 系统输出';
 }
 
 List<int?> buildSampleRateOptions(
@@ -794,11 +815,11 @@ class _InfoRow {
 String _shortOutputName(UsbAudioStatus status) {
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active) {
-    return 'USB 真独占';
+    return 'USB';
   }
 
   if (!status.supported) {
-    return status.outputDeviceName ?? 'Android';
+    return formatOutputDeviceName(status);
   }
   final device = _activeUsbDevice(status);
   if (device != null) return device.name;
@@ -867,22 +888,11 @@ String _outputEncodingLabel(UsbAudioStatus status) {
 }
 
 String _outputPortLabel(UsbAudioStatus status) {
-  if (!status.supported) {
-    return status.outputDeviceName ?? 'Android';
-  }
-  final name = _shortOutputName(status);
-  return status.preferredApplied ? '$name · 已应用偏好' : '$name · 系统输出';
+  return formatOutputPortLabel(status);
 }
 
 String _sourcePathLabel(MyAudioMetadata? song) {
-  final path = song?.cachePath ?? song?.path;
-  if (path == null || path.isEmpty) {
-    return '未知';
-  }
-  if (path.length <= 48) {
-    return path;
-  }
-  return '...${path.substring(path.length - 45)}';
+  return formatSourceFileName(song?.path ?? song?.cachePath);
 }
 
 Color _chipColor(Color foreground) {

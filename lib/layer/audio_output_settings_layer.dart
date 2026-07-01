@@ -7,6 +7,7 @@ import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 import 'package:sylvakru/base/services/usb_audio_service.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/audio_output_panel.dart';
+import 'package:sylvakru/base/widgets/my_sheet.dart';
 import 'package:sylvakru/base/widgets/my_switch.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
@@ -863,45 +864,42 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
   }) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Material(
-          color: menuColor.value,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          clipBehavior: Clip.antiAlias,
-          child: SafeArea(
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
-              children: [
-                ListTile(
-                  title: Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
+        return MySheet(
+          ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
+            children: [
+              ListTile(
+                title: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                for (final value in values)
-                  ValueListenableBuilder<T>(
-                    valueListenable: notifier,
-                    builder: (context, currentValue, _) {
-                      return ListTile(
-                        title: Text(label(value)),
-                        trailing: currentValue == value
-                            ? Icon(
-                                Icons.check_rounded,
-                                color: highlightTextColor.value,
-                              )
-                            : null,
-                        onTap: () {
-                          notifier.value = value;
-                          setting.save();
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
-              ],
-            ),
+              ),
+              for (final value in values)
+                ValueListenableBuilder<T>(
+                  valueListenable: notifier,
+                  builder: (context, currentValue, _) {
+                    return ListTile(
+                      title: Text(label(value)),
+                      trailing: currentValue == value
+                          ? Icon(
+                              Icons.check_rounded,
+                              color: highlightTextColor.value,
+                            )
+                          : null,
+                      onTap: () {
+                        notifier.value = value;
+                        setting.save();
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+            ],
           ),
         );
       },
@@ -1084,11 +1082,11 @@ UsbAudioDevice? _activeUsbDevice(UsbAudioStatus status) {
 String _shortOutputName(UsbAudioStatus status) {
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active) {
-    return 'USB 真独占';
+    return 'USB';
   }
 
   if (!status.supported) {
-    return status.outputDeviceName ?? 'Android';
+    return formatOutputDeviceName(status);
   }
   final device = _activeUsbDevice(status);
   if (device != null) return device.name;

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/usb_audio_service.dart';
-import 'package:sylvakru/base/widgets/audio_output_panel.dart';
 
 class UsbAudioEventListener extends StatefulWidget {
   final Widget child;
@@ -14,8 +12,6 @@ class UsbAudioEventListener extends StatefulWidget {
 
 class _UsbAudioEventListenerState extends State<UsbAudioEventListener> {
   UsbAudioDeviceEvent? _lastEvent;
-  int? _lastPromptedDeviceId;
-  bool _showingPrompt = false;
 
   @override
   void initState() {
@@ -40,7 +36,6 @@ class _UsbAudioEventListenerState extends State<UsbAudioEventListener> {
       if (!mounted) return;
       switch (event.type) {
         case UsbAudioDeviceEventType.added:
-          _showDetectedPrompt(event);
           break;
         case UsbAudioDeviceEventType.removed:
           _showRemovedMessage();
@@ -49,26 +44,7 @@ class _UsbAudioEventListenerState extends State<UsbAudioEventListener> {
     });
   }
 
-  Future<void> _showDetectedPrompt(UsbAudioDeviceEvent event) async {
-    if (_showingPrompt || event.status.supported == false) {
-      return;
-    }
-    if (event.deviceId != null && event.deviceId == _lastPromptedDeviceId) {
-      return;
-    }
-
-    _showingPrompt = true;
-    _lastPromptedDeviceId = event.deviceId;
-    await showUsbAudioDetectedSheet(
-      context,
-      event.status,
-      currentSongNotifier.value,
-    );
-    _showingPrompt = false;
-  }
-
   void _showRemovedMessage() {
-    _lastPromptedDeviceId = null;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       const SnackBar(
         content: Text('USB DAC 已断开，已恢复 Android 系统输出'),

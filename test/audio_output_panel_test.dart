@@ -36,6 +36,25 @@ void main() {
     expect(formatOutputSampleRate(status), '48 kHz');
   });
 
+  test('formatOutputDeviceName shows speaker for system speaker output', () {
+    const status = UsbAudioStatus(
+      supported: false,
+      androidSdk: 35,
+      activeDeviceId: null,
+      preferredApplied: false,
+      preferredSampleRate: null,
+      preferredEncoding: null,
+      preferredBitPerfect: false,
+      outputDeviceName: '内置扬声器',
+      outputSampleRate: 48000,
+      outputEncoding: 'pcm_16bit',
+      message: null,
+      devices: [],
+    );
+
+    expect(formatOutputDeviceName(status), '扬声器');
+  });
+
   test('formatOutputDeviceName prefers connected USB device name', () {
     const status = UsbAudioStatus(
       supported: true,
@@ -67,9 +86,61 @@ void main() {
     expect(formatOutputDeviceName(status), 'iBasso Macaron');
   });
 
-  test('formatBitrate marks tiny metadata bitrate clearly', () {
-    expect(formatBitrate(3000), '约 3 kbps（源文件元数据）');
+  test('formatBitrate displays concrete value without source metadata note', () {
+    expect(formatBitrate(3000), '3 kbps');
     expect(formatBitrate(null), '未知');
+  });
+
+  test('formatSourceFileName strips directory and keeps only file name', () {
+    expect(
+      formatSourceFileName('/storage/emulated/0/Music/TOMOO - LUCKY.flac'),
+      'TOMOO - LUCKY.flac',
+    );
+    expect(formatSourceFileName(r'D:\Music\demo.wav'), 'demo.wav');
+    expect(formatSourceFileName(null), '未知');
+  });
+
+  test('formatOutputPortLabel removes true exclusive wording', () {
+    usbExclusivePlaybackStateNotifier.value = const UsbExclusivePlaybackState(
+      active: true,
+      playing: true,
+      position: Duration.zero,
+      duration: null,
+      sampleRate: 48000,
+      bitDepth: 24,
+      format: 'flac',
+      message: null,
+    );
+
+    const status = UsbAudioStatus(
+      supported: true,
+      androidSdk: 35,
+      activeDeviceId: 7,
+      preferredApplied: false,
+      preferredSampleRate: null,
+      preferredEncoding: null,
+      preferredBitPerfect: false,
+      outputDeviceName: 'USB-Audio - Macaron',
+      outputSampleRate: 48000,
+      outputEncoding: 'pcm_24bit_packed',
+      message: null,
+      devices: [
+        UsbAudioDevice(
+          id: 7,
+          name: 'USB-Audio - Macaron',
+          type: 'usb_device',
+          address: 'dac',
+          sampleRates: [48000],
+          encodings: ['pcm_24bit_packed'],
+          channelCounts: [2],
+          supportedMixerSampleRates: [48000],
+          supportsBitPerfectMixer: true,
+        ),
+      ],
+    );
+
+    expect(formatOutputPortLabel(status), 'USB · 系统输出');
+    expect(formatOutputPortLabel(status), isNot(contains('真独占')));
   });
 
   test('buildSampleRateOptions prefers USB supported mixer rates', () {
