@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/data/setting.dart';
+import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 import 'package:sylvakru/base/services/usb_audio_service.dart';
@@ -15,6 +17,54 @@ import 'package:sylvakru/layer/settings_layer.dart';
 import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
 
 enum AudioOutputSettingsPageKind { overview, fixedSampleRate, dsdMode }
+
+enum _TransportHealth { idle, paused, stable, low, underrun }
+
+_TransportHealth _transportHealth({
+  required bool active,
+  required bool playing,
+  required int levelMs,
+  required int? minimumMs,
+  required int targetMs,
+  required int underrunCount,
+}) {
+  if (!active) {
+    return _TransportHealth.idle;
+  }
+  if (!playing) {
+    return _TransportHealth.paused;
+  }
+  if (underrunCount > 0) {
+    return _TransportHealth.underrun;
+  }
+
+  final lowWatermark = (targetMs * 0.35).round().clamp(20, 250);
+  if (levelMs < lowWatermark ||
+      (minimumMs != null && minimumMs < lowWatermark)) {
+    return _TransportHealth.low;
+  }
+  return _TransportHealth.stable;
+}
+
+String _transportHealthLabel(_TransportHealth health) {
+  return switch (health) {
+    _TransportHealth.idle => '待机',
+    _TransportHealth.paused => '暂停',
+    _TransportHealth.stable => '稳定',
+    _TransportHealth.low => '偏低',
+    _TransportHealth.underrun => '欠载',
+  };
+}
+
+Color _transportHealthAccent(_TransportHealth health) {
+  return switch (health) {
+    _TransportHealth.stable => const Color(0xFF50D890),
+    _TransportHealth.low => const Color(0xFFFFB454),
+    _TransportHealth.underrun => const Color(0xFFFF6B6B),
+    _TransportHealth.idle ||
+    _TransportHealth.paused => highlightTextColor.value,
+  };
+}
 
 class AudioOutputSettingsLayer extends StatefulWidget {
   final AudioOutputSettingsPageKind pageKind;
@@ -115,33 +165,10 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
             const SizedBox(height: 12),
             _transportStatusCard(status),
             const SizedBox(height: 18),
-            _sectionTitle('后台稳定性'),
-            _settingsCard(
-              children: [
-                _noticeTile(
-                  icon: Icons.battery_alert_rounded,
-                  title: '建议关闭电池优化',
-                  subtitle: '否则后台播放或切到大型 App 时，USB 独占链路可能被系统暂停。',
-                  actionLabel: '打开设置',
-                  onTap: openAppSettings,
-                ),
-                _switchTile(
-                  title: 'USB 独占模式',
-                  subtitle: '连接 DAC 后启用独占提示与高优先级输出策略。',
-                  notifier: prefs.performanceModeNotifier,
-                ),
-                _switchTile(
-                  title: '保持后台活动',
-                  subtitle: '减少后台播放时 USB 输出被系统中断的概率。',
-                  notifier: prefs.keepAliveInBackgroundNotifier,
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
             _sectionTitle('输出格式'),
             _settingsCard(
               children: [
-                _infoTile('源文件', '等待播放', '采样率未知 · 声道未知 · 位深未知'),
+                _sourceFileTile(),
                 _infoTile(
                   'DAC 端点',
                   _dacEndpointLabel(status),
@@ -195,6 +222,29 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
               ],
             ),
             const SizedBox(height: 18),
+            _sectionTitle('后台稳定性'),
+            _settingsCard(
+              children: [
+                _noticeTile(
+                  icon: Icons.battery_alert_rounded,
+                  title: '建议关闭电池优化',
+                  subtitle: '否则后台播放或切到大型 App 时，USB 独占链路可能被系统暂停。',
+                  actionLabel: '打开设置',
+                  onTap: openAppSettings,
+                ),
+                _switchTile(
+                  title: 'USB 独占模式',
+                  subtitle: '连接 DAC 后启用独占提示与高优先级输出策略。',
+                  notifier: prefs.performanceModeNotifier,
+                ),
+                _switchTile(
+                  title: '保持后台活动',
+                  subtitle: '减少后台播放时 USB 输出被系统中断的概率。',
+                  notifier: prefs.keepAliveInBackgroundNotifier,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
             _sectionTitle('传输缓冲'),
             _settingsCard(
               children: [
@@ -229,7 +279,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   title: 'DSD 增益补偿',
                   notifier: prefs.dsdGainCompensationNotifier,
                   values: const [-12, -9, -6, -3, 0, 3, 6],
-                  label: (value) => '${value} dB',
+                  label: (value) => '$value dB',
                 ),
                 _infoTile('当前媒体音量', '播放开始后检测', '硬件音量与 DAC 反馈可用后显示'),
                 _switchTile(
@@ -288,41 +338,158 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
   }
 
   Widget _deviceStatusCard(UsbAudioStatus status) {
-    final device = _activeUsbDevice(status);
-    final supported = status.supported;
-    final exclusive = usbExclusivePlaybackStateNotifier.value;
-    final accent = supported ? highlightTextColor.value : textColor.value;
-    final title = supported ? device?.name ?? 'USB DAC' : '未识别 USB 设备';
-    final subtitle = supported
-        ? _exclusiveStatusLabel(status)
-        : '连接 DAC 后显示设备信息';
-    final id = device == null ? '等待连接' : '${device.type} · ${device.id}';
+    return ValueListenableBuilder<UsbExclusivePlaybackState>(
+      valueListenable: usbExclusivePlaybackStateNotifier,
+      builder: (context, exclusive, _) {
+        final device = _activeUsbDevice(status);
+        final supported = status.supported;
+        final accent = supported ? const Color(0xFF50D890) : textColor.value;
+        final foreground = textColor.value;
+        final background = Color.alphaBlend(
+          accent.withAlpha(mainPageThemeNotifier.value == .dark ? 34 : 20),
+          menuColor.value,
+        );
+        final title = supported ? device?.name ?? 'USB DAC' : '未识别 USB 设备';
+        final subtitle = supported
+            ? _exclusiveStatusLabel(status)
+            : '连接 DAC 后显示设备信息';
+        final statusLabel = supported ? '已连接' : '未连接';
+        final linkLabel = supported
+            ? (exclusive.active ? '独占播放' : '运行中')
+            : '待连接';
+        final formatLabel = 'PCM ${formatOutputSampleRate(status)}'.replaceAll(
+          '未知',
+          '系统默认',
+        );
 
-    return _heroCard(
-      icon: Icons.usb_rounded,
-      accent: accent,
-      title: title,
-      subtitle: subtitle,
-      trailing: _refreshingStatus
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : IconButton(
-              tooltip: '刷新 USB 状态',
-              onPressed: _refreshStatus,
-              icon: const Icon(Icons.refresh_rounded),
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: accent.withAlpha(70)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.usb_rounded, color: foreground.withAlpha(170)),
+                    const SizedBox(width: 10),
+                    Text(
+                      'USB EXCLUSIVE',
+                      style: TextStyle(
+                        color: foreground.withAlpha(150),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: supported ? accent : foreground.withAlpha(100),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: foreground.withAlpha(165),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    _refreshingStatus
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : IconButton(
+                            tooltip: '刷新 USB 状态',
+                            onPressed: _refreshStatus,
+                            icon: const Icon(Icons.refresh_rounded),
+                          ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: foreground,
+                    fontSize: 24,
+                    height: 1.05,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: foreground.withAlpha(150),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: supported ? accent : foreground.withAlpha(100),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'OUTPUT LINK',
+                      style: TextStyle(
+                        color: foreground.withAlpha(135),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      linkLabel,
+                      style: TextStyle(
+                        color: foreground.withAlpha(190),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(child: _metricColumn('FORMAT', formatLabel)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _metricColumn('DEPTH', _compactDepthLabel(status)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _metricColumn('USB ID', _usbIdLabel(device)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-      metrics: [
-        _Metric('输出链路', supported ? _outputPortLabel(status) : '未启用'),
-        _Metric('Format', _outputEncodingLabel(status)),
-        _Metric('Depth', _bitDepthLabel(status)),
-        _Metric('USB ID', id),
-      ],
-      footer: exclusive.active
-          ? '独占播放中 · ${formatSampleRate(exclusive.sampleRate)} · ${exclusive.bitDepth ?? '未知'} bits'
-          : '连接后可在这里确认 DAC 与独占链路状态',
+          ),
+        );
+      },
     );
   }
 
@@ -330,130 +497,156 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     return ValueListenableBuilder<UsbExclusivePlaybackState>(
       valueListenable: usbExclusivePlaybackStateNotifier,
       builder: (context, exclusive, _) {
-        final active = exclusive.active;
-        final targetMs = usbAudioPreferences.foregroundBufferMsNotifier.value;
-        final levelMs = active ? exclusive.position.inMilliseconds : 0;
-        final clampedLevel = levelMs.clamp(0, targetMs);
-        final progress = targetMs <= 0 ? 0.0 : clampedLevel / targetMs;
-        final accent = active
-            ? const Color(0xFF50D890)
-            : highlightTextColor.value;
-        final foreground = textColor.value;
-        final background = Color.alphaBlend(
-          accent.withAlpha(mainPageThemeNotifier.value == .dark ? 36 : 24),
-          menuColor.value,
-        );
+        return ValueListenableBuilder<UsbTransportTelemetry>(
+          valueListenable: usbTransportTelemetryNotifier,
+          builder: (context, telemetry, _) {
+            final active = exclusive.active || telemetry.active;
+            final targetMs =
+                telemetry.targetBuffer?.inMilliseconds ??
+                usbAudioPreferences.foregroundBufferMsNotifier.value;
+            final levelMs = telemetry.active
+                ? telemetry.bufferLevel.inMilliseconds
+                : 0;
+            final minimumMs = telemetry.minimumBufferLevel?.inMilliseconds;
+            final clampedLevel = levelMs.clamp(0, targetMs);
+            final progress = targetMs <= 0 ? 0.0 : clampedLevel / targetMs;
+            final health = _transportHealth(
+              active: active,
+              playing: exclusive.playing,
+              levelMs: levelMs,
+              minimumMs: minimumMs,
+              targetMs: targetMs,
+              underrunCount: telemetry.underrunCount,
+            );
+            final accent = _transportHealthAccent(health);
+            final foreground = textColor.value;
+            final background = Color.alphaBlend(
+              accent.withAlpha(mainPageThemeNotifier.value == .dark ? 36 : 24),
+              menuColor.value,
+            );
 
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: accent.withAlpha(60)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accent.withAlpha(60)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: Text(
-                        '传输状态',
-                        style: TextStyle(
-                          color: foreground,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '传输状态',
+                            style: TextStyle(
+                              color: foreground,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    Text(
-                      active ? (exclusive.playing ? '稳定' : '暂停') : '待机',
-                      style: TextStyle(
-                        color: active ? accent : foreground.withAlpha(170),
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$levelMs ms',
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 34,
-                        height: 0.95,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
-                        child: Text(
-                          '缓冲区水位',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Text(
+                          _transportHealthLabel(health),
                           style: TextStyle(
-                            color: foreground.withAlpha(145),
-                            fontSize: 15,
+                            color: active ? accent : foreground.withAlpha(170),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          flex: 4,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.bottomLeft,
+                            child: Text(
+                              '$levelMs ms',
+                              style: TextStyle(
+                                color: foreground,
+                                fontSize: 34,
+                                height: 0.95,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 3),
+                            child: Text(
+                              '缓冲区水位',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: foreground.withAlpha(145),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Text(
+                            'ISO ${telemetry.active ? telemetry.isoPacketCount : 0}',
+                            style: TextStyle(
+                              color: foreground.withAlpha(175),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: foreground.withAlpha(28),
+                        valueColor: AlwaysStoppedAnimation<Color>(accent),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            active ? '目标 $targetMs ms' : '播放时建立目标水位',
+                            style: TextStyle(
+                              color: foreground.withAlpha(135),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          active && minimumMs != null
+                              ? '最低 $minimumMs ms'
+                              : '最低 --',
+                          style: TextStyle(
+                            color: foreground.withAlpha(135),
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Text(
-                        'ISO 0',
-                        style: TextStyle(
-                          color: foreground.withAlpha(175),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: foreground.withAlpha(28),
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        active ? '目标 $targetMs ms' : '播放时建立目标水位',
-                        style: TextStyle(
-                          color: foreground.withAlpha(135),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      active ? '最低 $levelMs ms' : '最低 --',
-                      style: TextStyle(
-                        color: foreground.withAlpha(135),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -537,90 +730,6 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
       notifier: notifier,
       values: UsbAudioPreferences.sampleRates,
       label: (value) => '${formatSampleRate(value)} PCM',
-    );
-  }
-
-  Widget _heroCard({
-    required IconData icon,
-    required Color accent,
-    required String title,
-    required String subtitle,
-    required List<_Metric> metrics,
-    required String footer,
-    Widget? trailing,
-    bool compact = false,
-  }) {
-    final foreground = textColor.value;
-    final background = Color.alphaBlend(
-      accent.withAlpha(mainPageThemeNotifier.value == .dark ? 38 : 24),
-      menuColor.value,
-    );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accent.withAlpha(70)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(compact ? 14 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _iconBox(icon, accent),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: foreground,
-                          fontSize: compact ? 17 : 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: foreground.withAlpha(150),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (trailing != null) trailing,
-              ],
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final metric in metrics)
-                  _metricPill(metric.label, metric.value, accent),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              footer,
-              style: TextStyle(
-                color: foreground.withAlpha(120),
-                fontSize: 12,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -712,6 +821,19 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _sourceFileTile() {
+    return ValueListenableBuilder<MyAudioMetadata?>(
+      valueListenable: currentSongNotifier,
+      builder: (context, song, _) {
+        return _infoTile(
+          '源文件',
+          _sourceFileTitle(song),
+          _sourceFileSubtitle(song),
+        );
+      },
     );
   }
 
@@ -920,39 +1042,32 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     );
   }
 
-  Widget _metricPill(String label, String value, Color accent) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 110, maxWidth: 170),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: textColor.value.withAlpha(16),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textColor.value.withAlpha(115),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
+  Widget _metricColumn(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: textColor.value.withAlpha(125),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textColor.value.withAlpha(220),
-              fontWeight: FontWeight.w800,
-            ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: textColor.value.withAlpha(215),
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1020,6 +1135,35 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     return '${_supportedRatesLabel(status)} · ${_bitDepthLabel(status)}';
   }
 
+  String _sourceFileTitle(MyAudioMetadata? song) {
+    if (song == null) return '等待播放';
+    return formatSourceFileName(song.path ?? song.cachePath);
+  }
+
+  String _sourceFileSubtitle(MyAudioMetadata? song) {
+    if (song == null) return '采样率未知 · 格式未知 · 码率未知';
+    final parts = [
+      formatSampleRate(song.samplerate),
+      if (song.format?.isNotEmpty == true)
+        song.format!.toUpperCase()
+      else
+        '格式未知',
+      formatBitrate(song.bitrate),
+    ];
+    return parts.join(' · ');
+  }
+
+  String _compactDepthLabel(UsbAudioStatus status) {
+    return _bitDepthLabel(status).replaceAll(' bits', '-bit');
+  }
+
+  String _usbIdLabel(UsbAudioDevice? device) {
+    if (device == null) return '等待连接';
+    final address = device.address;
+    if (address != null && address.isNotEmpty) return '$address · ${device.id}';
+    return '${device.type} · ${device.id}';
+  }
+
   String _dsdModeLabel(UsbDsdMode mode) {
     return switch (mode) {
       UsbDsdMode.pcm => 'PCM',
@@ -1063,13 +1207,6 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
   }
 }
 
-class _Metric {
-  final String label;
-  final String value;
-
-  const _Metric(this.label, this.value);
-}
-
 UsbAudioDevice? _activeUsbDevice(UsbAudioStatus status) {
   for (final device in status.devices) {
     if (device.id == status.bestAvailableDeviceId) {
@@ -1079,20 +1216,6 @@ UsbAudioDevice? _activeUsbDevice(UsbAudioStatus status) {
   return null;
 }
 
-String _shortOutputName(UsbAudioStatus status) {
-  final exclusive = usbExclusivePlaybackStateNotifier.value;
-  if (exclusive.active) {
-    return 'USB';
-  }
-
-  if (!status.supported) {
-    return formatOutputDeviceName(status);
-  }
-  final device = _activeUsbDevice(status);
-  if (device != null) return device.name;
-  return status.outputDeviceName ?? 'USB DAC';
-}
-
 String _supportedRatesLabel(UsbAudioStatus status) {
   final device = _activeUsbDevice(status);
   final rates = device?.supportedMixerSampleRates.isNotEmpty == true
@@ -1100,16 +1223,6 @@ String _supportedRatesLabel(UsbAudioStatus status) {
       : device?.sampleRates ?? const <int>[];
   if (rates.isEmpty) return '未知';
   return rates.map(formatSampleRate).join(' / ');
-}
-
-String _bitPerfectSupportLabel(UsbAudioStatus status) {
-  if (!status.supported) return '不可用';
-  if (status.androidSdk < 34) return '需要 Android 14+';
-  final device = _activeUsbDevice(status);
-  if (device?.supportsBitPerfectMixer == true) {
-    return status.preferredBitPerfect ? '已请求' : '可用';
-  }
-  return '设备未声明支持';
 }
 
 String _exclusiveStatusLabel(UsbAudioStatus status) {
@@ -1136,19 +1249,4 @@ String _bitDepthLabel(UsbAudioStatus status) {
   if (encoding == 'pcm_24bit_packed') return '24 bits';
   if (encoding == 'pcm_16bit') return '16 bits';
   return '未知';
-}
-
-String _outputEncodingLabel(UsbAudioStatus status) {
-  final encoding = status.preferredEncoding ?? status.outputEncoding;
-  if (encoding == null) return 'PCM / 系统默认';
-  final bitDepth = _bitDepthLabel(status);
-  return bitDepth == '未知' ? encoding : 'PCM / $bitDepth';
-}
-
-String _outputPortLabel(UsbAudioStatus status) {
-  if (!status.supported) {
-    return status.outputDeviceName ?? 'Android';
-  }
-  final name = _shortOutputName(status);
-  return status.preferredApplied ? '$name · 已应用偏好' : '$name · 系统输出';
 }
