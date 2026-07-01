@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 
 class DynamicLyricsPageRoute<T> extends PageRouteBuilder<T> {
@@ -23,7 +22,7 @@ class DynamicLyricsPageRoute<T> extends PageRouteBuilder<T> {
       curve: Curves.easeInOutCubic,
       reverseCurve: Curves.easeInOutCubic,
     );
-    if (isMobile && isTooNarrow(context)) {
+    if (isTooNarrow(context)) {
       return SlideTransition(
         position: Tween<Offset>(
           begin: Offset(0, 1),

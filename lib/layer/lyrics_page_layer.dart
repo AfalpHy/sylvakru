@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/landscape_view/pages/landscape_lyrics_page.dart';
 import 'package:sylvakru/portrait_view/pages/portrait_lyrics_page.dart';
@@ -28,7 +27,7 @@ class _LyricsPageLayerState extends State<LyricsPageLayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (isMobile && isTooNarrow(context)) {
+    if (isTooNarrow(context)) {
       return PortraitLyricsPage();
     }
     return LandscapeLyricsPage();

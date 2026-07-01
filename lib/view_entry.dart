@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
@@ -107,7 +106,7 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
         if (miniMode) {
           return MiniView();
         }
-        if (isMobile && isTooNarrow(context)) {
+        if (isTooNarrow(context)) {
           SystemChrome.setEnabledSystemUIMode(
             SystemUiMode.manual,
             overlays: SystemUiOverlay.values,

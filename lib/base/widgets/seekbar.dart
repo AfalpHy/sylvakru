@@ -31,7 +31,7 @@ class SeekBarState extends State<SeekBar> {
   @override
   Widget build(BuildContext context) {
     horizontalPadding = 0;
-    if ((!isTooNarrow(context) || !isMobile) && !widget.isMiniMode) {
+    if (!isTooNarrow(context) && !widget.isMiniMode) {
       horizontalPadding = 45;
     }
 

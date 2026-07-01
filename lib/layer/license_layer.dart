@@ -72,7 +72,7 @@ class _LicenseLayerState extends State<LicenseLayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (isMobile && isTooNarrow(context)) {
+    if (isTooNarrow(context)) {
       return pageView(context);
     }
     return ValueListenableBuilder(

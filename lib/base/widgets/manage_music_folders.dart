@@ -58,7 +58,7 @@ class _ManageMusicFoldersState extends State<ManageMusicFolders> {
     final appWidth = MediaQuery.widthOf(context);
     final appHeight = MediaQuery.heightOf(context);
 
-    if (isMobile && isTooNarrow(context)) {
+    if (isTooNarrow(context)) {
       return SizedBox(
         height: appHeight * 0.7,
         width: max(300, appWidth * 0.5),

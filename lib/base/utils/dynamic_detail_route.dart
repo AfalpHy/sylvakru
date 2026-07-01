@@ -30,7 +30,7 @@ class DynamicDetailRoute extends PageRouteBuilder {
       curve: Curves.easeInOutCubic,
       reverseCurve: Curves.easeInOutCubic,
     );
-    if (isMobile && isTooNarrow(context)) {
+    if (isTooNarrow(context)) {
       return SlideTransition(
         position: Tween<Offset>(
           begin: Offset(Platform.isIOS ? 1.0 : -1.0, 0.0),

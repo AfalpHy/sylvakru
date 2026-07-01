@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 
 Widget myNavigator({
@@ -18,7 +17,7 @@ Widget myNavigator({
       MaterialPage(
         child: Builder(
           builder: (context) {
-            return isMobile && isTooNarrow(context)
+            return isTooNarrow(context)
                 ? pageViewBuilder()
                 : ValueListenableBuilder(
                     valueListenable: visibleNotifier,

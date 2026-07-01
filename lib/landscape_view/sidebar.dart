@@ -395,7 +395,7 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
             ),
-            if (isMobile && isTooNarrow(context)) ...[
+            if (isTooNarrow(context)) ...[
               sidebarItem(
                 label: 'settings',
                 leading: ImageIcon(settingImage, size: 30),
