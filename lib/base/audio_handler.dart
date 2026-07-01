@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:sylvakru/base/services/emby_client.dart';
 import 'package:sylvakru/base/services/metadata_service.dart';
+import 'package:sylvakru/base/services/playback_position_bridge.dart';
 import 'package:sylvakru/base/services/super_lyric_bridge.dart';
 import 'package:sylvakru/base/services/super_lyric_position_publisher.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
@@ -97,6 +98,7 @@ class MyAudioHandler extends BaseAudioHandler {
   Duration _usbExclusivePosition = Duration.zero;
   bool _usbExclusiveActive = false;
   bool _suppressPlayerCompleted = false;
+  late final PlaybackPositionBridge _positionBridge;
 
   late final File _playQueueState;
   late final File _playState;
@@ -165,6 +167,11 @@ class MyAudioHandler extends BaseAudioHandler {
       unawaited(_superLyricPublisher.publishAt(position));
     });
 
+    _positionBridge = PlaybackPositionBridge(
+      playerPositionStream: _player.stream.position,
+      playerPosition: () => _player.state.position,
+      exclusiveStateListenable: usbExclusivePlaybackStateNotifier,
+    );
     usbExclusivePlaybackStateNotifier.addListener(_handleUsbExclusiveState);
   }
 
@@ -863,11 +870,12 @@ class MyAudioHandler extends BaseAudioHandler {
       final rates = device.supportedMixerSampleRates.isNotEmpty
           ? device.supportedMixerSampleRates
           : device.sampleRates;
-      final validRates = rates
-          .where(UsbAudioPreferences.sampleRates.contains)
-          .toList()
-        ..sort();
-      return validRates.isEmpty ? status.bestAvailableSampleRate : validRates.last;
+      final validRates =
+          rates.where(UsbAudioPreferences.sampleRates.contains).toList()
+            ..sort();
+      return validRates.isEmpty
+          ? status.bestAvailableSampleRate
+          : validRates.last;
     }
     return status.bestAvailableSampleRate;
   }
@@ -1008,11 +1016,11 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   Stream<Duration> getPositionStream() {
-    return _player.stream.position;
+    return _positionBridge.stream;
   }
 
   Duration getPosition() {
-    return _player.state.position;
+    return _positionBridge.position;
   }
 
   void setVolume(double volume) {
