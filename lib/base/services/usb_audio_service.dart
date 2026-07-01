@@ -10,6 +10,9 @@ final usbAudioEventNotifier = ValueNotifier<UsbAudioDeviceEvent?>(null);
 final usbExclusivePlaybackStateNotifier = ValueNotifier(
   UsbExclusivePlaybackState.inactive(),
 );
+final usbTransportTelemetryNotifier = ValueNotifier(
+  UsbTransportTelemetry.inactive(),
+);
 
 enum UsbAudioDeviceEventType { added, removed }
 
@@ -148,6 +151,16 @@ class UsbAudioService {
     return _invokeExclusiveState('resumeExclusivePlayback');
   }
 
+  Future<void> setExclusiveTargetBufferMs(int targetBufferMs) async {
+    if (!_isAndroid) {
+      return;
+    }
+
+    await _channel.invokeMethod<void>('setExclusiveTargetBufferMs', {
+      'targetBufferMs': targetBufferMs.clamp(50, 5000),
+    });
+  }
+
   Future<UsbExclusivePlaybackState> seekExclusivePlayback(Duration position) {
     return _invokeExclusiveState('seekExclusivePlayback', {
       'positionMs': position.inMilliseconds,
@@ -225,6 +238,14 @@ class UsbAudioService {
         (call.arguments as Map?)?.cast<String, Object?>() ?? const {},
       );
       usbExclusivePlaybackStateNotifier.value = state;
+      return null;
+    }
+
+    if (call.method == 'onUsbTransportTelemetryChanged') {
+      final telemetry = UsbTransportTelemetry.fromMap(
+        (call.arguments as Map?)?.cast<String, Object?>() ?? const {},
+      );
+      usbTransportTelemetryNotifier.value = telemetry;
       return null;
     }
 
@@ -307,6 +328,7 @@ class UsbExclusivePlaybackRequest {
   final String? sourceFormat;
   final int? sampleRate;
   final int? bitDepth;
+  final int? targetBufferMs;
   final bool startPaused;
 
   const UsbExclusivePlaybackRequest({
@@ -315,6 +337,7 @@ class UsbExclusivePlaybackRequest {
     required this.sourceFormat,
     required this.sampleRate,
     required this.bitDepth,
+    required this.targetBufferMs,
     required this.startPaused,
   });
 
@@ -325,6 +348,7 @@ class UsbExclusivePlaybackRequest {
       'sourceFormat': sourceFormat,
       'sampleRate': sampleRate,
       'bitDepth': bitDepth,
+      'targetBufferMs': targetBufferMs,
       'startPaused': startPaused,
     };
   }
@@ -377,6 +401,57 @@ class UsbExclusivePlaybackState {
       bitDepth: _asInt(map['bitDepth']),
       format: map['format'] as String?,
       message: map['message'] as String?,
+    );
+  }
+}
+
+@immutable
+class UsbTransportTelemetry {
+  final bool active;
+  final Duration bufferLevel;
+  final Duration? minimumBufferLevel;
+  final Duration? targetBuffer;
+  final int isoPacketCount;
+  final int pendingUrbs;
+  final int underrunCount;
+  final int updatedAtMs;
+
+  const UsbTransportTelemetry({
+    required this.active,
+    required this.bufferLevel,
+    required this.minimumBufferLevel,
+    required this.targetBuffer,
+    required this.isoPacketCount,
+    required this.pendingUrbs,
+    required this.underrunCount,
+    required this.updatedAtMs,
+  });
+
+  factory UsbTransportTelemetry.inactive() {
+    return const UsbTransportTelemetry(
+      active: false,
+      bufferLevel: Duration.zero,
+      minimumBufferLevel: null,
+      targetBuffer: null,
+      isoPacketCount: 0,
+      pendingUrbs: 0,
+      underrunCount: 0,
+      updatedAtMs: 0,
+    );
+  }
+
+  factory UsbTransportTelemetry.fromMap(Map<String, Object?> map) {
+    return UsbTransportTelemetry(
+      active: map['active'] == true,
+      bufferLevel: Duration(
+        milliseconds: _asInt(map['bufferLevelMs'])?.clamp(0, 60000) ?? 0,
+      ),
+      minimumBufferLevel: _durationFromMs(map['minimumBufferLevelMs']),
+      targetBuffer: _durationFromMs(map['targetBufferMs']),
+      isoPacketCount: _asInt(map['isoPacketCount']) ?? 0,
+      pendingUrbs: _asInt(map['pendingUrbs']) ?? 0,
+      underrunCount: _asInt(map['underrunCount']) ?? 0,
+      updatedAtMs: _asInt(map['updatedAtMs']) ?? 0,
     );
   }
 }
@@ -603,6 +678,12 @@ int? _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return null;
+}
+
+Duration? _durationFromMs(Object? value) {
+  final milliseconds = _asInt(value);
+  if (milliseconds == null) return null;
+  return Duration(milliseconds: milliseconds.clamp(0, 60000));
 }
 
 List<int> _asIntList(Object? value) {

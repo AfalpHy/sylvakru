@@ -75,6 +75,20 @@ void main() {
     expect(usbAudioPreferences.delayedUsbLinkNotifier.value, isFalse);
   });
 
+  test('selects exclusive target buffer for foreground and background', () {
+    usbAudioPreferences.load({
+      'usbForegroundBufferMs': 320,
+      'usbBackgroundBufferMs': 2400,
+      'usbKeepAliveInBackground': true,
+    });
+
+    expect(preferredUsbExclusiveTargetBufferMs(background: false), 320);
+    expect(preferredUsbExclusiveTargetBufferMs(background: true), 2400);
+
+    usbAudioPreferences.keepAliveInBackgroundNotifier.value = false;
+    expect(preferredUsbExclusiveTargetBufferMs(background: true), 320);
+  });
+
   test('ignores unsupported fixed sample rate', () {
     usbAudioPreferences.load({
       'usbFixedSampleRateEnabled': true,

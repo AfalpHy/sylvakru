@@ -46,6 +46,8 @@ object UsbExclusiveNative {
 
     external fun transportTelemetry(): LongArray
 
+    external fun setMaxPendingOutputUrbs(maxPendingUrbs: Int)
+
     external fun close()
 }
 
@@ -73,6 +75,7 @@ class UsbExclusiveAudioEngine(
     private var lastTelemetryEmitMs = 0L
     private var lastTelemetryBufferMs: Long? = null
     private var zeroBufferUnderruns = 0L
+    private var activePacketsPerSecond = 0
 
     fun capabilities(usbManager: UsbManager, device: UsbDevice?): Map<String, Any?> {
         if (!NATIVE_USB_EXCLUSIVE_STREAMING_ENABLED) {
@@ -156,6 +159,7 @@ class UsbExclusiveAudioEngine(
         lastTelemetryEmitMs = 0L
         lastTelemetryBufferMs = null
         zeroBufferUnderruns = 0L
+        activePacketsPerSecond = 0
         val requestedChannels = 2
         val openedConnection = usbManager.openDevice(device)
             ?: return updateState(inactiveState("Failed to open USB device for exclusive playback."))
@@ -260,6 +264,15 @@ class UsbExclusiveAudioEngine(
         )
     }
 
+    fun setTargetBufferMs(value: Int): Map<String, Any?> {
+        targetBufferMs = value.coerceIn(50, 5000)
+        applyNativeTargetBuffer(activePacketsPerSecond)
+        if (activePacketsPerSecond > 0) {
+            emitTransportTelemetry(activePacketsPerSecond, force = true)
+        }
+        return currentState + mapOf("targetBufferMs" to targetBufferMs)
+    }
+
     fun stop(): Map<String, Any?> {
         stopped.set(true)
         paused.set(false)
@@ -272,6 +285,7 @@ class UsbExclusiveAudioEngine(
         UsbExclusiveNative.close()
         connection?.close()
         connection = null
+        activePacketsPerSecond = 0
         return updateState(inactiveState("USB exclusive playback stopped."))
     }
 
@@ -332,6 +346,20 @@ class UsbExclusiveAudioEngine(
                 "underrunCount" to 0,
                 "updatedAtMs" to SystemClock.elapsedRealtime(),
             ),
+        )
+    }
+
+    private fun applyNativeTargetBuffer(packetsPerSecond: Int) {
+        if (packetsPerSecond <= 0) {
+            return
+        }
+        val packetCount = ((targetBufferMs.toLong() * packetsPerSecond) + 999L) / 1000L
+        val maxPendingUrbs = ((packetCount + 15L) / 16L).coerceIn(8L, 512L).toInt()
+        UsbExclusiveNative.setMaxPendingOutputUrbs(maxPendingUrbs)
+        Log.i(
+            tag,
+            "USB target buffer targetMs=$targetBufferMs packetsPerSecond=$packetsPerSecond " +
+                "maxPendingUrbs=$maxPendingUrbs",
         )
     }
 
@@ -730,6 +758,8 @@ class UsbExclusiveAudioEngine(
             channels,
             usbBytesPerSample,
         )
+        activePacketsPerSecond = target.packetsPerSecond
+        applyNativeTargetBuffer(target.packetsPerSecond)
         UsbExclusiveNative.setIsoPacketSize(packetBytes)
         val outputIntervalMicroframes = isoIntervalMicroframes(target.endpoint.interval)
         val feedbackOutputPacketDivisor = target.feedbackEndpoint?.let {

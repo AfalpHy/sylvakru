@@ -11,6 +11,7 @@ void main() {
 
   tearDown(() {
     messenger.setMockMethodCallHandler(channel, null);
+    usbTransportTelemetryNotifier.value = UsbTransportTelemetry.inactive();
   });
 
   test(
@@ -260,6 +261,7 @@ void main() {
           sourceFormat: 'flac',
           sampleRate: 44100,
           bitDepth: 24,
+          targetBufferMs: 320,
           startPaused: false,
         ),
       );
@@ -270,6 +272,7 @@ void main() {
         'sourceFormat': 'flac',
         'sampleRate': 44100,
         'bitDepth': 24,
+        'targetBufferMs': 320,
         'startPaused': false,
       });
       expect(state.active, isTrue);
@@ -282,6 +285,23 @@ void main() {
       expect(usbExclusivePlaybackStateNotifier.value, state);
     },
   );
+
+  test('setExclusiveTargetBufferMs updates native exclusive buffer', () async {
+    final service = UsbAudioService(channel: channel, isAndroid: true);
+    Object? receivedArguments;
+
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'setExclusiveTargetBufferMs') {
+        receivedArguments = call.arguments;
+        return null;
+      }
+      throw PlatformException(code: 'unexpected_method');
+    });
+
+    await service.setExclusiveTargetBufferMs(2400);
+
+    expect(receivedArguments, {'targetBufferMs': 2400});
+  });
 
   test('native exclusive state event updates playback notifier', () async {
     UsbAudioService(channel: channel, isAndroid: true);
@@ -310,5 +330,36 @@ void main() {
     expect(state.duration, const Duration(minutes: 4));
     expect(state.sampleRate, 48000);
     expect(state.bitDepth, 24);
+  });
+
+  test('native transport telemetry event updates transport notifier', () async {
+    UsbAudioService(channel: channel, isAndroid: true);
+
+    await messenger.handlePlatformMessage(
+      channel.name,
+      const StandardMethodCodec().encodeMethodCall(
+        MethodCall('onUsbTransportTelemetryChanged', {
+          'active': true,
+          'bufferLevelMs': 184,
+          'minimumBufferLevelMs': 120,
+          'targetBufferMs': 200,
+          'isoPacketCount': 4096,
+          'pendingUrbs': 7,
+          'underrunCount': 1,
+          'updatedAtMs': 123456,
+        }),
+      ),
+      (_) {},
+    );
+
+    final telemetry = usbTransportTelemetryNotifier.value;
+    expect(telemetry.active, isTrue);
+    expect(telemetry.bufferLevel, const Duration(milliseconds: 184));
+    expect(telemetry.minimumBufferLevel, const Duration(milliseconds: 120));
+    expect(telemetry.targetBuffer, const Duration(milliseconds: 200));
+    expect(telemetry.isoPacketCount, 4096);
+    expect(telemetry.pendingUrbs, 7);
+    expect(telemetry.underrunCount, 1);
+    expect(telemetry.updatedAtMs, 123456);
   });
 }

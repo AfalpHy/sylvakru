@@ -86,7 +86,7 @@ Future<void> initAudioService() async {
   });
 }
 
-class MyAudioHandler extends BaseAudioHandler {
+class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   final _player = Player();
   late final SuperLyricPositionPublisher _superLyricPublisher;
   bool _started = false;
@@ -173,6 +173,9 @@ class MyAudioHandler extends BaseAudioHandler {
       exclusiveStateListenable: usbExclusivePlaybackStateNotifier,
     );
     usbExclusivePlaybackStateNotifier.addListener(_handleUsbExclusiveState);
+    if (Platform.isAndroid) {
+      WidgetsBinding.instance.addObserver(this);
+    }
   }
 
   void updateIsPlaying(bool isPlaying) {
@@ -237,6 +240,29 @@ class MyAudioHandler extends BaseAudioHandler {
         _suppressPlayerCompleted = false;
       });
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_usbExclusiveActive) {
+      return;
+    }
+    final targetBufferMs = _exclusiveTargetBufferMsForLifecycle(state);
+    debugPrint("usb exclusive lifecycle=$state targetBufferMs=$targetBufferMs");
+    unawaited(usbAudioService.setExclusiveTargetBufferMs(targetBufferMs));
+  }
+
+  int _exclusiveTargetBufferMsForLifecycle(AppLifecycleState? state) {
+    return preferredUsbExclusiveTargetBufferMs(
+      background: switch (state) {
+        AppLifecycleState.resumed => false,
+        AppLifecycleState.inactive ||
+        AppLifecycleState.hidden ||
+        AppLifecycleState.paused ||
+        AppLifecycleState.detached => true,
+        null => false,
+      },
+    );
   }
 
   void initStateFiles() {
@@ -695,6 +721,9 @@ class MyAudioHandler extends BaseAudioHandler {
         sourceFormat: _normalizedExclusiveFormat(song),
         sampleRate: _preferredExclusiveSampleRate(song),
         bitDepth: _preferredExclusiveBitDepth(),
+        targetBufferMs: _exclusiveTargetBufferMsForLifecycle(
+          WidgetsBinding.instance.lifecycleState,
+        ),
         startPaused: !isPlayingNotifier.value,
       ),
     );

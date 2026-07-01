@@ -47,11 +47,19 @@ class MainActivity : AudioServiceActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         usbAudioChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
-        usbExclusiveAudioEngine = UsbExclusiveAudioEngine(this) { state ->
-            runOnUiThread {
-                usbAudioChannel.invokeMethod("onUsbExclusiveStateChanged", state)
-            }
-        }
+        usbExclusiveAudioEngine = UsbExclusiveAudioEngine(
+            this,
+            emitState = { state ->
+                runOnUiThread {
+                    usbAudioChannel.invokeMethod("onUsbExclusiveStateChanged", state)
+                }
+            },
+            emitTelemetry = { telemetry ->
+                runOnUiThread {
+                    usbAudioChannel.invokeMethod("onUsbTransportTelemetryChanged", telemetry)
+                }
+            },
+        )
         usbAudioChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(getStatus())
@@ -62,6 +70,10 @@ class MainActivity : AudioServiceActivity() {
                 "startExclusivePlayback" -> result.success(startExclusivePlayback(call))
                 "pauseExclusivePlayback" -> result.success(usbExclusiveAudioEngine.pause())
                 "resumeExclusivePlayback" -> result.success(usbExclusiveAudioEngine.resume())
+                "setExclusiveTargetBufferMs" -> {
+                    val targetBufferMs = call.argument<Number>("targetBufferMs")?.toInt() ?: 200
+                    result.success(usbExclusiveAudioEngine.setTargetBufferMs(targetBufferMs))
+                }
                 "seekExclusivePlayback" -> {
                     val positionMs = call.argument<Number>("positionMs")?.toLong() ?: 0L
                     result.success(usbExclusiveAudioEngine.seek(positionMs))

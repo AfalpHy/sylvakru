@@ -18,7 +18,8 @@ namespace {
 
 constexpr const char* kTag = "SylvakruUsbExclusive";
 constexpr int kMaxIsoPacketsPerUrb = 16;
-constexpr int kMaxPendingUrbs = 8;
+constexpr int kDefaultMaxPendingUrbs = 8;
+constexpr int kAbsoluteMaxPendingUrbs = 512;
 
 struct PendingUrb {
     usbdevfs_urb* urb;
@@ -43,6 +44,8 @@ long long g_total_bytes = 0;
 long long g_total_urbs = 0;
 long long g_total_iso_packets = 0;
 long long g_last_stats_ms = 0;
+long long g_iso_error_count = 0;
+int g_max_pending_urbs = kDefaultMaxPendingUrbs;
 std::vector<PendingUrb> g_pending_urbs;
 
 long long monotonicMillis() {
@@ -79,6 +82,7 @@ void logCompletedUrb(PendingUrb pending) {
         return;
     }
     if (pending.urb->status != 0) {
+        ++g_iso_error_count;
         __android_log_print(
             ANDROID_LOG_WARN,
             kTag,
@@ -89,6 +93,7 @@ void logCompletedUrb(PendingUrb pending) {
     }
     for (int i = 0; i < pending.packets; ++i) {
         if (pending.urb->iso_frame_desc[i].status != 0) {
+            ++g_iso_error_count;
             __android_log_print(
                 ANDROID_LOG_WARN,
                 kTag,
@@ -205,7 +210,7 @@ std::string reapCompletedLocked() {
             break;
         }
     }
-    while (error.empty() && static_cast<int>(g_pending_urbs.size()) >= kMaxPendingUrbs) {
+    while (error.empty() && static_cast<int>(g_pending_urbs.size()) >= g_max_pending_urbs) {
         error = reapOneLocked(true);
     }
     return error;
@@ -290,6 +295,8 @@ void closeLocked() {
     g_total_urbs = 0;
     g_total_iso_packets = 0;
     g_last_stats_ms = 0;
+    g_iso_error_count = 0;
+    g_max_pending_urbs = kDefaultMaxPendingUrbs;
 }
 
 std::string submitIsoPacketsLocked(
@@ -622,6 +629,35 @@ Java_com_afalphy_sylvakru_UsbExclusiveNative_feedbackFramesPerPacketQ16(JNIEnv*,
     return g_feedback_frames_per_packet_q16;
 }
 
+extern "C" JNIEXPORT jlongArray JNICALL
+Java_com_afalphy_sylvakru_UsbExclusiveNative_transportTelemetry(JNIEnv* env, jobject) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_fd >= 0) {
+        reapCompletedLocked();
+    }
+
+    long long pending_iso_packets = 0;
+    long long pending_output_urbs = 0;
+    for (const auto& pending : g_pending_urbs) {
+        if (!pending.feedback) {
+            pending_iso_packets += pending.packets;
+            ++pending_output_urbs;
+        }
+    }
+
+    const jlong values[] = {
+        static_cast<jlong>(pending_iso_packets),
+        static_cast<jlong>(g_total_iso_packets),
+        static_cast<jlong>(pending_output_urbs),
+        static_cast<jlong>(g_iso_error_count),
+    };
+    jlongArray result = env->NewLongArray(4);
+    if (result != nullptr) {
+        env->SetLongArrayRegion(result, 0, 4, values);
+    }
+    return result;
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_afalphy_sylvakru_UsbExclusiveNative_setIsoPacketSize(
     JNIEnv*,
@@ -634,6 +670,22 @@ Java_com_afalphy_sylvakru_UsbExclusiveNative_setIsoPacketSize(
         kTag,
         "iso packet size set to %d bytes",
         g_iso_packet_size);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_afalphy_sylvakru_UsbExclusiveNative_setMaxPendingOutputUrbs(
+    JNIEnv*,
+    jobject,
+    jint max_pending_urbs) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_max_pending_urbs = std::max(
+        kDefaultMaxPendingUrbs,
+        std::min(static_cast<int>(max_pending_urbs), kAbsoluteMaxPendingUrbs));
+    __android_log_print(
+        ANDROID_LOG_INFO,
+        kTag,
+        "max pending output URBs set to %d",
+        g_max_pending_urbs);
 }
 
 extern "C" JNIEXPORT void JNICALL

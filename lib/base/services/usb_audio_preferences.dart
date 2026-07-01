@@ -2,6 +2,13 @@ import 'package:flutter/foundation.dart';
 
 final usbAudioPreferences = UsbAudioPreferences();
 
+int preferredUsbExclusiveTargetBufferMs({required bool background}) {
+  if (background && usbAudioPreferences.keepAliveInBackgroundNotifier.value) {
+    return usbAudioPreferences.backgroundBufferMsNotifier.value;
+  }
+  return usbAudioPreferences.foregroundBufferMsNotifier.value;
+}
+
 enum UsbDsdMode { pcm, dop, native }
 
 enum UsbVolumeLockMode { off, dsdOnly, always }
