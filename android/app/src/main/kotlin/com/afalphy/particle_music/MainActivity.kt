@@ -32,6 +32,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
+    private val tag = "UsbExclusiveAudioEngine"
     private val channelName = "com.afalphy.sylvakru/usb_audio"
     private val superLyricChannelName = "com.afalphy.sylvakru/super_lyric"
     private val usbPermissionAction = "com.afalphy.sylvakru.USB_PERMISSION"
@@ -201,6 +202,7 @@ class MainActivity : AudioServiceActivity() {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         val device = findUsbAudioDevice(usbManager)
         if (device == null) {
+            Log.i(tag, "probeExclusiveAccess: no USB Audio Class device found.")
             result.success(
                 exclusiveProbeResult(
                     supported = false,
@@ -216,6 +218,7 @@ class MainActivity : AudioServiceActivity() {
         }
 
         if (!usbManager.hasPermission(device)) {
+            Log.i(tag, "probeExclusiveAccess: requesting USB permission for ${device.debugLabel()}.")
             if (pendingExclusiveProbeResult != null) {
                 result.success(
                     exclusiveProbeResult(
@@ -248,12 +251,17 @@ class MainActivity : AudioServiceActivity() {
             return
         }
 
+        Log.i(tag, "probeExclusiveAccess: permission already granted for ${device.debugLabel()}.")
         result.success(runExclusiveProbe(device))
     }
 
     private fun runExclusiveProbe(device: UsbDevice): Map<String, Any?> {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         val audioInterfaces = device.audioInterfaces()
+        Log.i(
+            tag,
+            "runExclusiveProbe: opening ${device.debugLabel()}, audioInterfaces=${audioInterfaces.size}.",
+        )
         val connection = usbManager.openDevice(device)
             ?: return exclusiveProbeResult(
                 supported = true,
@@ -264,6 +272,7 @@ class MainActivity : AudioServiceActivity() {
                 rawDescriptorLength = 0,
                 message = "Failed to open USB device.",
             )
+                .also { Log.w(tag, "runExclusiveProbe: openDevice failed for ${device.debugLabel()}.") }
 
         return connection.useConnection {
             val claimed = mutableListOf<UsbInterface>()
@@ -273,6 +282,17 @@ class MainActivity : AudioServiceActivity() {
                 for (usbInterface in audioInterfaces) {
                     if (connection.claimInterface(usbInterface, true)) {
                         claimed.add(usbInterface)
+                        Log.i(
+                            tag,
+                            "runExclusiveProbe: claimInterface ok id=${usbInterface.id}, " +
+                                "class=${usbInterface.interfaceClass}, alt=${usbInterface.alternateSetting}.",
+                        )
+                    } else {
+                        Log.w(
+                            tag,
+                            "runExclusiveProbe: claimInterface failed id=${usbInterface.id}, " +
+                                "class=${usbInterface.interfaceClass}, alt=${usbInterface.alternateSetting}.",
+                        )
                     }
                 }
                 exclusiveProbeResult(
@@ -315,22 +335,39 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun findUsbAudioDevice(usbManager: UsbManager): UsbDevice? {
-        return usbManager.deviceList.values.firstOrNull { it.audioInterfaceCount() > 0 }
+        val devices = usbManager.deviceList.values.toList()
+        Log.i(
+            tag,
+            "enumerating USB devices count=${devices.size}: " +
+                devices.joinToString { it.debugLabel() },
+        )
+        val device = devices.firstOrNull { it.audioInterfaceCount() > 0 }
+        Log.i(tag, "selected USB Audio device=${device?.debugLabel() ?: "none"}.")
+        return device
     }
 
     private fun getExclusiveCapabilities(): Map<String, Any?> {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
-        return usbExclusiveAudioEngine.capabilities(
+        val device = findUsbAudioDevice(usbManager)
+        val capabilities = usbExclusiveAudioEngine.capabilities(
             usbManager,
-            findUsbAudioDevice(usbManager),
+            device,
         )
+        Log.i(tag, "getExclusiveCapabilities: $capabilities")
+        return capabilities
     }
 
     private fun startExclusivePlayback(call: MethodCall): Map<String, Any?> {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val device = findUsbAudioDevice(usbManager)
+        Log.i(
+            tag,
+            "startExclusivePlayback: device=${device?.debugLabel() ?: "none"}, " +
+                "arguments=${call.argumentsMap()}",
+        )
         return usbExclusiveAudioEngine.start(
             usbManager,
-            findUsbAudioDevice(usbManager),
+            device,
             call.argumentsMap(),
         )
     }
@@ -353,6 +390,11 @@ class MainActivity : AudioServiceActivity() {
 
     private fun UsbDevice.audioInterfaceCount(): Int {
         return audioInterfaces().size
+    }
+
+    private fun UsbDevice.debugLabel(): String {
+        return "name=${productName ?: deviceName}, vendor=$vendorId, product=$productId, " +
+            "id=$deviceId, interfaces=$interfaceCount, audioInterfaces=${audioInterfaceCount()}"
     }
 
     private fun exclusiveProbeResult(
@@ -533,7 +575,13 @@ class MainActivity : AudioServiceActivity() {
         device: AudioDeviceInfo,
         call: MethodCall,
     ): Map<String, Any?> {
-        val sampleRate = call.argument<Int>("sampleRate")
+        val requestedSampleRate = call.argument<Int>("sampleRate")
+        if (requestedSampleRate != null && !isValidMixerSampleRate(requestedSampleRate)) {
+            return getStatus(
+                message = "Skipped preferred USB mixer attributes: Android rejected sample rate $requestedSampleRate.",
+            )
+        }
+        val sampleRate = requestedSampleRate
             ?: chooseSampleRate(audioManager, device)
             ?: 48000
         val encoding = encodingFromName(
@@ -541,22 +589,22 @@ class MainActivity : AudioServiceActivity() {
         )
         val bitPerfect = call.argument<Boolean>("bitPerfect") ?: true
 
-        val format = AudioFormat.Builder()
-            .setSampleRate(sampleRate)
-            .setEncoding(encoding)
-            .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-            .build()
-        val mixerAttributes = AudioMixerAttributes.Builder(format)
-            .setMixerBehavior(
-                if (bitPerfect) {
-                    AudioMixerAttributes.MIXER_BEHAVIOR_BIT_PERFECT
-                } else {
-                    AudioMixerAttributes.MIXER_BEHAVIOR_DEFAULT
-                },
-            )
-            .build()
-
         return try {
+            Log.i(tag, "applyPreferredOutputApi34: requesting sampleRate=$sampleRate, encoding=$encoding.")
+            val format = AudioFormat.Builder()
+                .setSampleRate(sampleRate)
+                .setEncoding(encoding)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                .build()
+            val mixerAttributes = AudioMixerAttributes.Builder(format)
+                .setMixerBehavior(
+                    if (bitPerfect) {
+                        AudioMixerAttributes.MIXER_BEHAVIOR_BIT_PERFECT
+                    } else {
+                        AudioMixerAttributes.MIXER_BEHAVIOR_DEFAULT
+                    },
+                )
+                .build()
             val applied = audioManager.setPreferredMixerAttributes(
                 mediaAudioAttributes(),
                 device,
@@ -622,7 +670,7 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun outputSampleRate(device: AudioDeviceInfo?): Int? {
-        device?.sampleRates?.filter { it > 0 }?.maxOrNull()?.let { return it }
+        chooseStableSampleRate(device?.sampleRates?.toList().orEmpty())?.let { return it }
         return AudioTrack
             .getNativeOutputSampleRate(AudioManager.STREAM_MUSIC)
             .takeIf { it > 0 }
@@ -634,6 +682,10 @@ class MainActivity : AudioServiceActivity() {
             ?.firstOrNull { it == AudioFormat.ENCODING_PCM_16BIT }
             ?.let { encodingName(it) }
             ?: device?.encodings?.firstOrNull()?.let { encodingName(it) }
+    }
+
+    private fun isValidMixerSampleRate(sampleRate: Int): Boolean {
+        return sampleRate in 4000..192000
     }
 
     private fun findRequestedDevice(
@@ -653,10 +705,25 @@ class MainActivity : AudioServiceActivity() {
         device: AudioDeviceInfo,
     ): Int? {
         val mixerSampleRates = getSupportedMixerSampleRates(audioManager, device)
-        if (mixerSampleRates.isNotEmpty()) {
-            return mixerSampleRates.maxOrNull()
+        val rates = if (mixerSampleRates.isNotEmpty()) {
+            mixerSampleRates
+        } else {
+            device.sampleRates.toList()
         }
-        return device.sampleRates.maxOrNull()
+        return chooseStableSampleRate(rates)
+    }
+
+    private fun chooseStableSampleRate(rates: List<Int>): Int? {
+        if (rates.isEmpty()) {
+            return null
+        }
+        val validRates = rates.filter { isValidMixerSampleRate(it) }.toSet()
+        for (rate in listOf(48000, 44100, 96000, 88200, 192000, 176400)) {
+            if (validRates.contains(rate)) {
+                return rate
+            }
+        }
+        return validRates.maxOrNull()
     }
 
     private fun mediaAudioAttributes(): AudioAttributes {

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 
 final usbAudioService = UsbAudioService();
 final usbAudioStatusNotifier = ValueNotifier(UsbAudioStatus.unavailable());
@@ -303,6 +304,7 @@ class UsbExclusiveCapability {
 class UsbExclusivePlaybackRequest {
   final String filePath;
   final String? title;
+  final String? sourceFormat;
   final int? sampleRate;
   final int? bitDepth;
   final bool startPaused;
@@ -310,6 +312,7 @@ class UsbExclusivePlaybackRequest {
   const UsbExclusivePlaybackRequest({
     required this.filePath,
     required this.title,
+    required this.sourceFormat,
     required this.sampleRate,
     required this.bitDepth,
     required this.startPaused,
@@ -319,6 +322,7 @@ class UsbExclusivePlaybackRequest {
     return {
       'filePath': filePath,
       'title': title,
+      'sourceFormat': sourceFormat,
       'sampleRate': sampleRate,
       'bitDepth': bitDepth,
       'startPaused': startPaused,
@@ -583,8 +587,15 @@ class UsbAudioDevice {
     if (candidates.isEmpty) {
       return null;
     }
-    final sorted = [...candidates]..sort();
-    return sorted.last;
+    final validRates = candidates
+        .where(UsbAudioPreferences.sampleRates.contains)
+        .toSet();
+    for (final rate in const [48000, 44100, 96000, 88200, 192000, 176400]) {
+      if (validRates.contains(rate)) {
+        return rate;
+      }
+    }
+    return null;
   }
 }
 

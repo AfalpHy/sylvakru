@@ -19,6 +19,14 @@ void main() {
       'usbBitDepthMode': 'pcm32',
       'usbReleaseBandwidthAfterPlayback': true,
       'usbKeepAliveInBackground': false,
+      'usbBitDepthCompat': false,
+      'usbSampleRateCompat': false,
+      'usbChannelCompat': false,
+      'usbTpdfDither': true,
+      'usbForegroundBufferMs': 320,
+      'usbBackgroundBufferMs': 2400,
+      'usbVolumeSmoothHandoff': false,
+      'usbDelayedUsbLink': true,
     });
 
     expect(usbAudioPreferences.preferredFixedSampleRate(), 96000);
@@ -40,7 +48,31 @@ void main() {
       isTrue,
     );
     expect(usbAudioPreferences.keepAliveInBackgroundNotifier.value, isFalse);
+    expect(usbAudioPreferences.bitDepthCompatNotifier.value, isFalse);
+    expect(usbAudioPreferences.sampleRateCompatNotifier.value, isFalse);
+    expect(usbAudioPreferences.channelCompatNotifier.value, isFalse);
+    expect(usbAudioPreferences.tpdfDitherNotifier.value, isTrue);
+    expect(usbAudioPreferences.foregroundBufferMsNotifier.value, 320);
+    expect(usbAudioPreferences.backgroundBufferMsNotifier.value, 2400);
+    expect(usbAudioPreferences.volumeSmoothHandoffNotifier.value, isFalse);
+    expect(usbAudioPreferences.delayedUsbLinkNotifier.value, isTrue);
     expect(usbAudioPreferences.toMap()['usbDsdMode'], 'native');
+    expect(usbAudioPreferences.toMap()['usbBitDepthCompat'], isFalse);
+    expect(usbAudioPreferences.toMap()['usbTpdfDither'], isTrue);
+    expect(usbAudioPreferences.toMap()['usbForegroundBufferMs'], 320);
+  });
+
+  test('uses practical defaults for USB compatibility options', () {
+    usbAudioPreferences.load(const {});
+
+    expect(usbAudioPreferences.bitDepthCompatNotifier.value, isTrue);
+    expect(usbAudioPreferences.sampleRateCompatNotifier.value, isTrue);
+    expect(usbAudioPreferences.channelCompatNotifier.value, isTrue);
+    expect(usbAudioPreferences.tpdfDitherNotifier.value, isFalse);
+    expect(usbAudioPreferences.foregroundBufferMsNotifier.value, 200);
+    expect(usbAudioPreferences.backgroundBufferMsNotifier.value, 1500);
+    expect(usbAudioPreferences.volumeSmoothHandoffNotifier.value, isTrue);
+    expect(usbAudioPreferences.delayedUsbLinkNotifier.value, isFalse);
   });
 
   test('ignores unsupported fixed sample rate', () {

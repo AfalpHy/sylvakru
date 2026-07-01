@@ -27,6 +27,14 @@ class UsbAudioPreferences {
   final bitDepthModeNotifier = ValueNotifier(UsbBitDepthMode.auto);
   final releaseUsbBandwidthAfterPlaybackNotifier = ValueNotifier(false);
   final keepAliveInBackgroundNotifier = ValueNotifier(true);
+  final bitDepthCompatNotifier = ValueNotifier(true);
+  final sampleRateCompatNotifier = ValueNotifier(true);
+  final channelCompatNotifier = ValueNotifier(true);
+  final tpdfDitherNotifier = ValueNotifier(false);
+  final foregroundBufferMsNotifier = ValueNotifier(200);
+  final backgroundBufferMsNotifier = ValueNotifier(1500);
+  final volumeSmoothHandoffNotifier = ValueNotifier(true);
+  final delayedUsbLinkNotifier = ValueNotifier(false);
 
   void load(Map<String, dynamic> json) {
     fixedSampleRateEnabledNotifier.value =
@@ -69,6 +77,22 @@ class UsbAudioPreferences {
         json['usbReleaseBandwidthAfterPlayback'] as bool? ?? false;
     keepAliveInBackgroundNotifier.value =
         json['usbKeepAliveInBackground'] as bool? ?? true;
+    bitDepthCompatNotifier.value = json['usbBitDepthCompat'] as bool? ?? true;
+    sampleRateCompatNotifier.value =
+        json['usbSampleRateCompat'] as bool? ?? true;
+    channelCompatNotifier.value = json['usbChannelCompat'] as bool? ?? true;
+    tpdfDitherNotifier.value = json['usbTpdfDither'] as bool? ?? false;
+    foregroundBufferMsNotifier.value = _validBufferMs(
+      json['usbForegroundBufferMs'] as int?,
+      200,
+    );
+    backgroundBufferMsNotifier.value = _validBufferMs(
+      json['usbBackgroundBufferMs'] as int?,
+      1500,
+    );
+    volumeSmoothHandoffNotifier.value =
+        json['usbVolumeSmoothHandoff'] as bool? ?? true;
+    delayedUsbLinkNotifier.value = json['usbDelayedUsbLink'] as bool? ?? false;
   }
 
   Map<String, Object?> toMap() {
@@ -88,6 +112,14 @@ class UsbAudioPreferences {
       'usbReleaseBandwidthAfterPlayback':
           releaseUsbBandwidthAfterPlaybackNotifier.value,
       'usbKeepAliveInBackground': keepAliveInBackgroundNotifier.value,
+      'usbBitDepthCompat': bitDepthCompatNotifier.value,
+      'usbSampleRateCompat': sampleRateCompatNotifier.value,
+      'usbChannelCompat': channelCompatNotifier.value,
+      'usbTpdfDither': tpdfDitherNotifier.value,
+      'usbForegroundBufferMs': foregroundBufferMsNotifier.value,
+      'usbBackgroundBufferMs': backgroundBufferMsNotifier.value,
+      'usbVolumeSmoothHandoff': volumeSmoothHandoffNotifier.value,
+      'usbDelayedUsbLink': delayedUsbLinkNotifier.value,
     };
   }
 
@@ -123,5 +155,10 @@ class UsbAudioPreferences {
   int? _validRate(int? rate) {
     if (rate == null) return null;
     return sampleRates.contains(rate) ? rate : null;
+  }
+
+  int _validBufferMs(int? value, int fallback) {
+    if (value == null) return fallback;
+    return value.clamp(50, 5000);
   }
 }

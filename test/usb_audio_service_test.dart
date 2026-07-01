@@ -189,91 +189,99 @@ void main() {
     expect(result.rawDescriptorLength, 257);
   });
 
-  test('getExclusiveCapabilities maps native exclusive USB capabilities', () async {
-    final service = UsbAudioService(channel: channel, isAndroid: true);
+  test(
+    'getExclusiveCapabilities maps native exclusive USB capabilities',
+    () async {
+      final service = UsbAudioService(channel: channel, isAndroid: true);
 
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'getExclusiveCapabilities') {
-        return {
-          'available': true,
-          'permissionGranted': true,
-          'deviceName': 'iBasso Macaron',
-          'deviceId': 31,
-          'interfaceNumber': 1,
-          'alternateSetting': 1,
-          'endpointAddress': 1,
-          'maxPacketSize': 196,
-          'sampleRates': [44100, 48000, 96000],
-          'bitDepths': [16, 24, 32],
-          'channelCounts': [2],
-          'message': 'USB exclusive endpoint is available.',
-        };
-      }
-      throw PlatformException(code: 'unexpected_method');
-    });
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'getExclusiveCapabilities') {
+          return {
+            'available': true,
+            'permissionGranted': true,
+            'deviceName': 'iBasso Macaron',
+            'deviceId': 31,
+            'interfaceNumber': 1,
+            'alternateSetting': 1,
+            'endpointAddress': 1,
+            'maxPacketSize': 196,
+            'sampleRates': [44100, 48000, 96000],
+            'bitDepths': [16, 24, 32],
+            'channelCounts': [2],
+            'message': 'USB exclusive endpoint is available.',
+          };
+        }
+        throw PlatformException(code: 'unexpected_method');
+      });
 
-    final capability = await service.getExclusiveCapabilities();
+      final capability = await service.getExclusiveCapabilities();
 
-    expect(capability.available, isTrue);
-    expect(capability.permissionGranted, isTrue);
-    expect(capability.deviceName, 'iBasso Macaron');
-    expect(capability.deviceId, 31);
-    expect(capability.interfaceNumber, 1);
-    expect(capability.alternateSetting, 1);
-    expect(capability.endpointAddress, 1);
-    expect(capability.maxPacketSize, 196);
-    expect(capability.sampleRates, [44100, 48000, 96000]);
-    expect(capability.bitDepths, [16, 24, 32]);
-    expect(capability.channelCounts, [2]);
-  });
+      expect(capability.available, isTrue);
+      expect(capability.permissionGranted, isTrue);
+      expect(capability.deviceName, 'iBasso Macaron');
+      expect(capability.deviceId, 31);
+      expect(capability.interfaceNumber, 1);
+      expect(capability.alternateSetting, 1);
+      expect(capability.endpointAddress, 1);
+      expect(capability.maxPacketSize, 196);
+      expect(capability.sampleRates, [44100, 48000, 96000]);
+      expect(capability.bitDepths, [16, 24, 32]);
+      expect(capability.channelCounts, [2]);
+    },
+  );
 
-  test('startExclusivePlayback sends playback request to native layer', () async {
-    final service = UsbAudioService(channel: channel, isAndroid: true);
-    Object? receivedArguments;
+  test(
+    'startExclusivePlayback sends playback request to native layer',
+    () async {
+      final service = UsbAudioService(channel: channel, isAndroid: true);
+      Object? receivedArguments;
 
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'startExclusivePlayback') {
-        receivedArguments = call.arguments;
-        return {
-          'active': true,
-          'playing': true,
-          'positionMs': 0,
-          'durationMs': 180000,
-          'sampleRate': 44100,
-          'bitDepth': 24,
-          'format': 'flac',
-          'message': 'USB exclusive playback started.',
-        };
-      }
-      throw PlatformException(code: 'unexpected_method');
-    });
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'startExclusivePlayback') {
+          receivedArguments = call.arguments;
+          return {
+            'active': true,
+            'playing': true,
+            'positionMs': 0,
+            'durationMs': 180000,
+            'sampleRate': 44100,
+            'bitDepth': 24,
+            'format': 'flac',
+            'message': 'USB exclusive playback started.',
+          };
+        }
+        throw PlatformException(code: 'unexpected_method');
+      });
 
-    final state = await service.startExclusivePlayback(
-      const UsbExclusivePlaybackRequest(
-        filePath: '/music/test.flac',
-        title: 'Test',
-        sampleRate: 44100,
-        bitDepth: 24,
-        startPaused: false,
-      ),
-    );
+      final state = await service.startExclusivePlayback(
+        const UsbExclusivePlaybackRequest(
+          filePath: '/music/test.flac',
+          title: 'Test',
+          sourceFormat: 'flac',
+          sampleRate: 44100,
+          bitDepth: 24,
+          startPaused: false,
+        ),
+      );
 
-    expect(receivedArguments, {
-      'filePath': '/music/test.flac',
-      'title': 'Test',
-      'sampleRate': 44100,
-      'bitDepth': 24,
-      'startPaused': false,
-    });
-    expect(state.active, isTrue);
-    expect(state.playing, isTrue);
-    expect(state.position, Duration.zero);
-    expect(state.duration, const Duration(minutes: 3));
-    expect(state.sampleRate, 44100);
-    expect(state.bitDepth, 24);
-    expect(state.format, 'flac');
-    expect(usbExclusivePlaybackStateNotifier.value, state);
-  });
+      expect(receivedArguments, {
+        'filePath': '/music/test.flac',
+        'title': 'Test',
+        'sourceFormat': 'flac',
+        'sampleRate': 44100,
+        'bitDepth': 24,
+        'startPaused': false,
+      });
+      expect(state.active, isTrue);
+      expect(state.playing, isTrue);
+      expect(state.position, Duration.zero);
+      expect(state.duration, const Duration(minutes: 3));
+      expect(state.sampleRate, 44100);
+      expect(state.bitDepth, 24);
+      expect(state.format, 'flac');
+      expect(usbExclusivePlaybackStateNotifier.value, state);
+    },
+  );
 
   test('native exclusive state event updates playback notifier', () async {
     UsbAudioService(channel: channel, isAndroid: true);

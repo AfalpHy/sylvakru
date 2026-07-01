@@ -59,6 +59,7 @@ List<int?> buildSampleRateOptions(
   options.addAll(sortedRates);
   if (sourceSampleRate != null &&
       sourceSampleRate > 0 &&
+      UsbAudioPreferences.sampleRates.contains(sourceSampleRate) &&
       !options.contains(sourceSampleRate)) {
     options.add(sourceSampleRate);
   }
@@ -74,13 +75,46 @@ int? preferredExclusiveSampleRate(
     return fixedRate;
   }
 
+  final matchedSourceRate = matchedSafeSampleRate(sourceSampleRate);
   final deviceRates = buildSampleRateOptions(status, null).whereType<int>();
-  if (sourceSampleRate != null &&
-      sourceSampleRate > 0 &&
-      deviceRates.contains(sourceSampleRate)) {
+  if (matchedSourceRate != null && deviceRates.contains(matchedSourceRate)) {
+    return matchedSourceRate;
+  }
+  return bestExclusiveDeviceSampleRate(status);
+}
+
+int? bestExclusiveDeviceSampleRate(UsbAudioStatus status) {
+  final rates = buildSampleRateOptions(status, null).whereType<int>().toList();
+  if (rates.isEmpty) {
+    return status.bestAvailableSampleRate;
+  }
+  rates.sort();
+  return rates.last;
+}
+
+int? matchedSafeSampleRate(int? sourceSampleRate) {
+  if (sourceSampleRate == null || sourceSampleRate <= 0) {
+    return null;
+  }
+
+  final supportedRates = UsbAudioPreferences.sampleRates;
+  if (supportedRates.contains(sourceSampleRate)) {
     return sourceSampleRate;
   }
-  return status.bestAvailableSampleRate;
+
+  final sameFamilyRates =
+      supportedRates.where((rate) => sourceSampleRate % rate == 0).toList()
+        ..sort();
+  if (sameFamilyRates.isNotEmpty) {
+    return sameFamilyRates.last;
+  }
+
+  return supportedRates
+      .where((rate) => rate <= sourceSampleRate)
+      .fold<int?>(
+        null,
+        (best, rate) => best == null || rate > best ? rate : best,
+      );
 }
 
 Future<UsbAudioStatus> applyExclusiveOutputForSong(
