@@ -89,6 +89,20 @@ void main() {
     expect(preferredUsbExclusiveTargetBufferMs(background: true), 320);
   });
 
+  test('selects exclusive PCM bit depth from user preference', () {
+    usbAudioPreferences.bitDepthModeNotifier.value = UsbBitDepthMode.auto;
+    expect(preferredUsbExclusiveBitDepth(), isNull);
+
+    usbAudioPreferences.bitDepthModeNotifier.value = UsbBitDepthMode.pcm16;
+    expect(preferredUsbExclusiveBitDepth(), 16);
+
+    usbAudioPreferences.bitDepthModeNotifier.value = UsbBitDepthMode.pcm24;
+    expect(preferredUsbExclusiveBitDepth(), 24);
+
+    usbAudioPreferences.bitDepthModeNotifier.value = UsbBitDepthMode.pcm32;
+    expect(preferredUsbExclusiveBitDepth(), 32);
+  });
+
   test('ignores unsupported fixed sample rate', () {
     usbAudioPreferences.load({
       'usbFixedSampleRateEnabled': true,

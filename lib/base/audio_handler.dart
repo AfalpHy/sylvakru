@@ -795,12 +795,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   }
 
   int? _preferredExclusiveBitDepth() {
-    return switch (usbAudioPreferences.bitDepthModeNotifier.value) {
-      UsbBitDepthMode.pcm16 => 24,
-      UsbBitDepthMode.pcm24 => 24,
-      UsbBitDepthMode.pcm32 => 24,
-      UsbBitDepthMode.auto => 24,
-    };
+    return preferredUsbExclusiveBitDepth();
   }
 
   int? _preferredExclusiveSampleRate(MyAudioMetadata song) {

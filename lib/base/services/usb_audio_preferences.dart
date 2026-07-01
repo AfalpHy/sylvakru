@@ -9,6 +9,15 @@ int preferredUsbExclusiveTargetBufferMs({required bool background}) {
   return usbAudioPreferences.foregroundBufferMsNotifier.value;
 }
 
+int? preferredUsbExclusiveBitDepth() {
+  return switch (usbAudioPreferences.bitDepthModeNotifier.value) {
+    UsbBitDepthMode.auto => null,
+    UsbBitDepthMode.pcm16 => 16,
+    UsbBitDepthMode.pcm24 => 24,
+    UsbBitDepthMode.pcm32 => 32,
+  };
+}
+
 enum UsbDsdMode { pcm, dop, native }
 
 enum UsbVolumeLockMode { off, dsdOnly, always }
