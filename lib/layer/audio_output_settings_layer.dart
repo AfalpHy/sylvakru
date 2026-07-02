@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/audio_handler.dart';
@@ -85,6 +89,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
   UsbExclusiveProbeResult? _exclusiveProbeResult;
   bool _probingExclusive = false;
   bool _refreshingStatus = false;
+  bool _generatingReport = false;
 
   @override
   Widget build(BuildContext context) {
@@ -324,11 +329,11 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   onTap: _probingExclusive ? null : _runExclusiveProbe,
                 ),
                 _actionTile(
-                  icon: Icons.feedback_rounded,
-                  title: 'USB 独占模式反馈',
-                  subtitle: '复制当前设备与输出链路信息，方便继续排查 DAC 兼容问题。',
-                  actionLabel: '查看状态',
-                  onTap: () => _showStatusSnack(status),
+                  icon: Icons.assignment_rounded,
+                  title: '生成诊断报告',
+                  subtitle: '汇总设备描述符、解析结果与最近日志，一键复制或导出发给开发者排查 DAC 兼容问题。',
+                  actionLabel: _generatingReport ? '生成中' : '生成报告',
+                  onTap: _generatingReport ? null : _generateDiagnosticsReport,
                 ),
               ],
             ),
@@ -1236,13 +1241,140 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     });
   }
 
-  void _showStatusSnack(UsbAudioStatus status) {
-    final device = _activeUsbDevice(status);
-    final message = device == null
-        ? '当前未检测到 USB DAC。'
-        : 'USB DAC: ${device.name} · ${_supportedRatesLabel(status)} · ${_bitDepthLabel(status)}';
+  Future<void> _generateDiagnosticsReport() async {
+    setState(() {
+      _generatingReport = true;
+    });
+
+    String report;
+    try {
+      report = await usbAudioService.getDiagnosticsReport();
+    } catch (error) {
+      report = 'Sylvakru USB 诊断报告 v1\n\n生成失败: $error';
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _generatingReport = false;
+    });
+    _showDiagnosticsReportSheet(report);
+  }
+
+  void _showDiagnosticsReportSheet(String report) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (sheetContext) {
+        return MySheet(
+          height: MediaQuery.heightOf(sheetContext) * 0.85,
+          Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: Text(
+                  'USB 诊断报告',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '包含设备名称与 USB 描述符，不包含任何音乐文件内容；序列号已脱敏。',
+                  style: TextStyle(
+                    color: textColor.value.withAlpha(150),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: textColor.value.withAlpha(12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: SelectableText(
+                        report,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _copyReport(report),
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        label: const Text('复制到剪贴板'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _exportReport(report),
+                        icon: const Icon(Icons.save_alt_rounded, size: 18),
+                        label: const Text('导出为文件'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _copyReport(String report) async {
+    await Clipboard.setData(ClipboardData(text: report));
+    if (!mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      const SnackBar(
+        content: Text('已复制，可直接粘贴反馈'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _exportReport(String report) async {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final now = DateTime.now();
+    final timestamp =
+        '${now.year}${two(now.month)}${two(now.day)}_'
+        '${two(now.hour)}${two(now.minute)}${two(now.second)}';
+    final fileName = 'usb_diag_$timestamp.txt';
+
+    String directory;
+    if (Platform.isAndroid) {
+      final picked = await FilePicker.getDirectoryPath();
+      if (picked == null) return;
+      directory = picked;
+    } else {
+      directory = '${appDocsDir.path}/logs';
+      Directory(directory).createSync(recursive: true);
+    }
+
+    final file = File(p.join(directory, fileName));
+    file.writeAsStringSync(report);
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text('已导出到 ${file.path}'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -1332,15 +1464,6 @@ UsbAudioDevice? _activeUsbDevice(UsbAudioStatus status) {
     }
   }
   return null;
-}
-
-String _supportedRatesLabel(UsbAudioStatus status) {
-  final device = _activeUsbDevice(status);
-  final rates = device?.supportedMixerSampleRates.isNotEmpty == true
-      ? device!.supportedMixerSampleRates
-      : device?.sampleRates ?? const <int>[];
-  if (rates.isEmpty) return '未知';
-  return rates.map(formatSampleRate).join(' / ');
 }
 
 String _bitDepthLabel(UsbAudioStatus status) {

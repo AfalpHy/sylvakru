@@ -362,4 +362,71 @@ void main() {
     expect(telemetry.underrunCount, 1);
     expect(telemetry.updatedAtMs, 123456);
   });
+
+  test('getDiagnosticsReport assembles native data into a text report', () async {
+    final service = UsbAudioService(channel: channel, isAndroid: true);
+
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'getUsbDiagnosticsReport') {
+        return {
+          'generatedAtMs': 1751414400000,
+          'androidSdk': 34,
+          'androidRelease': '14',
+          'manufacturer': 'Pixel',
+          'model': 'Test',
+          'permissionGranted': true,
+          'device': {
+            'vendorIdHex': '0x2972',
+            'productIdHex': '0x0047',
+            'manufacturerName': 'FiiO',
+            'productName': 'FiiO KA13',
+            'deviceClass': 0,
+            'deviceSubclass': 0,
+            'interfaceCount': 4,
+            'audioInterfaceCount': 2,
+            'serialTail': '****9F2A',
+          },
+          'diagnostics': {
+            'available': true,
+            'rawDescriptorLength': 32,
+            'rawDescriptorsHex': '0000: 12 01 00 02',
+            'streamingFormats': ['StreamingFormatInfo(alt=1)'],
+            'outputCandidates': ['alt=1/max=294/bits=32'],
+            'clockSourceId': 41,
+          },
+          'lastProbe': {'message': 'ok'},
+          'systemStatus': {
+            'devices': [
+              {'id': 10, 'name': 'FiiO KA13'},
+            ],
+          },
+          'nativeLogcat': ['01-01 00:00:00.000 I native line'],
+          'logs': ['00:00:00.000 I/UsbExclusiveAudioEngine: open ok'],
+        };
+      }
+      throw PlatformException(code: 'unexpected_method');
+    });
+
+    final report = await service.getDiagnosticsReport();
+
+    expect(report, startsWith('Sylvakru USB 诊断报告 v1'));
+    expect(report, contains('App 版本'));
+    expect(report, contains('0x2972 / 0x0047'));
+    expect(report, contains('****9F2A'));
+    expect(report, contains('## 原始描述符 (hex dump)'));
+    expect(report, contains('0000: 12 01 00 02'));
+    expect(report, contains('alt=1/max=294/bits=32'));
+    expect(report, contains('UAC2 时钟源 id: 41'));
+    expect(report, contains('## 偏好快照'));
+    expect(report, contains('open ok'));
+    expect(report, contains('native line'));
+  });
+
+  test('buildUsbDiagnosticsReport handles missing device data', () {
+    final report = buildUsbDiagnosticsReport(const {}, platformSupported: true);
+
+    expect(report, startsWith('Sylvakru USB 诊断报告 v1'));
+    expect(report, contains('未检测到 USB 音频设备。'));
+    expect(report, contains('描述符不可用。'));
+  });
 }
