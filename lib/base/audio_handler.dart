@@ -714,12 +714,24 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
       return false;
     }
 
+    final exclusiveSampleRate = _preferredExclusiveSampleRate(song);
+    if (exclusiveSampleRate == null) {
+      // 源采样率无法在独占直驱下与 DAC 时钟对齐（没有 SRC），干净回退到系统输出而不是变调播放。
+      logger.output(
+        "usb exclusive fallback:unsupported source samplerate=${song.samplerate}",
+      );
+      debugPrint(
+        "usb exclusive fallback:unsupported source samplerate=${song.samplerate}",
+      );
+      return false;
+    }
+
     final state = await usbAudioService.startExclusivePlayback(
       UsbExclusivePlaybackRequest(
         filePath: filePath,
         title: getTitle(song),
         sourceFormat: _normalizedExclusiveFormat(song),
-        sampleRate: _preferredExclusiveSampleRate(song),
+        sampleRate: exclusiveSampleRate,
         bitDepth: _preferredExclusiveBitDepth(),
         targetBufferMs: _exclusiveTargetBufferMsForLifecycle(
           WidgetsBinding.instance.lifecycleState,
@@ -799,8 +811,13 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   }
 
   int? _preferredExclusiveSampleRate(MyAudioMetadata song) {
-    return usbAudioPreferences.preferredFixedSampleRate() ??
-        _matchedSafeSampleRate(song.samplerate);
+    // 真独占按源采样率打包并直驱 DAC，输出时钟必须等于源采样率，否则会变调 + 持续欠载。
+    // 因此忽略“固定采样率”偏好（那是给系统共享链路用的），只有源采样率本身可用时才允许独占。
+    final source = song.samplerate;
+    if (source == null || source <= 0) {
+      return null;
+    }
+    return UsbAudioPreferences.sampleRates.contains(source) ? source : null;
   }
 
   Future<void> _applyUsbOutputForSong(MyAudioMetadata song) async {

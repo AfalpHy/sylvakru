@@ -201,7 +201,12 @@ class UsbExclusiveAudioEngine(
         UsbDiagnostics.i(tag, "native USB exclusive endpoint opened.")
 
         if (requestedSampleRate != null) {
-            configureUsbAudioClock(openedConnection, device, target, requestedSampleRate)
+            val clockError = configureUsbAudioClock(openedConnection, device, target, requestedSampleRate)
+            if (clockError != null) {
+                UsbExclusiveNative.close()
+                openedConnection.close()
+                return updateState(inactiveState(clockError))
+            }
         }
 
         connection = openedConnection
@@ -796,12 +801,17 @@ class UsbExclusiveAudioEngine(
         }
     }
 
+    /**
+     * 配置 DAC 时钟到 [sampleRate]。返回 null 表示可以继续；返回非 null 的原因字符串表示
+     * 校验到时钟与请求不一致（GET_CUR 读回值 ≠ 请求值），调用方应据此回退系统输出，避免变调/欠载。
+     * 注意：仅在 GET_CUR 明确读回成功且不等于请求值时才判失败；读不回（设备不支持 GET_CUR）时不阻断。
+     */
     private fun configureUsbAudioClock(
         connection: UsbDeviceConnection,
         device: UsbDevice,
         target: OutputTarget,
         sampleRate: Int,
-    ) {
+    ): String? {
         val controlInterface = findAudioControlInterface(device)
         val controlInterfaceNumber = controlInterface?.id ?: target.usbInterface.id
         val clockSourceId = findUac2ClockSourceId(
@@ -841,13 +851,21 @@ class UsbExclusiveAudioEngine(
                     "UAC2 clock SET_CUR sampleRate=$sampleRate, clockSourceId=$clockSourceId, " +
                     "controlInterface=$controlInterfaceNumber, result=$result",
                 )
-                readUac2ClockSampleRate(
+                val readBack = readUac2ClockSampleRate(
                     connection,
                     clockSourceId,
                     controlInterfaceNumber,
                     "after",
                 )
-                return
+                if (readBack != null && readBack != sampleRate) {
+                    UsbDiagnostics.w(
+                        tag,
+                        "UAC2 clock mismatch: requested=$sampleRate readBack=$readBack; " +
+                            "falling back to system output.",
+                    )
+                    return "DAC 未接受采样率 ${sampleRate}Hz（读回 ${readBack}Hz），已回退系统输出。"
+                }
+                return null
             }
 
             val data = byteArrayOf(
@@ -870,8 +888,10 @@ class UsbExclusiveAudioEngine(
                     target.endpoint.address.toString(16)
                 }, result=$result",
             )
+            return null
         } catch (error: RuntimeException) {
             UsbDiagnostics.w(tag, "USB audio clock configuration failed.", error)
+            return null
         } finally {
             if (claimedControl && controlInterface != null) {
                 runCatching { connection.releaseInterface(controlInterface) }
