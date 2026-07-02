@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 
 final usbAudioService = UsbAudioService();
@@ -173,6 +175,24 @@ class UsbAudioService {
 
   Future<UsbExclusivePlaybackState> releaseExclusiveDevice() {
     return _invokeExclusiveState('releaseExclusiveDevice');
+  }
+
+  /// 生成一键复制/导出的 DAC 适配诊断报告（纯文本 Markdown）。
+  /// 报告不要求 DAC 在线：未连接设备时也会带上环境、偏好与最近日志。
+  Future<String> getDiagnosticsReport() async {
+    Map<String, Object?> native = const {};
+    if (_isAndroid) {
+      try {
+        native =
+            await _channel.invokeMapMethod<String, Object?>(
+              'getUsbDiagnosticsReport',
+            ) ??
+            const {};
+      } on PlatformException catch (error) {
+        native = {'error': error.message};
+      }
+    }
+    return buildUsbDiagnosticsReport(native, platformSupported: _isAndroid);
   }
 
   Future<UsbAudioStatus> _invokeStatus(
@@ -672,6 +692,182 @@ class UsbAudioDevice {
     }
     return null;
   }
+}
+
+/// 把原生侧采集的诊断数据与 Dart 侧的偏好/状态/日志拼装成单个纯文本报告。
+/// 首行固定为版本标识，便于后续解析工具识别。抽成顶层函数便于单元测试。
+String buildUsbDiagnosticsReport(
+  Map<String, Object?> native, {
+  bool platformSupported = true,
+}) {
+  final buffer = StringBuffer();
+  buffer.writeln('Sylvakru USB 诊断报告 v1');
+
+  final error = native['error'];
+  if (error != null) {
+    buffer.writeln();
+    buffer.writeln('> 采集原生数据失败: $error');
+  }
+
+  // 1. 环境
+  buffer.writeln();
+  buffer.writeln('## 环境');
+  buffer.writeln('- App 版本: $versionNumber');
+  if (!platformSupported) {
+    buffer.writeln('- 平台: 非 Android（原生 USB 数据不可用）');
+  } else {
+    final release = native['androidRelease'] ?? '未知';
+    final sdk = _asInt(native['androidSdk']) ?? '未知';
+    buffer.writeln('- Android: $release (SDK $sdk)');
+    buffer.writeln(
+      '- 机型: ${'${native['manufacturer'] ?? '未知'} ${native['model'] ?? ''}'.trim()}',
+    );
+  }
+  buffer.writeln('- 生成时间: ${_formatTimestamp(native['generatedAtMs'])}');
+
+  // 2. USB 设备标识
+  buffer.writeln();
+  buffer.writeln('## USB 设备标识');
+  final device = native['device'];
+  if (device is Map) {
+    final d = device.cast<String, Object?>();
+    buffer.writeln(
+      '- VID/PID: ${d['vendorIdHex'] ?? d['vendorId']} / ${d['productIdHex'] ?? d['productId']}',
+    );
+    buffer.writeln('- 厂商: ${d['manufacturerName'] ?? '未知'}');
+    buffer.writeln('- 产品: ${d['productName'] ?? '未知'}');
+    buffer.writeln(
+      '- deviceClass/subclass: ${d['deviceClass']} / ${d['deviceSubclass']}',
+    );
+    buffer.writeln(
+      '- 接口总数 / Audio 接口数: ${d['interfaceCount']} / ${d['audioInterfaceCount']}',
+    );
+    buffer.writeln('- 序列号(脱敏): ${d['serialTail'] ?? '不可用'}');
+    buffer.writeln(
+      '- USB 权限: ${native['permissionGranted'] == true ? '已授权' : '未授权'}',
+    );
+    buffer.writeln('> 序列号仅显示末 4 位，不包含完整序列号。');
+  } else {
+    buffer.writeln('- 未检测到 USB 音频设备。');
+  }
+
+  final diagnostics =
+      (native['diagnostics'] as Map?)?.cast<String, Object?>() ?? const {};
+
+  // 3. 原始描述符 hex dump（离线还原设备行为的核心数据）
+  buffer.writeln();
+  buffer.writeln('## 原始描述符 (hex dump)');
+  final hex = diagnostics['rawDescriptorsHex'];
+  if (hex is String && hex.isNotEmpty) {
+    buffer.writeln('长度: ${diagnostics['rawDescriptorLength'] ?? '未知'} bytes');
+    buffer.writeln('```');
+    buffer.writeln(hex);
+    buffer.writeln('```');
+  } else {
+    buffer.writeln('- ${diagnostics['message'] ?? '描述符不可用。'}');
+  }
+
+  // 4. App 解析结果
+  buffer.writeln();
+  buffer.writeln('## App 解析结果');
+  buffer.writeln('### AS 格式');
+  _writeListSection(buffer, diagnostics['streamingFormats']);
+  buffer.writeln('### 输出候选 (alt/maxPacket/attr/feedback/bits/format)');
+  _writeListSection(buffer, diagnostics['outputCandidates']);
+  buffer.writeln('- UAC2 时钟源 id: ${diagnostics['clockSourceId'] ?? '未知'}');
+  buffer.writeln('- 最近一次 probe: ${native['lastProbe'] ?? '无'}');
+
+  // 5. 系统侧能力
+  buffer.writeln();
+  buffer.writeln('## 系统侧能力');
+  final status = (native['systemStatus'] as Map?)?.cast<String, Object?>();
+  final devices = status?['devices'];
+  if (devices is List && devices.isNotEmpty) {
+    for (final dev in devices) {
+      buffer.writeln('- $dev');
+    }
+  } else {
+    buffer.writeln('- 无 USB 音频输出设备。');
+  }
+
+  // 6. 偏好快照
+  buffer.writeln();
+  buffer.writeln('## 偏好快照');
+  usbAudioPreferences.toMap().forEach((key, value) {
+    buffer.writeln('- $key: $value');
+  });
+
+  // 7. 运行状态快照
+  buffer.writeln();
+  buffer.writeln('## 运行状态快照');
+  final state = usbExclusivePlaybackStateNotifier.value;
+  buffer.writeln(
+    '- 独占: active=${state.active}, playing=${state.playing}, '
+    'format=${state.format}, sampleRate=${state.sampleRate}, '
+    'bitDepth=${state.bitDepth}, position=${state.position.inMilliseconds}ms',
+  );
+  buffer.writeln('  message=${state.message}');
+  final telemetry = usbTransportTelemetryNotifier.value;
+  buffer.writeln(
+    '- telemetry: active=${telemetry.active}, '
+    'buffer=${telemetry.bufferLevel.inMilliseconds}ms, '
+    'min=${telemetry.minimumBufferLevel?.inMilliseconds}, '
+    'target=${telemetry.targetBuffer?.inMilliseconds}, '
+    'iso=${telemetry.isoPacketCount}, pendingUrbs=${telemetry.pendingUrbs}, '
+    'underrun=${telemetry.underrunCount}',
+  );
+
+  // 8. 最近日志
+  buffer.writeln();
+  buffer.writeln('## 最近日志 (Kotlin/native)');
+  _writeLogLines(buffer, native['logs']);
+  final nativeLog = native['nativeLogcat'];
+  if (nativeLog is List && nativeLog.isNotEmpty) {
+    buffer.writeln();
+    buffer.writeln('### native logcat (SylvakruUsbExclusive)');
+    _writeLogLines(buffer, nativeLog);
+  }
+
+  buffer.writeln();
+  buffer.writeln('## 最近日志 (Dart)');
+  final dartLogs = logger.tailContaining('usb', max: 200);
+  if (dartLogs.isEmpty) {
+    buffer.writeln('（无）');
+  } else {
+    for (final l in dartLogs) {
+      buffer.writeln(l);
+    }
+  }
+
+  return buffer.toString();
+}
+
+void _writeListSection(StringBuffer buffer, Object? value) {
+  if (value is List && value.isNotEmpty) {
+    for (final item in value) {
+      buffer.writeln('- $item');
+    }
+  } else {
+    buffer.writeln('- 无');
+  }
+}
+
+void _writeLogLines(StringBuffer buffer, Object? value) {
+  if (value is List && value.isNotEmpty) {
+    for (final line in value) {
+      buffer.writeln(line.toString());
+    }
+  } else {
+    buffer.writeln('（无）');
+  }
+}
+
+String _formatTimestamp(Object? millis) {
+  final ms = _asInt(millis);
+  if (ms == null || ms == 0) {
+    return DateTime.now().toString();
+  }
+  return DateTime.fromMillisecondsSinceEpoch(ms).toString();
 }
 
 int? _asInt(Object? value) {

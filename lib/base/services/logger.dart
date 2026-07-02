@@ -35,6 +35,23 @@ class Logger {
     );
   }
 
+  /// 返回当前会话日志文件里包含 [needle] 的行（不区分大小写），最多保留尾部 [max] 行。
+  /// 供 USB 诊断报告拼接 Dart 侧日志使用。
+  List<String> tailContaining(String needle, {int max = 200}) {
+    try {
+      if (!_file.existsSync()) return const [];
+      final lower = needle.toLowerCase();
+      final filtered = _file
+          .readAsLinesSync()
+          .where((line) => line.toLowerCase().contains(lower))
+          .toList();
+      if (filtered.length <= max) return filtered;
+      return filtered.sublist(filtered.length - max);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   void export2Directory(String directory) {
     final fileName = basename(_file.path);
     final newPath = join(directory, fileName);
