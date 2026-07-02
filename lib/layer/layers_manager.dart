@@ -13,6 +13,7 @@ import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/data/history.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
 import 'package:sylvakru/layer/about_layer.dart';
+import 'package:sylvakru/layer/audio_output_settings_layer.dart';
 import 'package:sylvakru/layer/albums_layer.dart';
 import 'package:sylvakru/layer/artists_layer.dart';
 import 'package:sylvakru/layer/folders_layer.dart';
@@ -236,6 +237,16 @@ class LayersManager {
       visibleNotifier = settingsVisibleNotifier;
       if (detail == 'about') {
         detailLayer = AboutLayer();
+      } else if (detail == 'audio_output') {
+        detailLayer = AudioOutputSettingsLayer();
+      } else if (detail == 'usb_fixed_sample_rate') {
+        detailLayer = AudioOutputSettingsLayer(
+          pageKind: AudioOutputSettingsPageKind.fixedSampleRate,
+        );
+      } else if (detail == 'usb_dsd_mode') {
+        detailLayer = AudioOutputSettingsLayer(
+          pageKind: AudioOutputSettingsPageKind.dsdMode,
+        );
       } else if (detail == 'license') {
         visibleNotifier = aboutVisibleNotifier;
         detailLayer = LicenseLayer();

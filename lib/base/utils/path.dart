@@ -67,7 +67,15 @@ String getPicturesPath(SourceType sourceType) {
 final _httpClient = http.Client();
 
 Future<String?> convertToRealPathIfNeed(String path) async {
-  final request = http.Request('HEAD', Uri.parse(path))
+  final uri = Uri.tryParse(path);
+  if (uri == null ||
+      !(uri.isScheme('http') || uri.isScheme('https')) ||
+      !uri.hasAuthority ||
+      uri.host.isEmpty) {
+    return null;
+  }
+
+  final request = http.Request('HEAD', uri)
     ..followRedirects = false
     ..headers.addAll(webdavClient?.headers ?? {});
 

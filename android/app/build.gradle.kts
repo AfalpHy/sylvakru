@@ -39,10 +39,37 @@ android {
 
     defaultConfig {
         applicationId = "com.afalphy.sylvakru"
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c++17", "-Wall", "-Wextra")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    packaging {
+        jniLibs {
+            excludes += setOf(
+                "lib/armeabi-v7a/**",
+                "lib/x86/**",
+                "lib/x86_64/**",
+            )
+        }
     }
 
     buildTypes {
@@ -51,6 +78,11 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug" 
+        }
+        maybeCreate("profile").apply {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".profile"
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -65,4 +97,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("com.github.HChenX:SuperLyricApi:3.4")
 }
