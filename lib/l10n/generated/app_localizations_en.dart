@@ -607,4 +607,416 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkingPurchase => 'Checking purchase history...';
+
+  @override
+  String get audioOutput => 'Audio output';
+
+  @override
+  String get audioOutputSubtitle =>
+      'USB exclusive, fixed rate, DSD & bit depth';
+
+  @override
+  String get usbDacDisconnected =>
+      'USB DAC disconnected; reverted to Android system output';
+
+  @override
+  String get usbOutputSettings => 'USB output settings';
+
+  @override
+  String get fixedSampleRateOutput => 'Fixed sample rate output';
+
+  @override
+  String get dsdMode => 'DSD mode';
+
+  @override
+  String get transportIdle => 'Idle';
+
+  @override
+  String get transportPaused => 'Paused';
+
+  @override
+  String get transportStable => 'Stable';
+
+  @override
+  String get transportLow => 'Low';
+
+  @override
+  String get transportUnderrun => 'Underrun';
+
+  @override
+  String get usbOff => 'Off';
+
+  @override
+  String get usbAuto => 'Auto';
+
+  @override
+  String get systemDefault => 'System default';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String get notConnected => 'Not connected';
+
+  @override
+  String get running => 'Running';
+
+  @override
+  String get awaitingConnection => 'Awaiting connection';
+
+  @override
+  String get unrecognizedUsbDevice => 'Unrecognized USB device';
+
+  @override
+  String get exclusivePlayback => 'Exclusive playback';
+
+  @override
+  String get outputFormat => 'Output format';
+
+  @override
+  String get bitDepthCompat => 'Bit-depth fallback';
+
+  @override
+  String get bitDepthCompatDesc =>
+      'Automatically fall back when the device doesn\'t support the source bit depth.';
+
+  @override
+  String get sampleRateCompat => 'Sample-rate fallback';
+
+  @override
+  String get sampleRateCompatDesc =>
+      'Automatically fall back when the device doesn\'t support the source sample rate.';
+
+  @override
+  String get channelCompat => 'Channel fallback';
+
+  @override
+  String get channelCompatDesc =>
+      'Fall back to an available channel layout when the source channels aren\'t supported.';
+
+  @override
+  String get tpdfDither => 'TPDF dither';
+
+  @override
+  String get tpdfDitherDesc =>
+      'Add very-low-level noise when converting high bit depth to 16-bit to reduce quantization distortion.';
+
+  @override
+  String get pcmBitDepth => 'PCM bit depth';
+
+  @override
+  String get backgroundStability => 'Background stability';
+
+  @override
+  String get suggestDisableBatteryOpt => 'Disable battery optimization';
+
+  @override
+  String get suggestDisableBatteryOptDesc =>
+      'Otherwise the system may suspend the USB exclusive link during background playback or when switching to a large app.';
+
+  @override
+  String get openSettings => 'Open settings';
+
+  @override
+  String get usbExclusiveMode => 'USB exclusive mode';
+
+  @override
+  String get usbExclusiveModeDesc =>
+      'Enable exclusive hints and a high-priority output policy once a DAC is connected.';
+
+  @override
+  String get keepBackgroundActive => 'Keep background active';
+
+  @override
+  String get keepBackgroundActiveDesc =>
+      'Reduce the chance of the system interrupting USB output during background playback.';
+
+  @override
+  String get transportBuffer => 'Transport buffer';
+
+  @override
+  String get foregroundBuffer => 'Foreground buffer';
+
+  @override
+  String get backgroundBuffer => 'Background buffer';
+
+  @override
+  String get backgroundBufferDesc =>
+      'Raise the background buffer first if playback stutters while a large app runs in the background; higher is more stable but track switches and pause may respond a little slower.';
+
+  @override
+  String get volumeSection => 'Volume';
+
+  @override
+  String get volumeControl => 'Volume control';
+
+  @override
+  String get dsdGainCompensation => 'DSD gain compensation';
+
+  @override
+  String get volumeSmoothHandoff => 'Smooth volume handoff';
+
+  @override
+  String get volumeSmoothHandoffDesc =>
+      'Keep loudness continuous when switching between digital volume and DAC hardware volume.';
+
+  @override
+  String get mediaVolume => 'Current media volume';
+
+  @override
+  String get compatibility => 'Compatibility';
+
+  @override
+  String get delayUsbLink => 'Delay establishing the USB output link';
+
+  @override
+  String get delayUsbLinkDesc =>
+      'Establish the exclusive session only when playback starts; useful for DACs that freeze or misbehave.';
+
+  @override
+  String get usbBusSpeed => 'USB bus speed';
+
+  @override
+  String get releaseUsbBandwidth => 'Release USB bandwidth after playback';
+
+  @override
+  String get releaseUsbBandwidthDesc =>
+      'Let the system reclaim USB audio resources after playback stops.';
+
+  @override
+  String get supportSection => 'Support';
+
+  @override
+  String get usbExclusiveDiagnostics => 'USB exclusive diagnostics';
+
+  @override
+  String get detecting => 'Checking…';
+
+  @override
+  String get startDetection => 'Start check';
+
+  @override
+  String get generateDiagnosticsReport => 'Generate diagnostics report';
+
+  @override
+  String get generateDiagnosticsReportDesc =>
+      'Bundle device descriptors, parse results and recent logs to copy or export for the developer to debug DAC compatibility.';
+
+  @override
+  String get generating => 'Generating…';
+
+  @override
+  String get generateReport => 'Generate report';
+
+  @override
+  String get refreshUsbStatus => 'Refresh USB status';
+
+  @override
+  String get transportStatus => 'Transport status';
+
+  @override
+  String get bufferLevel => 'Buffer level';
+
+  @override
+  String targetMs(int ms) {
+    return 'Target $ms ms';
+  }
+
+  @override
+  String get buildTargetOnPlay => 'Build target level on playback';
+
+  @override
+  String minimumMs(int ms) {
+    return 'Min $ms ms';
+  }
+
+  @override
+  String get minimumNone => 'Min --';
+
+  @override
+  String get enableFixedSampleRate => 'Enable fixed sample rate';
+
+  @override
+  String get enableFixedSampleRateDesc =>
+      'When on, USB output prefers the selected sample rate below.';
+
+  @override
+  String get dsdOutputStrategy => 'DSD output strategy';
+
+  @override
+  String get dsdToPcm => 'Convert DSD to PCM output';
+
+  @override
+  String get dsdToPcmDesc =>
+      'Wrap DSD in PCM frames; used when the device supports it';
+
+  @override
+  String get dsdNativeDesc =>
+      'Keep the native DSD path; requires low-level support';
+
+  @override
+  String get volumeLockDsdOnly => 'Lock DSD volume only';
+
+  @override
+  String get volumeLockAlways => 'Always lock';
+
+  @override
+  String get sourceFile => 'Source';
+
+  @override
+  String get fileLabel => 'File';
+
+  @override
+  String get dacEndpoint => 'DAC endpoint';
+
+  @override
+  String get usbDiagnosticsReport => 'USB diagnostics report';
+
+  @override
+  String get usbDiagnosticsReportPrivacy =>
+      'Includes device name and USB descriptors, no music file content; the serial is masked.';
+
+  @override
+  String get copyToClipboard => 'Copy to clipboard';
+
+  @override
+  String get exportToFile => 'Export to file';
+
+  @override
+  String get copiedForFeedback => 'Copied — paste it into your feedback';
+
+  @override
+  String exportedTo(String path) {
+    return 'Exported to $path';
+  }
+
+  @override
+  String get probeDescription =>
+      'Check USB permission, Audio Class descriptors and interface claim capability.';
+
+  @override
+  String get probeWaitingAuth => 'Waiting for USB authorization.';
+
+  @override
+  String probeClaimable(int count) {
+    return 'Claimable · $count audio interface(s)';
+  }
+
+  @override
+  String get probeCannotClaim => 'Could not claim a USB Audio Interface.';
+
+  @override
+  String get speaker => 'Speaker';
+
+  @override
+  String get usbExclusive => 'USB exclusive';
+
+  @override
+  String appliedPreference(String name) {
+    return '$name · preference applied';
+  }
+
+  @override
+  String usbOutputLabel(String name) {
+    return '$name · USB output';
+  }
+
+  @override
+  String get usbDacDetected => 'USB DAC detected';
+
+  @override
+  String get deviceLabel => 'Device';
+
+  @override
+  String get nameLabel => 'Name';
+
+  @override
+  String get outputSampleRate => 'Output sample rate';
+
+  @override
+  String get supportedSampleRate => 'Supported sample rates';
+
+  @override
+  String get currentSong => 'Current track';
+
+  @override
+  String get exclusive => 'Exclusive';
+
+  @override
+  String get requestSampleRate => 'Requested sample rate';
+
+  @override
+  String get viewLink => 'View link';
+
+  @override
+  String get requesting => 'Requesting…';
+
+  @override
+  String get enableExclusive => 'Enable exclusive';
+
+  @override
+  String get audioSource => 'Audio source';
+
+  @override
+  String get inputSampleRate => 'Input sample rate';
+
+  @override
+  String get processingChain => 'Processing chain';
+
+  @override
+  String get dspPlugin => 'DSP plugin';
+
+  @override
+  String get notAttached => 'Not attached';
+
+  @override
+  String get signalOutput => 'Signal output';
+
+  @override
+  String get outputPort => 'Output port';
+
+  @override
+  String get encoding => 'Encoding';
+
+  @override
+  String get requested => 'Requested';
+
+  @override
+  String get notEnabled => 'Not enabled';
+
+  @override
+  String get noUsbDacInfo =>
+      'No USB DAC detected. Showing Android system output.';
+
+  @override
+  String get pcmSystemDefault => 'PCM / system default';
+
+  @override
+  String get needAndroid14 => 'Requires Android 14+';
+
+  @override
+  String get available => 'Available';
+
+  @override
+  String get unavailable => 'Unavailable';
+
+  @override
+  String get deviceNotDeclared => 'Device doesn\'t declare support';
+
+  @override
+  String get noUsbAudioDevice => 'No USB audio device connected';
+
+  @override
+  String get systemNoExclusive =>
+      'This system doesn\'t support USB exclusive requests';
+
+  @override
+  String get requestedExclusive => 'USB exclusive output requested';
+
+  @override
+  String get canEnableExclusive => 'USB exclusive output available';
+
+  @override
+  String get connectedNotConfirmed =>
+      'USB DAC connected but exclusive support unconfirmed';
 }

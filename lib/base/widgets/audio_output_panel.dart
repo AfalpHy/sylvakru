@@ -4,10 +4,11 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 import 'package:sylvakru/base/services/usb_audio_service.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
 
-String formatSampleRate(int? sampleRate) {
+String formatSampleRate(int? sampleRate, AppLocalizations l10n) {
   if (sampleRate == null || sampleRate <= 0) {
-    return '未知';
+    return l10n.unknown;
   }
 
   final khz = sampleRate / 1000.0;
@@ -17,22 +18,23 @@ String formatSampleRate(int? sampleRate) {
   return '${khz.toStringAsFixed(1)} kHz';
 }
 
-String formatOutputSampleRate(UsbAudioStatus status) {
+String formatOutputSampleRate(UsbAudioStatus status, AppLocalizations l10n) {
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active && exclusive.sampleRate != null) {
-    return formatSampleRate(exclusive.sampleRate);
+    return formatSampleRate(exclusive.sampleRate, l10n);
   }
 
   return formatSampleRate(
     status.preferredSampleRate ?? status.outputSampleRate,
+    l10n,
   );
 }
 
-String formatOutputDeviceName(UsbAudioStatus status) {
+String formatOutputDeviceName(UsbAudioStatus status, AppLocalizations l10n) {
   if (!status.supported) {
     final name = status.outputDeviceName?.toLowerCase();
     if (name == null || name.contains('speaker') || name.contains('扬声器')) {
-      return '扬声器';
+      return l10n.speaker;
     }
     return status.outputDeviceName!;
   }
@@ -43,33 +45,35 @@ String formatOutputDeviceName(UsbAudioStatus status) {
   return status.outputDeviceName ?? 'USB DAC';
 }
 
-String formatBitrate(int? bitrate) {
+String formatBitrate(int? bitrate, AppLocalizations l10n) {
   if (bitrate == null || bitrate <= 0) {
-    return '未知';
+    return l10n.unknown;
   }
   final kbps = bitrate >= 100000 ? (bitrate / 1000).round() : bitrate;
   return '$kbps kbps';
 }
 
-String formatSourceFileName(String? path) {
+String formatSourceFileName(String? path, AppLocalizations l10n) {
   if (path == null || path.isEmpty) {
-    return '未知';
+    return l10n.unknown;
   }
   final normalized = path.replaceAll('\\', '/');
   final parts = normalized.split('/');
   return parts.isEmpty ? normalized : parts.last;
 }
 
-String formatOutputPortLabel(UsbAudioStatus status) {
+String formatOutputPortLabel(UsbAudioStatus status, AppLocalizations l10n) {
   if (!status.supported) {
-    return formatOutputDeviceName(status);
+    return formatOutputDeviceName(status, l10n);
   }
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active) {
-    return 'USB 独占';
+    return l10n.usbExclusive;
   }
-  final name = _shortOutputName(status);
-  return status.preferredApplied ? '$name · 已应用偏好' : '$name · USB 输出';
+  final name = _shortOutputName(status, l10n);
+  return status.preferredApplied
+      ? l10n.appliedPreference(name)
+      : l10n.usbOutputLabel(name);
 }
 
 List<int?> buildSampleRateOptions(
@@ -176,9 +180,10 @@ class AudioOutputChip extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: usbAudioStatusNotifier,
       builder: (context, status, child) {
-        final outputRate = formatOutputSampleRate(status);
-        final outputName = _shortOutputName(status);
-        final bitDepth = _bitDepthLabel(status);
+        final l10n = AppLocalizations.of(context);
+        final outputRate = formatOutputSampleRate(status, l10n);
+        final outputName = _shortOutputName(status, l10n);
+        final bitDepth = _bitDepthLabel(status, l10n);
         final chipColor = _chipColor(color);
 
         return Center(
@@ -316,6 +321,7 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final foreground = lyricsPageForegroundColor.value;
     final highlight = lyricsPageHighlightTextColor.value;
     final background = _panelBackgroundColor(foreground);
@@ -363,7 +369,7 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '检测到 USB DAC',
+                          l10n.usbDacDetected,
                           style: TextStyle(
                             color: foreground,
                             fontSize: 22,
@@ -372,7 +378,7 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _exclusiveStatusLabel(_status),
+                          _exclusiveStatusLabel(_status, l10n),
                           style: TextStyle(color: muted, fontSize: 13),
                         ),
                       ],
@@ -382,22 +388,22 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
               ),
               const SizedBox(height: 16),
               _SignalSection(
-                title: '设备',
+                title: l10n.deviceLabel,
                 accent: highlight,
                 foreground: foreground,
                 muted: muted,
                 surface: surface,
                 border: border,
                 rows: [
-                  _InfoRow('名称', _shortOutputName(_status)),
-                  _InfoRow('输出采样率', formatOutputSampleRate(_status)),
-                  _InfoRow('支持采样率', _supportedRatesLabel(_status)),
-                  _InfoRow('当前歌曲', formatSampleRate(widget.song?.samplerate)),
+                  _InfoRow(l10n.nameLabel, _shortOutputName(_status, l10n)),
+                  _InfoRow(l10n.outputSampleRate, formatOutputSampleRate(_status, l10n)),
+                  _InfoRow(l10n.supportedSampleRate, _supportedRatesLabel(_status, l10n)),
+                  _InfoRow(l10n.currentSong, formatSampleRate(widget.song?.samplerate, l10n)),
                 ],
               ),
               const SizedBox(height: 12),
               _SignalSection(
-                title: '独占',
+                title: l10n.exclusive,
                 accent: canRequestExclusive
                     ? const Color(0xFF50D890)
                     : const Color(0xFFFFA33A),
@@ -407,14 +413,15 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
                 border: border,
                 rows: [
                   _InfoRow('Android', 'API ${_status.androidSdk}'),
-                  _InfoRow('Bit-perfect', _bitPerfectSupportLabel(_status)),
+                  _InfoRow('Bit-perfect', _bitPerfectSupportLabel(_status, l10n)),
                   _InfoRow(
-                    '请求采样率',
+                    l10n.requestSampleRate,
                     formatSampleRate(
                       preferredExclusiveSampleRate(
                         _status,
                         widget.song?.samplerate,
                       ),
+                      l10n,
                     ),
                   ),
                 ],
@@ -435,7 +442,11 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
                           }
                         });
                       },
-                      child: const Text('查看链路'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: foreground,
+                        side: BorderSide(color: foreground.withAlpha(90)),
+                      ),
+                      child: Text(l10n.viewLink),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -454,7 +465,7 @@ class _UsbAudioDetectedSheetState extends State<_UsbAudioDetectedSheet> {
                               ),
                             )
                           : const Icon(Icons.lock_rounded, size: 18),
-                      label: Text(_applying ? '请求中' : '启用独占'),
+                      label: Text(_applying ? l10n.requesting : l10n.enableExclusive),
                     ),
                   ),
                 ],
@@ -479,6 +490,7 @@ class _AudioOutputSheet extends StatefulWidget {
 class _AudioOutputSheetState extends State<_AudioOutputSheet> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final foreground = lyricsPageForegroundColor.value;
     final highlight = lyricsPageHighlightTextColor.value;
     final background = _panelBackgroundColor(foreground);
@@ -531,7 +543,7 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '音频输出',
+                              l10n.audioOutput,
                               style: TextStyle(
                                 color: foreground,
                                 fontSize: 22,
@@ -541,7 +553,7 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              formatOutputDeviceName(status),
+                              formatOutputDeviceName(status, l10n),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: muted, fontSize: 13),
@@ -553,42 +565,42 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
                   ),
                   const SizedBox(height: 18),
                   _SignalSection(
-                    title: '音频源',
+                    title: l10n.audioSource,
                     accent: highlight,
                     foreground: foreground,
                     muted: muted,
                     surface: surface,
                     border: border,
                     rows: [
-                      _InfoRow('文件', _sourcePathLabel(widget.song)),
+                      _InfoRow(l10n.fileLabel, _sourcePathLabel(widget.song, l10n)),
                       _InfoRow(
-                        '输入采样率',
-                        formatSampleRate(widget.song?.samplerate),
+                        l10n.inputSampleRate,
+                        formatSampleRate(widget.song?.samplerate, l10n),
                       ),
                       _InfoRow(
-                        '格式',
-                        widget.song?.format?.toUpperCase() ?? '未知',
+                        l10n.format,
+                        widget.song?.format?.toUpperCase() ?? l10n.unknown,
                       ),
-                      _InfoRow('码率', formatBitrate(widget.song?.bitrate)),
+                      _InfoRow(l10n.bitrate, formatBitrate(widget.song?.bitrate, l10n)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   _SignalSection(
-                    title: '处理链',
+                    title: l10n.processingChain,
                     accent: muted,
                     foreground: foreground,
                     muted: muted,
                     surface: surface,
                     border: border,
-                    rows: const [
-                      _InfoRow('均衡器', '关闭'),
-                      _InfoRow('PEQ', '关闭'),
-                      _InfoRow('DSP 插件', '未接入'),
+                    rows: [
+                      _InfoRow(l10n.equalizer, l10n.usbOff),
+                      _InfoRow('PEQ', l10n.usbOff),
+                      _InfoRow(l10n.dspPlugin, l10n.notAttached),
                     ],
                   ),
                   const SizedBox(height: 12),
                   _SignalSection(
-                    title: '信号输出',
+                    title: l10n.signalOutput,
                     accent: status.supported
                         ? const Color(0xFF50D890)
                         : const Color(0xFFFFA33A),
@@ -597,23 +609,23 @@ class _AudioOutputSheetState extends State<_AudioOutputSheet> {
                     surface: surface,
                     border: border,
                     rows: [
-                      _InfoRow('输出端口', _outputPortLabel(status)),
-                      _InfoRow('输出采样率', formatOutputSampleRate(status)),
-                      _InfoRow('编码', _outputEncodingLabel(status)),
+                      _InfoRow(l10n.outputPort, _outputPortLabel(status, l10n)),
+                      _InfoRow(l10n.outputSampleRate, formatOutputSampleRate(status, l10n)),
+                      _InfoRow(l10n.encoding, _outputEncodingLabel(status, l10n)),
                       _InfoRow(
                         'Bit-perfect',
                         status.preferredBitPerfect
-                            ? '已请求'
+                            ? l10n.requested
                             : status.supported
-                            ? '未启用'
-                            : '不可用',
+                            ? l10n.notEnabled
+                            : l10n.unavailable,
                       ),
                     ],
                   ),
                   if (!status.supported) ...[
                     const SizedBox(height: 14),
                     Text(
-                      '未检测到 USB DAC。当前显示 Android 系统输出信息。',
+                      l10n.noUsbDacInfo,
                       style: TextStyle(
                         color: muted,
                         fontSize: 12,
@@ -817,14 +829,14 @@ class _InfoRow {
   const _InfoRow(this.label, this.value);
 }
 
-String _shortOutputName(UsbAudioStatus status) {
+String _shortOutputName(UsbAudioStatus status, AppLocalizations l10n) {
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active) {
     return 'USB';
   }
 
   if (!status.supported) {
-    return formatOutputDeviceName(status);
+    return formatOutputDeviceName(status, l10n);
   }
   final device = _activeUsbDevice(status);
   if (device != null) return device.name;
@@ -840,38 +852,38 @@ UsbAudioDevice? _activeUsbDevice(UsbAudioStatus status) {
   return null;
 }
 
-String _supportedRatesLabel(UsbAudioStatus status) {
+String _supportedRatesLabel(UsbAudioStatus status, AppLocalizations l10n) {
   final device = _activeUsbDevice(status);
   final rates = device?.supportedMixerSampleRates.isNotEmpty == true
       ? device!.supportedMixerSampleRates
       : device?.sampleRates ?? const <int>[];
-  if (rates.isEmpty) return '未知';
-  return rates.map(formatSampleRate).join(' / ');
+  if (rates.isEmpty) return l10n.unknown;
+  return rates.map((rate) => formatSampleRate(rate, l10n)).join(' / ');
 }
 
-String _bitPerfectSupportLabel(UsbAudioStatus status) {
-  if (!status.supported) return '不可用';
-  if (status.androidSdk < 34) return '需要 Android 14+';
+String _bitPerfectSupportLabel(UsbAudioStatus status, AppLocalizations l10n) {
+  if (!status.supported) return l10n.unavailable;
+  if (status.androidSdk < 34) return l10n.needAndroid14;
   final device = _activeUsbDevice(status);
   if (device?.supportsBitPerfectMixer == true) {
-    return status.preferredBitPerfect ? '已请求' : '可用';
+    return status.preferredBitPerfect ? l10n.requested : l10n.available;
   }
-  return '设备未声明支持';
+  return l10n.deviceNotDeclared;
 }
 
-String _exclusiveStatusLabel(UsbAudioStatus status) {
-  if (!status.supported) return '未连接 USB 音频设备';
-  if (status.androidSdk < 34) return '当前系统不支持 USB 独占请求';
+String _exclusiveStatusLabel(UsbAudioStatus status, AppLocalizations l10n) {
+  if (!status.supported) return l10n.noUsbAudioDevice;
+  if (status.androidSdk < 34) return l10n.systemNoExclusive;
   if (status.preferredBitPerfect && status.preferredSampleRate != null) {
-    return '已请求 USB 独占输出';
+    return l10n.requestedExclusive;
   }
   if (_activeUsbDevice(status)?.supportsBitPerfectMixer == true) {
-    return '可启用 USB 独占输出';
+    return l10n.canEnableExclusive;
   }
-  return '已连接 USB DAC，但未确认支持独占';
+  return l10n.connectedNotConfirmed;
 }
 
-String _bitDepthLabel(UsbAudioStatus status) {
+String _bitDepthLabel(UsbAudioStatus status, AppLocalizations l10n) {
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active && exclusive.bitDepth != null) {
     return '${exclusive.bitDepth} bits';
@@ -882,22 +894,22 @@ String _bitDepthLabel(UsbAudioStatus status) {
   if (encoding == 'pcm_32bit') return '32 bits';
   if (encoding == 'pcm_24bit_packed') return '24 bits';
   if (encoding == 'pcm_16bit') return '16 bits';
-  return '未知';
+  return l10n.unknown;
 }
 
-String _outputEncodingLabel(UsbAudioStatus status) {
+String _outputEncodingLabel(UsbAudioStatus status, AppLocalizations l10n) {
   final encoding = status.preferredEncoding ?? status.outputEncoding;
-  if (encoding == null) return 'PCM / 系统默认';
-  final bitDepth = _bitDepthLabel(status);
-  return bitDepth == '未知' ? encoding : 'PCM / $bitDepth';
+  if (encoding == null) return l10n.pcmSystemDefault;
+  final bitDepth = _bitDepthLabel(status, l10n);
+  return bitDepth == l10n.unknown ? encoding : 'PCM / $bitDepth';
 }
 
-String _outputPortLabel(UsbAudioStatus status) {
-  return formatOutputPortLabel(status);
+String _outputPortLabel(UsbAudioStatus status, AppLocalizations l10n) {
+  return formatOutputPortLabel(status, l10n);
 }
 
-String _sourcePathLabel(MyAudioMetadata? song) {
-  return formatSourceFileName(song?.path ?? song?.cachePath);
+String _sourcePathLabel(MyAudioMetadata? song, AppLocalizations l10n) {
+  return formatSourceFileName(song?.path ?? song?.cachePath, l10n);
 }
 
 Color _chipColor(Color foreground) {

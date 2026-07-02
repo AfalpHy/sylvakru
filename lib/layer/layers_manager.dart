@@ -240,10 +240,12 @@ class LayersManager {
       } else if (detail == 'audio_output') {
         detailLayer = AudioOutputSettingsLayer();
       } else if (detail == 'usb_fixed_sample_rate') {
+        visibleNotifier = audioOutputVisibleNotifier;
         detailLayer = AudioOutputSettingsLayer(
           pageKind: AudioOutputSettingsPageKind.fixedSampleRate,
         );
       } else if (detail == 'usb_dsd_mode') {
+        visibleNotifier = audioOutputVisibleNotifier;
         detailLayer = AudioOutputSettingsLayer(
           pageKind: AudioOutputSettingsPageKind.dsdMode,
         );
@@ -311,6 +313,10 @@ class LayersManager {
       if (detailLayer is LicenseLayer) {
         detailWidgetMap[rootLayer] = parentLayer;
         visibleNotifier = aboutVisibleNotifier;
+      } else if (detailLayer is AudioOutputSettingsLayer &&
+          parentLayer is AudioOutputSettingsLayer) {
+        detailWidgetMap[rootLayer] = parentLayer;
+        visibleNotifier = audioOutputVisibleNotifier;
       }
     }
 

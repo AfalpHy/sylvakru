@@ -42,6 +42,7 @@ class MainActivity : AudioServiceActivity() {
     private var pendingExclusiveProbeResult: MethodChannel.Result? = null
     private var pendingExclusiveProbeDevice: UsbDevice? = null
     private var usbPermissionReceiver: BroadcastReceiver? = null
+    private var lastExclusiveProbeResult: Map<String, Any?>? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -80,6 +81,7 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "stopExclusivePlayback" -> result.success(usbExclusiveAudioEngine.stop())
                 "releaseExclusiveDevice" -> result.success(usbExclusiveAudioEngine.release())
+                "getUsbDiagnosticsReport" -> collectUsbDiagnosticsReport(result)
                 else -> result.notImplemented()
             }
         }
@@ -214,7 +216,7 @@ class MainActivity : AudioServiceActivity() {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         val device = findUsbAudioDevice(usbManager)
         if (device == null) {
-            Log.i(tag, "probeExclusiveAccess: no USB Audio Class device found.")
+            UsbDiagnostics.i(tag, "probeExclusiveAccess: no USB Audio Class device found.")
             result.success(
                 exclusiveProbeResult(
                     supported = false,
@@ -230,7 +232,7 @@ class MainActivity : AudioServiceActivity() {
         }
 
         if (!usbManager.hasPermission(device)) {
-            Log.i(tag, "probeExclusiveAccess: requesting USB permission for ${device.debugLabel()}.")
+            UsbDiagnostics.i(tag, "probeExclusiveAccess: requesting USB permission for ${device.debugLabel()}.")
             if (pendingExclusiveProbeResult != null) {
                 result.success(
                     exclusiveProbeResult(
@@ -263,15 +265,14 @@ class MainActivity : AudioServiceActivity() {
             return
         }
 
-        Log.i(tag, "probeExclusiveAccess: permission already granted for ${device.debugLabel()}.")
+        UsbDiagnostics.i(tag, "probeExclusiveAccess: permission already granted for ${device.debugLabel()}.")
         result.success(runExclusiveProbe(device))
     }
 
     private fun runExclusiveProbe(device: UsbDevice): Map<String, Any?> {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         val audioInterfaces = device.audioInterfaces()
-        Log.i(
-            tag,
+        UsbDiagnostics.i(tag,
             "runExclusiveProbe: opening ${device.debugLabel()}, audioInterfaces=${audioInterfaces.size}.",
         )
         val connection = usbManager.openDevice(device)
@@ -284,7 +285,7 @@ class MainActivity : AudioServiceActivity() {
                 rawDescriptorLength = 0,
                 message = "Failed to open USB device.",
             )
-                .also { Log.w(tag, "runExclusiveProbe: openDevice failed for ${device.debugLabel()}.") }
+                .also { UsbDiagnostics.w(tag, "runExclusiveProbe: openDevice failed for ${device.debugLabel()}.") }
 
         return connection.useConnection {
             val claimed = mutableListOf<UsbInterface>()
@@ -294,14 +295,12 @@ class MainActivity : AudioServiceActivity() {
                 for (usbInterface in audioInterfaces) {
                     if (connection.claimInterface(usbInterface, true)) {
                         claimed.add(usbInterface)
-                        Log.i(
-                            tag,
+                        UsbDiagnostics.i(tag,
                             "runExclusiveProbe: claimInterface ok id=${usbInterface.id}, " +
                                 "class=${usbInterface.interfaceClass}, alt=${usbInterface.alternateSetting}.",
                         )
                     } else {
-                        Log.w(
-                            tag,
+                        UsbDiagnostics.w(tag,
                             "runExclusiveProbe: claimInterface failed id=${usbInterface.id}, " +
                                 "class=${usbInterface.interfaceClass}, alt=${usbInterface.alternateSetting}.",
                         )
@@ -348,13 +347,12 @@ class MainActivity : AudioServiceActivity() {
 
     private fun findUsbAudioDevice(usbManager: UsbManager): UsbDevice? {
         val devices = usbManager.deviceList.values.toList()
-        Log.i(
-            tag,
+        UsbDiagnostics.i(tag,
             "enumerating USB devices count=${devices.size}: " +
                 devices.joinToString { it.debugLabel() },
         )
         val device = devices.firstOrNull { it.audioInterfaceCount() > 0 }
-        Log.i(tag, "selected USB Audio device=${device?.debugLabel() ?: "none"}.")
+        UsbDiagnostics.i(tag, "selected USB Audio device=${device?.debugLabel() ?: "none"}.")
         return device
     }
 
@@ -365,15 +363,14 @@ class MainActivity : AudioServiceActivity() {
             usbManager,
             device,
         )
-        Log.i(tag, "getExclusiveCapabilities: $capabilities")
+        UsbDiagnostics.i(tag, "getExclusiveCapabilities: $capabilities")
         return capabilities
     }
 
     private fun startExclusivePlayback(call: MethodCall): Map<String, Any?> {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         val device = findUsbAudioDevice(usbManager)
-        Log.i(
-            tag,
+        UsbDiagnostics.i(tag,
             "startExclusivePlayback: device=${device?.debugLabel() ?: "none"}, " +
                 "arguments=${call.argumentsMap()}",
         )
@@ -387,6 +384,77 @@ class MainActivity : AudioServiceActivity() {
     private fun MethodCall.argumentsMap(): Map<String, Any?> {
         val raw = arguments as? Map<*, *> ?: return emptyMap()
         return raw.entries.associate { (key, value) -> key.toString() to value }
+    }
+
+    private fun collectUsbDiagnosticsReport(result: MethodChannel.Result) {
+        val mainHandler = Handler(Looper.getMainLooper())
+        Thread({
+            val report = try {
+                buildUsbDiagnosticsReport()
+            } catch (error: Throwable) {
+                UsbDiagnostics.w(tag, "collectUsbDiagnosticsReport failed.", error)
+                mapOf("error" to (error.message ?: error.toString()))
+            }
+            mainHandler.post { result.success(report) }
+        }, "SylvakruUsbDiag").start()
+    }
+
+    private fun buildUsbDiagnosticsReport(): Map<String, Any?> {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val device = findUsbAudioDevice(usbManager)
+        return mapOf(
+            "generatedAtMs" to System.currentTimeMillis(),
+            "androidSdk" to Build.VERSION.SDK_INT,
+            "androidRelease" to Build.VERSION.RELEASE,
+            "manufacturer" to Build.MANUFACTURER,
+            "model" to Build.MODEL,
+            "permissionGranted" to (device?.let { usbManager.hasPermission(it) } ?: false),
+            "device" to device?.let { deviceIdentity(it) },
+            "diagnostics" to usbExclusiveAudioEngine.collectDiagnostics(usbManager, device),
+            "lastProbe" to lastExclusiveProbeResult,
+            "systemStatus" to getStatus(),
+            "nativeLogcat" to readNativeLogcat(),
+            "logs" to UsbDiagnostics.snapshot(),
+        )
+    }
+
+    private fun deviceIdentity(device: UsbDevice): Map<String, Any?> {
+        return mapOf(
+            "vendorId" to device.vendorId,
+            "productId" to device.productId,
+            "vendorIdHex" to String.format("0x%04x", device.vendorId),
+            "productIdHex" to String.format("0x%04x", device.productId),
+            "manufacturerName" to device.manufacturerName,
+            "productName" to device.productName,
+            "deviceClass" to device.deviceClass,
+            "deviceSubclass" to device.deviceSubclass,
+            "interfaceCount" to device.interfaceCount,
+            "audioInterfaceCount" to device.audioInterfaceCount(),
+            "serialTail" to maskedSerial(device),
+        )
+    }
+
+    private fun maskedSerial(device: UsbDevice): String? {
+        return try {
+            val serial = device.serialNumber ?: return null
+            if (serial.length <= 4) "****" else "****${serial.takeLast(4)}"
+        } catch (_: SecurityException) {
+            null
+        }
+    }
+
+    private fun readNativeLogcat(): List<String> {
+        return try {
+            val pid = android.os.Process.myPid()
+            val process = ProcessBuilder(
+                "logcat", "-d", "-v", "time", "--pid=$pid", "-s", "SylvakruUsbExclusive:*",
+            ).redirectErrorStream(true).start()
+            val lines = process.inputStream.bufferedReader().use { it.readLines() }
+            process.waitFor()
+            lines.takeLast(500)
+        } catch (error: Exception) {
+            listOf("native 日志不可用：${error.message}")
+        }
     }
 
     private fun UsbDevice.audioInterfaces(): List<UsbInterface> {
@@ -427,7 +495,7 @@ class MainActivity : AudioServiceActivity() {
             "claimedInterfaceCount" to claimedInterfaceCount,
             "rawDescriptorLength" to rawDescriptorLength,
             "message" to message,
-        )
+        ).also { lastExclusiveProbeResult = it }
     }
 
     private fun sendSuperLyric(call: MethodCall): Boolean {
@@ -602,7 +670,7 @@ class MainActivity : AudioServiceActivity() {
         val bitPerfect = call.argument<Boolean>("bitPerfect") ?: true
 
         return try {
-            Log.i(tag, "applyPreferredOutputApi34: requesting sampleRate=$sampleRate, encoding=$encoding.")
+            UsbDiagnostics.i(tag, "applyPreferredOutputApi34: requesting sampleRate=$sampleRate, encoding=$encoding.")
             val format = AudioFormat.Builder()
                 .setSampleRate(sampleRate)
                 .setEncoding(encoding)

@@ -488,10 +488,11 @@ class SettingsList extends StatelessWidget {
   }
 
   Widget audioOutputListTile(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ListTile(
       leading: Icon(Icons.usb_rounded, size: iconSize),
-      title: const Text('音频输出'),
-      subtitle: const Text('USB 独占、固定采样率、DSD 与位深'),
+      title: Text(l10n.audioOutput),
+      subtitle: Text(l10n.audioOutputSubtitle),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () {
         layersManager.pushDetail('settings', 'audio_output');

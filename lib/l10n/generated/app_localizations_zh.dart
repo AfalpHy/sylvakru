@@ -446,7 +446,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get format => '格式';
 
   @override
-  String get bitrate => '比特率';
+  String get bitrate => '码率';
 
   @override
   String get samplerate => '采样率';
@@ -600,4 +600,398 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get checkingPurchase => '正在检查购买记录...';
+
+  @override
+  String get audioOutput => '音频输出';
+
+  @override
+  String get audioOutputSubtitle => 'USB 独占、固定采样率、DSD 与位深';
+
+  @override
+  String get usbDacDisconnected => 'USB DAC 已断开，已恢复 Android 系统输出';
+
+  @override
+  String get usbOutputSettings => 'USB 输出设置';
+
+  @override
+  String get fixedSampleRateOutput => '固定采样率输出';
+
+  @override
+  String get dsdMode => 'DSD 模式';
+
+  @override
+  String get transportIdle => '待机';
+
+  @override
+  String get transportPaused => '暂停';
+
+  @override
+  String get transportStable => '稳定';
+
+  @override
+  String get transportLow => '偏低';
+
+  @override
+  String get transportUnderrun => '欠载';
+
+  @override
+  String get usbOff => '关闭';
+
+  @override
+  String get usbAuto => '自动';
+
+  @override
+  String get systemDefault => '系统默认';
+
+  @override
+  String get connected => '已连接';
+
+  @override
+  String get notConnected => '未连接';
+
+  @override
+  String get running => '运行中';
+
+  @override
+  String get awaitingConnection => '待连接';
+
+  @override
+  String get unrecognizedUsbDevice => '未识别 USB 设备';
+
+  @override
+  String get exclusivePlayback => '独占播放';
+
+  @override
+  String get outputFormat => '输出格式';
+
+  @override
+  String get bitDepthCompat => '位深兼容';
+
+  @override
+  String get bitDepthCompatDesc => '设备不支持源位深时自动回退。';
+
+  @override
+  String get sampleRateCompat => '采样率兼容';
+
+  @override
+  String get sampleRateCompatDesc => '设备不支持源采样率时自动回退。';
+
+  @override
+  String get channelCompat => '声道兼容';
+
+  @override
+  String get channelCompatDesc => '设备不支持源声道时自动回退到可用声道。';
+
+  @override
+  String get tpdfDither => 'TPDF 抖动';
+
+  @override
+  String get tpdfDitherDesc => '高位深转 16-bit 时加入极低电平随机噪声，降低量化失真。';
+
+  @override
+  String get pcmBitDepth => 'PCM 位深';
+
+  @override
+  String get backgroundStability => '后台稳定性';
+
+  @override
+  String get suggestDisableBatteryOpt => '建议关闭电池优化';
+
+  @override
+  String get suggestDisableBatteryOptDesc =>
+      '否则后台播放或切到大型 App 时，USB 独占链路可能被系统暂停。';
+
+  @override
+  String get openSettings => '打开设置';
+
+  @override
+  String get usbExclusiveMode => 'USB 独占模式';
+
+  @override
+  String get usbExclusiveModeDesc => '连接 DAC 后启用独占提示与高优先级输出策略。';
+
+  @override
+  String get keepBackgroundActive => '保持后台活动';
+
+  @override
+  String get keepBackgroundActiveDesc => '减少后台播放时 USB 输出被系统中断的概率。';
+
+  @override
+  String get transportBuffer => '传输缓冲';
+
+  @override
+  String get foregroundBuffer => '前台缓冲区';
+
+  @override
+  String get backgroundBuffer => '后台缓冲区';
+
+  @override
+  String get backgroundBufferDesc =>
+      '后台打开大型 App 出现卡顿时优先提高后台缓冲；数值越大越稳定，切歌与暂停响应可能稍慢。';
+
+  @override
+  String get volumeSection => '音量';
+
+  @override
+  String get volumeControl => '音量控制';
+
+  @override
+  String get dsdGainCompensation => 'DSD 增益补偿';
+
+  @override
+  String get volumeSmoothHandoff => '音量平滑交接';
+
+  @override
+  String get volumeSmoothHandoffDesc => '切换数字音量与 DAC 硬件音量时保持响度连续。';
+
+  @override
+  String get mediaVolume => '当前媒体音量';
+
+  @override
+  String get compatibility => '兼容性';
+
+  @override
+  String get delayUsbLink => '延迟建立 USB 输出链路';
+
+  @override
+  String get delayUsbLinkDesc => '播放开始时再建立独占会话，适合部分 DAC 卡死或控制界面异常的使用场景。';
+
+  @override
+  String get usbBusSpeed => 'USB 总线速度';
+
+  @override
+  String get releaseUsbBandwidth => '播放后释放 USB 带宽';
+
+  @override
+  String get releaseUsbBandwidthDesc => '停止播放后允许系统回收 USB 音频资源。';
+
+  @override
+  String get supportSection => '支持';
+
+  @override
+  String get usbExclusiveDiagnostics => 'USB 独占后台诊断';
+
+  @override
+  String get detecting => '检测中';
+
+  @override
+  String get startDetection => '开始检测';
+
+  @override
+  String get generateDiagnosticsReport => '生成诊断报告';
+
+  @override
+  String get generateDiagnosticsReportDesc =>
+      '汇总设备描述符、解析结果与最近日志，一键复制或导出发给开发者排查 DAC 兼容问题。';
+
+  @override
+  String get generating => '生成中';
+
+  @override
+  String get generateReport => '生成报告';
+
+  @override
+  String get refreshUsbStatus => '刷新 USB 状态';
+
+  @override
+  String get transportStatus => '传输状态';
+
+  @override
+  String get bufferLevel => '缓冲区水位';
+
+  @override
+  String targetMs(int ms) {
+    return '目标 $ms ms';
+  }
+
+  @override
+  String get buildTargetOnPlay => '播放时建立目标水位';
+
+  @override
+  String minimumMs(int ms) {
+    return '最低 $ms ms';
+  }
+
+  @override
+  String get minimumNone => '最低 --';
+
+  @override
+  String get enableFixedSampleRate => '启用固定采样率';
+
+  @override
+  String get enableFixedSampleRateDesc => '开启后 USB 输出优先使用下方选定采样率。';
+
+  @override
+  String get dsdOutputStrategy => 'DSD 输出策略';
+
+  @override
+  String get dsdToPcm => '将 DSD 转换为 PCM 输出';
+
+  @override
+  String get dsdToPcmDesc => '以 PCM 帧封装 DSD，设备支持时使用';
+
+  @override
+  String get dsdNativeDesc => '保留 Native DSD 策略，需要底层链路支持';
+
+  @override
+  String get volumeLockDsdOnly => '只锁 DSD 音量';
+
+  @override
+  String get volumeLockAlways => '始终锁定';
+
+  @override
+  String get sourceFile => '源文件';
+
+  @override
+  String get fileLabel => '文件';
+
+  @override
+  String get dacEndpoint => 'DAC 端点';
+
+  @override
+  String get usbDiagnosticsReport => 'USB 诊断报告';
+
+  @override
+  String get usbDiagnosticsReportPrivacy =>
+      '包含设备名称与 USB 描述符，不包含任何音乐文件内容；序列号已脱敏。';
+
+  @override
+  String get copyToClipboard => '复制到剪贴板';
+
+  @override
+  String get exportToFile => '导出为文件';
+
+  @override
+  String get copiedForFeedback => '已复制，可直接粘贴反馈';
+
+  @override
+  String exportedTo(String path) {
+    return '已导出到 $path';
+  }
+
+  @override
+  String get probeDescription => '检查 USB 权限、Audio Class 描述符与接口 claim 能力。';
+
+  @override
+  String get probeWaitingAuth => '等待 USB 授权。';
+
+  @override
+  String probeClaimable(int count) {
+    return '可 claim · $count 个 Audio Interface';
+  }
+
+  @override
+  String get probeCannotClaim => '未能 claim USB Audio Interface。';
+
+  @override
+  String get speaker => '扬声器';
+
+  @override
+  String get usbExclusive => 'USB 独占';
+
+  @override
+  String appliedPreference(String name) {
+    return '$name · 已应用偏好';
+  }
+
+  @override
+  String usbOutputLabel(String name) {
+    return '$name · USB 输出';
+  }
+
+  @override
+  String get usbDacDetected => '检测到 USB DAC';
+
+  @override
+  String get deviceLabel => '设备';
+
+  @override
+  String get nameLabel => '名称';
+
+  @override
+  String get outputSampleRate => '输出采样率';
+
+  @override
+  String get supportedSampleRate => '支持采样率';
+
+  @override
+  String get currentSong => '当前歌曲';
+
+  @override
+  String get exclusive => '独占';
+
+  @override
+  String get requestSampleRate => '请求采样率';
+
+  @override
+  String get viewLink => '查看链路';
+
+  @override
+  String get requesting => '请求中';
+
+  @override
+  String get enableExclusive => '启用独占';
+
+  @override
+  String get audioSource => '音频源';
+
+  @override
+  String get inputSampleRate => '输入采样率';
+
+  @override
+  String get processingChain => '处理链';
+
+  @override
+  String get dspPlugin => 'DSP 插件';
+
+  @override
+  String get notAttached => '未接入';
+
+  @override
+  String get signalOutput => '信号输出';
+
+  @override
+  String get outputPort => '输出端口';
+
+  @override
+  String get encoding => '编码';
+
+  @override
+  String get requested => '已请求';
+
+  @override
+  String get notEnabled => '未启用';
+
+  @override
+  String get noUsbDacInfo => '未检测到 USB DAC。当前显示 Android 系统输出信息。';
+
+  @override
+  String get pcmSystemDefault => 'PCM / 系统默认';
+
+  @override
+  String get needAndroid14 => '需要 Android 14+';
+
+  @override
+  String get available => '可用';
+
+  @override
+  String get unavailable => '不可用';
+
+  @override
+  String get deviceNotDeclared => '设备未声明支持';
+
+  @override
+  String get noUsbAudioDevice => '未连接 USB 音频设备';
+
+  @override
+  String get systemNoExclusive => '当前系统不支持 USB 独占请求';
+
+  @override
+  String get requestedExclusive => '已请求 USB 独占输出';
+
+  @override
+  String get canEnableExclusive => '可启用 USB 独占输出';
+
+  @override
+  String get connectedNotConfirmed => '已连接 USB DAC，但未确认支持独占';
 }

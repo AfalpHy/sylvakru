@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sylvakru/base/services/usb_audio_service.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
 
 class UsbAudioEventListener extends StatefulWidget {
   final Widget child;
@@ -46,8 +47,8 @@ class _UsbAudioEventListenerState extends State<UsbAudioEventListener> {
 
   void _showRemovedMessage() {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('USB DAC 已断开，已恢复 Android 系统输出'),
+      SnackBar(
+        content: Text(AppLocalizations.of(context).usbDacDisconnected),
         behavior: SnackBarBehavior.floating,
       ),
     );

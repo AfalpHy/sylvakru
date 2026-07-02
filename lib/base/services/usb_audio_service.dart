@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/usb_audio_preferences.dart';
 
 final usbAudioService = UsbAudioService();
@@ -173,6 +175,24 @@ class UsbAudioService {
 
   Future<UsbExclusivePlaybackState> releaseExclusiveDevice() {
     return _invokeExclusiveState('releaseExclusiveDevice');
+  }
+
+  /// 生成一键复制/导出的 DAC 适配诊断报告（纯文本 Markdown）。
+  /// 报告不要求 DAC 在线：未连接设备时也会带上环境、偏好与最近日志。
+  Future<String> getDiagnosticsReport() async {
+    Map<String, Object?> native = const {};
+    if (_isAndroid) {
+      try {
+        native =
+            await _channel.invokeMapMethod<String, Object?>(
+              'getUsbDiagnosticsReport',
+            ) ??
+            const {};
+      } on PlatformException catch (error) {
+        native = {'error': error.message};
+      }
+    }
+    return buildUsbDiagnosticsReport(native, platformSupported: _isAndroid);
   }
 
   Future<UsbAudioStatus> _invokeStatus(
@@ -672,6 +692,184 @@ class UsbAudioDevice {
     }
     return null;
   }
+}
+
+/// 把原生侧采集的诊断数据与 Dart 侧的偏好/状态/日志拼装成单个纯文本报告。
+/// 首行固定为版本标识，便于后续解析工具识别。抽成顶层函数便于单元测试。
+String buildUsbDiagnosticsReport(
+  Map<String, Object?> native, {
+  bool platformSupported = true,
+}) {
+  final buffer = StringBuffer();
+  buffer.writeln('Sylvakru USB Diagnostics Report v1');
+
+  final error = native['error'];
+  if (error != null) {
+    buffer.writeln();
+    buffer.writeln('> Failed to collect native data: $error');
+  }
+
+  // 1. Environment
+  buffer.writeln();
+  buffer.writeln('## Environment');
+  buffer.writeln('- App version: $versionNumber');
+  if (!platformSupported) {
+    buffer.writeln('- Platform: non-Android (native USB data unavailable)');
+  } else {
+    final release = native['androidRelease'] ?? 'unknown';
+    final sdk = _asInt(native['androidSdk']) ?? 'unknown';
+    buffer.writeln('- Android: $release (SDK $sdk)');
+    buffer.writeln(
+      '- Device: ${'${native['manufacturer'] ?? 'unknown'} ${native['model'] ?? ''}'.trim()}',
+    );
+  }
+  buffer.writeln('- Generated at: ${_formatTimestamp(native['generatedAtMs'])}');
+
+  // 2. USB device identity
+  buffer.writeln();
+  buffer.writeln('## USB device identity');
+  final device = native['device'];
+  if (device is Map) {
+    final d = device.cast<String, Object?>();
+    buffer.writeln(
+      '- VID/PID: ${d['vendorIdHex'] ?? d['vendorId']} / ${d['productIdHex'] ?? d['productId']}',
+    );
+    buffer.writeln('- Manufacturer: ${d['manufacturerName'] ?? 'unknown'}');
+    buffer.writeln('- Product: ${d['productName'] ?? 'unknown'}');
+    buffer.writeln(
+      '- deviceClass/subclass: ${d['deviceClass']} / ${d['deviceSubclass']}',
+    );
+    buffer.writeln(
+      '- Interfaces / audio interfaces: ${d['interfaceCount']} / ${d['audioInterfaceCount']}',
+    );
+    buffer.writeln('- Serial (masked): ${d['serialTail'] ?? 'unavailable'}');
+    buffer.writeln(
+      '- USB permission: ${native['permissionGranted'] == true ? 'granted' : 'denied'}',
+    );
+    buffer.writeln('> Only the last 4 digits of the serial are shown.');
+  } else {
+    buffer.writeln('- No USB audio device detected.');
+  }
+
+  final diagnostics =
+      (native['diagnostics'] as Map?)?.cast<String, Object?>() ?? const {};
+
+  // 3. Raw descriptors hex dump
+  buffer.writeln();
+  buffer.writeln('## Raw descriptors (hex dump)');
+  final hex = diagnostics['rawDescriptorsHex'];
+  if (hex is String && hex.isNotEmpty) {
+    buffer.writeln(
+      'Length: ${diagnostics['rawDescriptorLength'] ?? 'unknown'} bytes',
+    );
+    buffer.writeln('```');
+    buffer.writeln(hex);
+    buffer.writeln('```');
+  } else {
+    buffer.writeln('- ${diagnostics['message'] ?? 'Descriptors unavailable.'}');
+  }
+
+  // 4. App parse result
+  buffer.writeln();
+  buffer.writeln('## App parse result');
+  buffer.writeln('### AS formats');
+  _writeListSection(buffer, diagnostics['streamingFormats']);
+  buffer.writeln('### Output candidates (alt/maxPacket/attr/feedback/bits/format)');
+  _writeListSection(buffer, diagnostics['outputCandidates']);
+  buffer.writeln('- UAC2 clock source id: ${diagnostics['clockSourceId'] ?? 'unknown'}');
+  buffer.writeln('- Last probe: ${native['lastProbe'] ?? 'none'}');
+
+  // 5. System-side capability
+  buffer.writeln();
+  buffer.writeln('## System-side capability');
+  final status = (native['systemStatus'] as Map?)?.cast<String, Object?>();
+  final devices = status?['devices'];
+  if (devices is List && devices.isNotEmpty) {
+    for (final dev in devices) {
+      buffer.writeln('- $dev');
+    }
+  } else {
+    buffer.writeln('- No USB audio output device.');
+  }
+
+  // 6. Preferences snapshot
+  buffer.writeln();
+  buffer.writeln('## Preferences snapshot');
+  usbAudioPreferences.toMap().forEach((key, value) {
+    buffer.writeln('- $key: $value');
+  });
+
+  // 7. Runtime state snapshot
+  buffer.writeln();
+  buffer.writeln('## Runtime state snapshot');
+  final state = usbExclusivePlaybackStateNotifier.value;
+  buffer.writeln(
+    '- Exclusive: active=${state.active}, playing=${state.playing}, '
+    'format=${state.format}, sampleRate=${state.sampleRate}, '
+    'bitDepth=${state.bitDepth}, position=${state.position.inMilliseconds}ms',
+  );
+  buffer.writeln('  message=${state.message}');
+  final telemetry = usbTransportTelemetryNotifier.value;
+  buffer.writeln(
+    '- telemetry: active=${telemetry.active}, '
+    'buffer=${telemetry.bufferLevel.inMilliseconds}ms, '
+    'min=${telemetry.minimumBufferLevel?.inMilliseconds}, '
+    'target=${telemetry.targetBuffer?.inMilliseconds}, '
+    'iso=${telemetry.isoPacketCount}, pendingUrbs=${telemetry.pendingUrbs}, '
+    'underrun=${telemetry.underrunCount}',
+  );
+
+  // 8. Recent logs
+  buffer.writeln();
+  buffer.writeln('## Recent logs (Kotlin/native)');
+  _writeLogLines(buffer, native['logs']);
+  final nativeLog = native['nativeLogcat'];
+  if (nativeLog is List && nativeLog.isNotEmpty) {
+    buffer.writeln();
+    buffer.writeln('### native logcat (SylvakruUsbExclusive)');
+    _writeLogLines(buffer, nativeLog);
+  }
+
+  buffer.writeln();
+  buffer.writeln('## Recent logs (Dart)');
+  final dartLogs = logger.tailContaining('usb', max: 200);
+  if (dartLogs.isEmpty) {
+    buffer.writeln('(none)');
+  } else {
+    for (final l in dartLogs) {
+      buffer.writeln(l);
+    }
+  }
+
+  return buffer.toString();
+}
+
+void _writeListSection(StringBuffer buffer, Object? value) {
+  if (value is List && value.isNotEmpty) {
+    for (final item in value) {
+      buffer.writeln('- $item');
+    }
+  } else {
+    buffer.writeln('- none');
+  }
+}
+
+void _writeLogLines(StringBuffer buffer, Object? value) {
+  if (value is List && value.isNotEmpty) {
+    for (final line in value) {
+      buffer.writeln(line.toString());
+    }
+  } else {
+    buffer.writeln('(none)');
+  }
+}
+
+String _formatTimestamp(Object? millis) {
+  final ms = _asInt(millis);
+  if (ms == null || ms == 0) {
+    return DateTime.now().toString();
+  }
+  return DateTime.fromMillisecondsSinceEpoch(ms).toString();
 }
 
 int? _asInt(Object? value) {

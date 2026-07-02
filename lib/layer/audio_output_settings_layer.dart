@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/audio_handler.dart';
@@ -13,10 +17,16 @@ import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/audio_output_panel.dart';
 import 'package:sylvakru/base/widgets/my_sheet.dart';
 import 'package:sylvakru/base/widgets/my_switch.dart';
+import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/layer/settings_layer.dart';
 import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
+
+part '../portrait_view/pages/audio_output_settings_page.dart';
+part '../landscape_view/panels/audio_output_settings_panel.dart';
+
+final audioOutputVisibleNotifier = ValueNotifier(true);
 
 enum AudioOutputSettingsPageKind { overview, fixedSampleRate, dsdMode }
 
@@ -48,13 +58,13 @@ _TransportHealth _transportHealth({
   return _TransportHealth.stable;
 }
 
-String _transportHealthLabel(_TransportHealth health) {
+String _transportHealthLabel(_TransportHealth health, AppLocalizations l10n) {
   return switch (health) {
-    _TransportHealth.idle => '待机',
-    _TransportHealth.paused => '暂停',
-    _TransportHealth.stable => '稳定',
-    _TransportHealth.low => '偏低',
-    _TransportHealth.underrun => '欠载',
+    _TransportHealth.idle => l10n.transportIdle,
+    _TransportHealth.paused => l10n.transportPaused,
+    _TransportHealth.stable => l10n.transportStable,
+    _TransportHealth.low => l10n.transportLow,
+    _TransportHealth.underrun => l10n.transportUnderrun,
   };
 }
 
@@ -85,49 +95,39 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
   UsbExclusiveProbeResult? _exclusiveProbeResult;
   bool _probingExclusive = false;
   bool _refreshingStatus = false;
+  bool _generatingReport = false;
+
+  AppLocalizations get _l10n => AppLocalizations.of(context);
 
   @override
   Widget build(BuildContext context) {
     if (isTooNarrow(context)) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: customAppBarLeading(context, label: 'settings'),
-          backgroundColor: Colors.transparent,
-          systemOverlayStyle: mainPageThemeNotifier.value == .dark
-              ? .light
-              : .dark,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          title: Text(_title),
-          centerTitle: true,
-        ),
-        body: _content(),
-      );
+      return pageView(context);
     }
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: settingsVisibleNotifier,
-      builder: (context, visible, child) {
-        return Opacity(
-          opacity: visible ? 0 : 1,
-          child: Column(
-            children: [
-              TitleBar(backToRoot: () => layersManager.popDetail('settings')),
-              Expanded(child: _content()),
-            ],
-          ),
-        );
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        settingsVisibleNotifier,
+        audioOutputVisibleNotifier,
+      ]),
+      builder: (context, _) {
+        // overview 在 audioOutputVisibleNotifier 为真时显示；固定采样率/DSD 深层页压栈后
+        // 该 notifier 置假，overview 隐藏、深层页显示，避免横屏底层残留。
+        final visible =
+            widget.pageKind == AudioOutputSettingsPageKind.overview
+            ? !settingsVisibleNotifier.value && audioOutputVisibleNotifier.value
+            : !settingsVisibleNotifier.value &&
+                  !audioOutputVisibleNotifier.value;
+        return Opacity(opacity: visible ? 1 : 0, child: panelView(context));
       },
     );
   }
 
   String get _title {
     return switch (widget.pageKind) {
-      AudioOutputSettingsPageKind.overview => 'USB 输出设置',
-      AudioOutputSettingsPageKind.fixedSampleRate => '固定采样率输出',
-      AudioOutputSettingsPageKind.dsdMode => 'DSD 模式',
+      AudioOutputSettingsPageKind.overview => _l10n.usbOutputSettings,
+      AudioOutputSettingsPageKind.fixedSampleRate => _l10n.fixedSampleRateOutput,
+      AudioOutputSettingsPageKind.dsdMode => _l10n.dsdMode,
     };
   }
 
@@ -167,35 +167,35 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
             const SizedBox(height: 12),
             _transportStatusCard(status),
             const SizedBox(height: 18),
-            _sectionTitle('输出格式'),
+            _sectionTitle(_l10n.outputFormat),
             _settingsCard(
               children: [
                 _formatSummaryTile(status),
                 _switchTile(
-                  title: '位深兼容',
-                  subtitle: '设备不支持源位深时自动回退。',
+                  title: _l10n.bitDepthCompat,
+                  subtitle: _l10n.bitDepthCompatDesc,
                   notifier: prefs.bitDepthCompatNotifier,
                 ),
                 _switchTile(
-                  title: '采样率兼容',
-                  subtitle: '设备不支持源采样率时自动回退。',
+                  title: _l10n.sampleRateCompat,
+                  subtitle: _l10n.sampleRateCompatDesc,
                   notifier: prefs.sampleRateCompatNotifier,
                 ),
                 _switchTile(
-                  title: '声道兼容',
-                  subtitle: '设备不支持源声道时自动回退到可用声道。',
+                  title: _l10n.channelCompat,
+                  subtitle: _l10n.channelCompatDesc,
                   notifier: prefs.channelCompatNotifier,
                 ),
                 _switchTile(
-                  title: 'TPDF 抖动',
-                  subtitle: '高位深转 16-bit 时加入极低电平随机噪声，降低量化失真。',
+                  title: _l10n.tpdfDither,
+                  subtitle: _l10n.tpdfDitherDesc,
                   notifier: prefs.tpdfDitherNotifier,
                 ),
                 _navTile(
-                  title: '固定采样率输出',
+                  title: _l10n.fixedSampleRateOutput,
                   value: prefs.fixedSampleRateEnabledNotifier.value
-                      ? formatSampleRate(prefs.fixedSampleRateNotifier.value)
-                      : '关闭',
+                      ? formatSampleRate(prefs.fixedSampleRateNotifier.value, _l10n)
+                      : _l10n.usbOff,
                   onTap: () {
                     layersManager.pushDetail(
                       'settings',
@@ -204,14 +204,14 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   },
                 ),
                 _navTile(
-                  title: 'DSD 模式',
+                  title: _l10n.dsdMode,
                   value: _dsdModeLabel(prefs.dsdModeNotifier.value),
                   onTap: () {
                     layersManager.pushDetail('settings', 'usb_dsd_mode');
                   },
                 ),
                 _choiceTile<UsbBitDepthMode>(
-                  title: 'PCM 位深',
+                  title: _l10n.pcmBitDepth,
                   notifier: prefs.bitDepthModeNotifier,
                   values: UsbBitDepthMode.values,
                   label: _bitDepthModeLabel,
@@ -219,34 +219,34 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
               ],
             ),
             const SizedBox(height: 18),
-            _sectionTitle('后台稳定性'),
+            _sectionTitle(_l10n.backgroundStability),
             _settingsCard(
               children: [
                 _noticeTile(
                   icon: Icons.battery_alert_rounded,
-                  title: '建议关闭电池优化',
-                  subtitle: '否则后台播放或切到大型 App 时，USB 独占链路可能被系统暂停。',
-                  actionLabel: '打开设置',
+                  title: _l10n.suggestDisableBatteryOpt,
+                  subtitle: _l10n.suggestDisableBatteryOptDesc,
+                  actionLabel: _l10n.openSettings,
                   onTap: openAppSettings,
                 ),
                 _switchTile(
-                  title: 'USB 独占模式',
-                  subtitle: '连接 DAC 后启用独占提示与高优先级输出策略。',
+                  title: _l10n.usbExclusiveMode,
+                  subtitle: _l10n.usbExclusiveModeDesc,
                   notifier: prefs.performanceModeNotifier,
                 ),
                 _switchTile(
-                  title: '保持后台活动',
-                  subtitle: '减少后台播放时 USB 输出被系统中断的概率。',
+                  title: _l10n.keepBackgroundActive,
+                  subtitle: _l10n.keepBackgroundActiveDesc,
                   notifier: prefs.keepAliveInBackgroundNotifier,
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            _sectionTitle('传输缓冲'),
+            _sectionTitle(_l10n.transportBuffer),
             _settingsCard(
               children: [
                 _bufferSlider(
-                  title: '前台缓冲区',
+                  title: _l10n.foregroundBuffer,
                   notifier: prefs.foregroundBufferMsNotifier,
                   min: 50,
                   max: 1000,
@@ -255,7 +255,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                       _applyExclusiveBufferIfActive(foregroundBufferMs: value),
                 ),
                 _bufferSlider(
-                  title: '后台缓冲区',
+                  title: _l10n.backgroundBuffer,
                   notifier: prefs.backgroundBufferMsNotifier,
                   min: 500,
                   max: 5000,
@@ -263,72 +263,72 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   onChanged: (value) =>
                       _applyExclusiveBufferIfActive(backgroundBufferMs: value),
                 ),
-                _hintTile('后台打开大型 App 出现卡顿时优先提高后台缓冲；数值越大越稳定，切歌与暂停响应可能稍慢。'),
+                _hintTile(_l10n.backgroundBufferDesc),
               ],
             ),
             const SizedBox(height: 18),
-            _sectionTitle('音量'),
+            _sectionTitle(_l10n.volumeSection),
             _settingsCard(
               children: [
                 _choiceTile<UsbVolumeLockMode>(
-                  title: '音量控制',
+                  title: _l10n.volumeControl,
                   notifier: prefs.volumeLockModeNotifier,
                   values: UsbVolumeLockMode.values,
                   label: _volumeLockLabel,
                 ),
                 _choiceTile<int>(
-                  title: 'DSD 增益补偿',
+                  title: _l10n.dsdGainCompensation,
                   notifier: prefs.dsdGainCompensationNotifier,
                   values: const [-12, -9, -6, -3, 0, 3, 6],
                   label: (value) => '$value dB',
                 ),
                 _mediaVolumeTile(),
                 _switchTile(
-                  title: '音量平滑交接',
-                  subtitle: '切换数字音量与 DAC 硬件音量时保持响度连续。',
+                  title: _l10n.volumeSmoothHandoff,
+                  subtitle: _l10n.volumeSmoothHandoffDesc,
                   notifier: prefs.volumeSmoothHandoffNotifier,
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            _sectionTitle('兼容性'),
+            _sectionTitle(_l10n.compatibility),
             _settingsCard(
               children: [
                 _switchTile(
-                  title: '延迟建立 USB 输出链路',
-                  subtitle: '播放开始时再建立独占会话，适合部分 DAC 卡死或控制界面异常的使用场景。',
+                  title: _l10n.delayUsbLink,
+                  subtitle: _l10n.delayUsbLinkDesc,
                   notifier: prefs.delayedUsbLinkNotifier,
                 ),
                 _choiceTile<UsbBusSpeedMode>(
-                  title: 'USB 总线速度',
+                  title: _l10n.usbBusSpeed,
                   notifier: prefs.busSpeedModeNotifier,
                   values: UsbBusSpeedMode.values,
                   label: _busSpeedLabel,
                 ),
                 _switchTile(
-                  title: '播放后释放 USB 带宽',
-                  subtitle: '停止播放后允许系统回收 USB 音频资源。',
+                  title: _l10n.releaseUsbBandwidth,
+                  subtitle: _l10n.releaseUsbBandwidthDesc,
                   notifier: prefs.releaseUsbBandwidthAfterPlaybackNotifier,
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            _sectionTitle('支持'),
+            _sectionTitle(_l10n.supportSection),
             _settingsCard(
               children: [
                 _actionTile(
                   icon: Icons.fact_check_rounded,
-                  title: 'USB 独占后台诊断',
+                  title: _l10n.usbExclusiveDiagnostics,
                   subtitle: _exclusiveProbeSummary(),
-                  actionLabel: _probingExclusive ? '检测中' : '开始检测',
+                  actionLabel: _probingExclusive ? _l10n.detecting : _l10n.startDetection,
                   onTap: _probingExclusive ? null : _runExclusiveProbe,
                 ),
                 _actionTile(
-                  icon: Icons.feedback_rounded,
-                  title: 'USB 独占模式反馈',
-                  subtitle: '复制当前设备与输出链路信息，方便继续排查 DAC 兼容问题。',
-                  actionLabel: '查看状态',
-                  onTap: () => _showStatusSnack(status),
+                  icon: Icons.assignment_rounded,
+                  title: _l10n.generateDiagnosticsReport,
+                  subtitle: _l10n.generateDiagnosticsReportDesc,
+                  actionLabel: _generatingReport ? _l10n.generating : _l10n.generateReport,
+                  onTap: _generatingReport ? null : _generateDiagnosticsReport,
                 ),
               ],
             ),
@@ -350,15 +350,13 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
           accent.withAlpha(mainPageThemeNotifier.value == .dark ? 34 : 20),
           menuColor.value,
         );
-        final title = supported ? device?.name ?? 'USB DAC' : '未识别 USB 设备';
-        final statusLabel = supported ? '已连接' : '未连接';
+        final title = supported ? device?.name ?? 'USB DAC' : _l10n.unrecognizedUsbDevice;
+        final statusLabel = supported ? _l10n.connected : _l10n.notConnected;
         final linkLabel = supported
-            ? (exclusive.active ? '独占播放' : '运行中')
-            : '待连接';
-        final formatLabel = 'PCM ${formatOutputSampleRate(status)}'.replaceAll(
-          '未知',
-          '系统默认',
-        );
+            ? (exclusive.active ? _l10n.exclusivePlayback : _l10n.running)
+            : _l10n.awaitingConnection;
+        final formatLabel = 'PCM ${formatOutputSampleRate(status, _l10n)}'
+            .replaceAll(_l10n.unknown, _l10n.systemDefault);
 
         return DecoratedBox(
           decoration: BoxDecoration(
@@ -403,13 +401,16 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                     ),
                     const SizedBox(width: 4),
                     _refreshingStatus
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: iconColor.value,
+                            ),
                           )
                         : IconButton(
-                            tooltip: '刷新 USB 状态',
+                            tooltip: _l10n.refreshUsbStatus,
                             onPressed: _refreshStatus,
                             icon: const Icon(Icons.refresh_rounded),
                           ),
@@ -534,7 +535,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                           children: [
                             Expanded(
                               child: Text(
-                                '传输状态',
+                                _l10n.transportStatus,
                                 style: TextStyle(
                                   color: foreground,
                                   fontSize: 18,
@@ -543,7 +544,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                               ),
                             ),
                             Text(
-                              _transportHealthLabel(health),
+                              _transportHealthLabel(health, _l10n),
                               style: TextStyle(
                                 color: active
                                     ? accent
@@ -579,7 +580,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 3),
                                 child: Text(
-                                  '缓冲区水位',
+                                  _l10n.bufferLevel,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -618,7 +619,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                           children: [
                             Expanded(
                               child: Text(
-                                active ? '目标 $targetMs ms' : '播放时建立目标水位',
+                                active ? _l10n.targetMs(targetMs) : _l10n.buildTargetOnPlay,
                                 style: TextStyle(
                                   color: foreground.withAlpha(135),
                                   fontSize: 12,
@@ -628,8 +629,8 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                             ),
                             Text(
                               active && minimumMs != null
-                                  ? '最低 $minimumMs ms'
-                                  : '最低 --',
+                                  ? _l10n.minimumMs(minimumMs)
+                                  : _l10n.minimumNone,
                               style: TextStyle(
                                 color: foreground.withAlpha(135),
                                 fontSize: 12,
@@ -657,8 +658,8 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
         _settingsCard(
           children: [
             _switchTile(
-              title: '启用固定采样率',
-              subtitle: '开启后 USB 输出优先使用下方选定采样率。',
+              title: _l10n.enableFixedSampleRate,
+              subtitle: _l10n.enableFixedSampleRateDesc,
               notifier: prefs.fixedSampleRateEnabledNotifier,
             ),
             for (final rate in UsbAudioPreferences.sampleRates)
@@ -666,7 +667,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                 valueListenable: prefs.fixedSampleRateNotifier,
                 builder: (context, selectedRate, _) {
                   return _radioTile<int>(
-                    title: formatSampleRate(rate),
+                    title: formatSampleRate(rate, _l10n),
                     value: rate,
                     groupValue: selectedRate,
                     onTap: () {
@@ -687,7 +688,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionTitle('DSD 输出策略'),
+        _sectionTitle(_l10n.dsdOutputStrategy),
         _settingsCard(
           children: [
             for (final mode in UsbDsdMode.values)
@@ -727,7 +728,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
       title: title,
       notifier: notifier,
       values: UsbAudioPreferences.sampleRates,
-      label: (value) => '${formatSampleRate(value)} PCM',
+      label: (value) => '${formatSampleRate(value, _l10n)} PCM',
     );
   }
 
@@ -812,16 +813,16 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _formatMetricRow('源文件', [
+              _formatMetricRow(_l10n.sourceFile, [
                 _sourceFormatLabel(song),
-                formatSampleRate(song?.samplerate),
+                formatSampleRate(song?.samplerate, _l10n),
                 channel,
                 _compactDepthLabel(status),
               ]),
               const SizedBox(height: 24),
-              _formatMetricRow('DAC 端点', [
+              _formatMetricRow(_l10n.dacEndpoint, [
                 'PCM',
-                formatOutputSampleRate(status),
+                formatOutputSampleRate(status, _l10n),
                 channel,
                 _compactDepthLabel(status),
               ]),
@@ -884,7 +885,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                 children: [
                   Expanded(
                     child: Text(
-                      '当前媒体音量',
+                      _l10n.mediaVolume,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -897,17 +898,20 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   ),
                 ],
               ),
-              Slider(
-                value: sliderValue,
-                min: 0,
-                max: 1,
-                divisions: 100,
-                label: '$percent%',
-                onChanged: (next) {
-                  volumeNotifier.value = next;
-                  _setPlayerVolumeIfReady(next);
-                },
-                onChangeEnd: (_) => setting.save(),
+              SliderTheme(
+                data: _sliderThemeData(context),
+                child: Slider(
+                  value: sliderValue,
+                  min: 0,
+                  max: 1,
+                  divisions: 100,
+                  label: '$percent%',
+                  onChanged: (next) {
+                    volumeNotifier.value = next;
+                    _setPlayerVolumeIfReady(next);
+                  },
+                  onChangeEnd: (_) => setting.save(),
+                ),
               ),
             ],
           ),
@@ -935,7 +939,11 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
       leading: _iconBox(icon, const Color(0xFFFF6868), compact: true),
       title: Text(title),
       subtitle: Text(subtitle),
-      trailing: TextButton(onPressed: onTap, child: Text(actionLabel)),
+      trailing: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(foregroundColor: highlightTextColor.value),
+        child: Text(actionLabel),
+      ),
     );
   }
 
@@ -950,7 +958,11 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
       leading: _iconBox(icon, highlightTextColor.value, compact: true),
       title: Text(title),
       subtitle: Text(subtitle),
-      trailing: TextButton(onPressed: onTap, child: Text(actionLabel)),
+      trailing: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(foregroundColor: highlightTextColor.value),
+        child: Text(actionLabel),
+      ),
     );
   }
 
@@ -998,23 +1010,38 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
                   ),
                 ],
               ),
-              Slider(
-                value: sliderValue,
-                min: min,
-                max: max,
-                divisions: divisions,
-                label: '${sliderValue.round()} ms',
-                onChanged: (next) {
-                  final rounded = next.round();
-                  notifier.value = rounded;
-                  onChanged?.call(rounded);
-                },
-                onChangeEnd: (_) => setting.save(),
+              SliderTheme(
+                data: _sliderThemeData(context),
+                child: Slider(
+                  value: sliderValue,
+                  min: min,
+                  max: max,
+                  divisions: divisions,
+                  label: '${sliderValue.round()} ms',
+                  onChanged: (next) {
+                    final rounded = next.round();
+                    notifier.value = rounded;
+                    onChanged?.call(rounded);
+                  },
+                  onChangeEnd: (_) => setting.save(),
+                ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  SliderThemeData _sliderThemeData(BuildContext context) {
+    final accent = iconColor.value;
+    return SliderTheme.of(context).copyWith(
+      activeTrackColor: accent,
+      inactiveTrackColor: accent.withAlpha(40),
+      thumbColor: accent,
+      overlayColor: accent.withAlpha(30),
+      valueIndicatorColor: accent,
+      valueIndicatorTextStyle: TextStyle(color: menuColor.value),
     );
   }
 
@@ -1236,29 +1263,164 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     });
   }
 
-  void _showStatusSnack(UsbAudioStatus status) {
-    final device = _activeUsbDevice(status);
-    final message = device == null
-        ? '当前未检测到 USB DAC。'
-        : 'USB DAC: ${device.name} · ${_supportedRatesLabel(status)} · ${_bitDepthLabel(status)}';
+  Future<void> _generateDiagnosticsReport() async {
+    setState(() {
+      _generatingReport = true;
+    });
+
+    String report;
+    try {
+      report = await usbAudioService.getDiagnosticsReport();
+    } catch (error) {
+      report = 'Sylvakru USB Diagnostics Report v1\n\nGeneration failed: $error';
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _generatingReport = false;
+    });
+    _showDiagnosticsReportSheet(report);
+  }
+
+  void _showDiagnosticsReportSheet(String report) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (sheetContext) {
+        return MySheet(
+          height: MediaQuery.heightOf(sheetContext) * 0.85,
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: Text(
+                  _l10n.usbDiagnosticsReport,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _l10n.usbDiagnosticsReportPrivacy,
+                  style: TextStyle(
+                    color: textColor.value.withAlpha(150),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: textColor.value.withAlpha(12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: SelectableText(
+                        report,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _copyReport(report),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: textColor.value,
+                          side: BorderSide(color: textColor.value.withAlpha(60)),
+                        ),
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        label: Text(_l10n.copyToClipboard),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _exportReport(report),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: highlightTextColor.value,
+                          foregroundColor: menuColor.value,
+                        ),
+                        icon: const Icon(Icons.save_alt_rounded, size: 18),
+                        label: Text(_l10n.exportToFile),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _copyReport(String report) async {
+    await Clipboard.setData(ClipboardData(text: report));
+    if (!mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(_l10n.copiedForFeedback),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _exportReport(String report) async {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final now = DateTime.now();
+    final timestamp =
+        '${now.year}${two(now.month)}${two(now.day)}_'
+        '${two(now.hour)}${two(now.minute)}${two(now.second)}';
+    final fileName = 'usb_diag_$timestamp.txt';
+
+    String directory;
+    if (Platform.isAndroid) {
+      final picked = await FilePicker.getDirectoryPath();
+      if (picked == null) return;
+      directory = picked;
+    } else {
+      directory = '${appDocsDir.path}/logs';
+      Directory(directory).createSync(recursive: true);
+    }
+
+    final file = File(p.join(directory, fileName));
+    file.writeAsStringSync(report);
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(_l10n.exportedTo(file.path)),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
   String _exclusiveProbeSummary() {
     final result = _exclusiveProbeResult;
-    if (result == null) return '检查 USB 权限、Audio Class 描述符与接口 claim 能力。';
-    if (!result.permissionGranted) return '等待 USB 授权。';
+    if (result == null) return _l10n.probeDescription;
+    if (!result.permissionGranted) return _l10n.probeWaitingAuth;
     if (result.interfaceClaimed) {
-      return '可 claim · ${result.audioInterfaceCount} 个 Audio Interface';
+      return _l10n.probeClaimable(result.audioInterfaceCount);
     }
-    return result.message ?? '未能 claim USB Audio Interface。';
+    return result.message ?? _l10n.probeCannotClaim;
   }
 
   String _sourceFormatLabel(MyAudioMetadata? song) {
     final format = song?.format;
-    if (format == null || format.isEmpty) return '未知';
+    if (format == null || format.isEmpty) return _l10n.unknown;
     return format.toUpperCase();
   }
 
@@ -1267,16 +1429,16 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
     final channels = device?.channelCounts.isNotEmpty == true
         ? device!.channelCounts.first
         : null;
-    if (channels == null || channels <= 0) return '未知';
+    if (channels == null || channels <= 0) return _l10n.unknown;
     return '$channels ch';
   }
 
   String _compactDepthLabel(UsbAudioStatus status) {
-    return _bitDepthLabel(status).replaceAll(' bits', '-bit');
+    return _bitDepthLabel(status, _l10n).replaceAll(' bits', '-bit');
   }
 
   String _usbIdLabel(UsbAudioDevice? device) {
-    if (device == null) return '等待连接';
+    if (device == null) return _l10n.awaitingConnection;
     final address = device.address;
     if (address != null && address.isNotEmpty) return '$address · ${device.id}';
     return '${device.type} · ${device.id}';
@@ -1292,23 +1454,23 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
 
   String _dsdModeHint(UsbDsdMode mode) {
     return switch (mode) {
-      UsbDsdMode.pcm => '将 DSD 转换为 PCM 输出',
-      UsbDsdMode.dop => '以 PCM 帧封装 DSD，设备支持时使用',
-      UsbDsdMode.native => '保留 Native DSD 策略，需要底层链路支持',
+      UsbDsdMode.pcm => _l10n.dsdToPcm,
+      UsbDsdMode.dop => _l10n.dsdToPcmDesc,
+      UsbDsdMode.native => _l10n.dsdNativeDesc,
     };
   }
 
   String _volumeLockLabel(UsbVolumeLockMode mode) {
     return switch (mode) {
-      UsbVolumeLockMode.off => '关闭',
-      UsbVolumeLockMode.dsdOnly => '只锁 DSD 音量',
-      UsbVolumeLockMode.always => '始终锁定',
+      UsbVolumeLockMode.off => _l10n.usbOff,
+      UsbVolumeLockMode.dsdOnly => _l10n.volumeLockDsdOnly,
+      UsbVolumeLockMode.always => _l10n.volumeLockAlways,
     };
   }
 
   String _busSpeedLabel(UsbBusSpeedMode mode) {
     return switch (mode) {
-      UsbBusSpeedMode.auto => '自动',
+      UsbBusSpeedMode.auto => _l10n.usbAuto,
       UsbBusSpeedMode.full => 'Full',
       UsbBusSpeedMode.high => 'High',
       UsbBusSpeedMode.superSpeed => 'Super',
@@ -1317,7 +1479,7 @@ class _AudioOutputSettingsLayerState extends State<AudioOutputSettingsLayer> {
 
   String _bitDepthModeLabel(UsbBitDepthMode mode) {
     return switch (mode) {
-      UsbBitDepthMode.auto => '自动',
+      UsbBitDepthMode.auto => _l10n.usbAuto,
       UsbBitDepthMode.pcm16 => '16 bits',
       UsbBitDepthMode.pcm24 => '24 bits',
       UsbBitDepthMode.pcm32 => '32 bits',
@@ -1334,16 +1496,7 @@ UsbAudioDevice? _activeUsbDevice(UsbAudioStatus status) {
   return null;
 }
 
-String _supportedRatesLabel(UsbAudioStatus status) {
-  final device = _activeUsbDevice(status);
-  final rates = device?.supportedMixerSampleRates.isNotEmpty == true
-      ? device!.supportedMixerSampleRates
-      : device?.sampleRates ?? const <int>[];
-  if (rates.isEmpty) return '未知';
-  return rates.map(formatSampleRate).join(' / ');
-}
-
-String _bitDepthLabel(UsbAudioStatus status) {
+String _bitDepthLabel(UsbAudioStatus status, AppLocalizations l10n) {
   final exclusive = usbExclusivePlaybackStateNotifier.value;
   if (exclusive.active && exclusive.bitDepth != null) {
     return '${exclusive.bitDepth} bits';
@@ -1354,5 +1507,5 @@ String _bitDepthLabel(UsbAudioStatus status) {
   if (encoding == 'pcm_32bit') return '32 bits';
   if (encoding == 'pcm_24bit_packed') return '24 bits';
   if (encoding == 'pcm_16bit') return '16 bits';
-  return '未知';
+  return l10n.unknown;
 }

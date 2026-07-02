@@ -12,7 +12,6 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.os.SystemClock
-import android.util.Log
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
@@ -143,7 +142,7 @@ class UsbExclusiveAudioEngine(
         if (!file.exists()) {
             return updateState(inactiveState("Exclusive playback file does not exist: $filePath"))
         }
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "start exclusive playback file=${file.name}, sourceFormat=$sourceFormat, size=${file.length()}",
         )
@@ -176,7 +175,7 @@ class UsbExclusiveAudioEngine(
                 openedConnection.close()
                 return updateState(inactiveState("No isochronous USB Audio OUT endpoint was found."))
             }
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "exclusive target interface=${target.usbInterface.id}, alt=${target.alternateSetting}, " +
                 "endpoint=0x${target.endpoint.address.toString(16)}, maxPacket=${target.endpoint.maxPacketSize}, " +
@@ -199,10 +198,15 @@ class UsbExclusiveAudioEngine(
             openedConnection.close()
             return updateState(inactiveState(openError))
         }
-        Log.i(tag, "native USB exclusive endpoint opened.")
+        UsbDiagnostics.i(tag, "native USB exclusive endpoint opened.")
 
         if (requestedSampleRate != null) {
-            configureUsbAudioClock(openedConnection, device, target, requestedSampleRate)
+            val clockError = configureUsbAudioClock(openedConnection, device, target, requestedSampleRate)
+            if (clockError != null) {
+                UsbExclusiveNative.close()
+                openedConnection.close()
+                return updateState(inactiveState(clockError))
+            }
         }
 
         connection = openedConnection
@@ -231,17 +235,17 @@ class UsbExclusiveAudioEngine(
     }
 
     fun pause(): Map<String, Any?> {
-        Log.i(tag, "pause exclusive playback.")
+        UsbDiagnostics.i(tag, "pause exclusive playback.")
         paused.set(true)
         return updateState(currentState + mapOf("playing" to false, "message" to "Paused."))
     }
 
     fun resume(): Map<String, Any?> {
         if (currentState["active"] != true) {
-            Log.w(tag, "resume ignored because exclusive playback is not active: $currentState")
+            UsbDiagnostics.w(tag, "resume ignored because exclusive playback is not active: $currentState")
             return updateState(inactiveState("No exclusive playback is active."))
         }
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "resume exclusive playback position=${currentState["positionMs"]}, wasPaused=${paused.get()}",
         )
@@ -251,7 +255,7 @@ class UsbExclusiveAudioEngine(
 
     fun seek(positionMs: Long): Map<String, Any?> {
         if (currentState["active"] != true) {
-            Log.w(tag, "seek ignored because exclusive playback is not active: $currentState")
+            UsbDiagnostics.w(tag, "seek ignored because exclusive playback is not active: $currentState")
             return updateState(inactiveState("No exclusive playback is active."))
         }
         val safePositionMs = positionMs.coerceAtLeast(0L)
@@ -356,7 +360,7 @@ class UsbExclusiveAudioEngine(
         val packetCount = ((targetBufferMs.toLong() * packetsPerSecond) + 999L) / 1000L
         val maxPendingUrbs = ((packetCount + 15L) / 16L).coerceIn(8L, 512L).toInt()
         UsbExclusiveNative.setMaxPendingOutputUrbs(maxPendingUrbs)
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "USB target buffer targetMs=$targetBufferMs packetsPerSecond=$packetsPerSecond " +
                 "maxPendingUrbs=$maxPendingUrbs",
@@ -405,7 +409,7 @@ class UsbExclusiveAudioEngine(
                 null
             }
 
-            Log.i(
+            UsbDiagnostics.i(
                 tag,
                 "decoder input format=$format, mime=$mime, sampleRate=$sampleRate, channels=$channels, " +
                     "durationMs=$durationMs, endpointInterval=${target.endpoint.interval}",
@@ -438,19 +442,19 @@ class UsbExclusiveAudioEngine(
             while (!stopped.get() && !outputDone) {
                 val wasPaused = paused.get()
                 if (wasPaused) {
-                    Log.i(tag, "exclusive worker waiting because playback is paused.")
+                    UsbDiagnostics.i(tag, "exclusive worker waiting because playback is paused.")
                 }
                 while (paused.get() && !stopped.get()) {
                     Thread.sleep(25)
                 }
                 if (wasPaused && !stopped.get()) {
-                    Log.i(tag, "exclusive worker resumed.")
+                    UsbDiagnostics.i(tag, "exclusive worker resumed.")
                 }
                 if (stopped.get()) break
 
                 consumePendingSeekMs()?.let { seekMs ->
                     val seekUs = seekMs * 1000
-                    Log.i(tag, "exclusive decoder seek to ${seekMs}ms.")
+                    UsbDiagnostics.i(tag, "exclusive decoder seek to ${seekMs}ms.")
                     extractor.seekTo(seekUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                     codec.flush()
                     packetizer?.reset()
@@ -552,7 +556,7 @@ class UsbExclusiveAudioEngine(
                         channels
                     }
                     val outputBitDepth = bitDepthFromPcmEncoding(pcmEncoding)
-                    Log.i(
+                    UsbDiagnostics.i(
                         tag,
                         "decoder output format changed: $outputFormat, pcmEncoding=$pcmEncoding, " +
                             "decoderBitDepth=$outputBitDepth, usbBitDepth=${target.usbBitResolution}",
@@ -580,7 +584,7 @@ class UsbExclusiveAudioEngine(
                 updateState(inactiveState("USB exclusive playback completed."))
             }
         } catch (error: Throwable) {
-            Log.w("UsbExclusiveAudioEngine", "Exclusive playback failed.", error)
+            UsbDiagnostics.w("UsbExclusiveAudioEngine", "Exclusive playback failed.", error)
             emitError(error.message ?: "USB exclusive playback failed.")
         } finally {
             try {
@@ -638,7 +642,7 @@ class UsbExclusiveAudioEngine(
         var lastSampleTimeUs: Long? = null
         var rawChunkLogCount = 0
 
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "raw PCM direct path sampleRate=$sampleRate, channels=$channels, " +
                 "sourceBitDepth=$sourceBitDepth, pcmEncoding=$pcmEncoding, " +
@@ -659,19 +663,19 @@ class UsbExclusiveAudioEngine(
         while (!stopped.get()) {
             val wasPaused = paused.get()
             if (wasPaused) {
-                Log.i(tag, "exclusive worker waiting because playback is paused.")
+                UsbDiagnostics.i(tag, "exclusive worker waiting because playback is paused.")
             }
             while (paused.get() && !stopped.get()) {
                 Thread.sleep(25)
             }
             if (wasPaused && !stopped.get()) {
-                Log.i(tag, "exclusive worker resumed.")
+                UsbDiagnostics.i(tag, "exclusive worker resumed.")
             }
             if (stopped.get()) break
 
             consumePendingSeekMs()?.let { seekMs ->
                 val seekUs = seekMs * 1000
-                Log.i(tag, "exclusive raw PCM seek to ${seekMs}ms.")
+                UsbDiagnostics.i(tag, "exclusive raw PCM seek to ${seekMs}ms.")
                 extractor.seekTo(seekUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                 packetizer.reset()
                 lastPositionEmitMs = -1L
@@ -700,7 +704,7 @@ class UsbExclusiveAudioEngine(
                 val frameBytes = channels * bytesPerSampleForBitDepth(sourceBitDepth)
                 val frames = if (frameBytes > 0) sampleSize / frameBytes else 0
                 val deltaUs = lastSampleTimeUs?.let { sampleTimeUs - it }
-                Log.i(
+                UsbDiagnostics.i(
                     tag,
                     "raw PCM chunk size=$sampleSize, sampleTimeUs=$sampleTimeUs, " +
                         "deltaUs=${deltaUs ?: "n/a"}, frames=$frames, frameBytes=$frameBytes, " +
@@ -744,7 +748,7 @@ class UsbExclusiveAudioEngine(
         val inputBytesPerSample = bytesPerSampleForBitDepth(bitDepth)
         val usbBytesPerSample = target.usbBytesPerSample
         val usbBitResolution = target.usbBitResolution ?: (usbBytesPerSample * 8)
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "USB PCM packetizer sampleRate=$sampleRate, channels=$channels, " +
                 "decoderBitDepth=$bitDepth, inputBytesPerSample=$inputBytesPerSample, " +
@@ -764,14 +768,14 @@ class UsbExclusiveAudioEngine(
         val outputIntervalMicroframes = isoIntervalMicroframes(target.endpoint.interval)
         val feedbackOutputPacketDivisor = target.feedbackEndpoint?.let {
             val feedbackIntervalMicroframes = isoIntervalMicroframes(it.interval)
-            Log.i(
+            UsbDiagnostics.i(
                 tag,
                 "USB feedback intervals outputMicroframes=$outputIntervalMicroframes, " +
                     "feedbackMicroframes=$feedbackIntervalMicroframes",
             )
             1
         } ?: 1
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "USB feedback scaling outputIntervalMicroframes=$outputIntervalMicroframes, " +
                 "feedbackDivisor=$feedbackOutputPacketDivisor, feedback=${target.feedbackEndpointLabel}",
@@ -797,12 +801,18 @@ class UsbExclusiveAudioEngine(
         }
     }
 
+    /**
+     * 配置 DAC 时钟到 [sampleRate]。返回 null 表示可以继续；返回非 null 的原因字符串表示
+     * 校验到时钟与请求不一致（GET_CUR 读回一个有效且不同的采样率），调用方应据此回退系统输出。
+     * 注意：很多 DAC（如 Macaron）SET_CUR 成功但 GET_CUR 恒返回 0，属于“不报告实际值”，
+     * 不能当成不一致——否则会把本可正常独占的设备误判成失败。只有读回“有效非零且不同”才判失败。
+     */
     private fun configureUsbAudioClock(
         connection: UsbDeviceConnection,
         device: UsbDevice,
         target: OutputTarget,
         sampleRate: Int,
-    ) {
+    ): String? {
         val controlInterface = findAudioControlInterface(device)
         val controlInterfaceNumber = controlInterface?.id ?: target.usbInterface.id
         val clockSourceId = findUac2ClockSourceId(
@@ -837,18 +847,26 @@ class UsbExclusiveAudioEngine(
                     data.size,
                     1000,
                 )
-                Log.i(
+                UsbDiagnostics.i(
                     tag,
                     "UAC2 clock SET_CUR sampleRate=$sampleRate, clockSourceId=$clockSourceId, " +
                     "controlInterface=$controlInterfaceNumber, result=$result",
                 )
-                readUac2ClockSampleRate(
+                val readBack = readUac2ClockSampleRate(
                     connection,
                     clockSourceId,
                     controlInterfaceNumber,
                     "after",
                 )
-                return
+                if (readBack != null && readBack > 0 && readBack != sampleRate) {
+                    UsbDiagnostics.w(
+                        tag,
+                        "UAC2 clock mismatch: requested=$sampleRate readBack=$readBack; " +
+                            "falling back to system output.",
+                    )
+                    return "DAC 未接受采样率 ${sampleRate}Hz（读回 ${readBack}Hz），已回退系统输出。"
+                }
+                return null
             }
 
             val data = byteArrayOf(
@@ -865,14 +883,16 @@ class UsbExclusiveAudioEngine(
                 data.size,
                 1000,
             )
-            Log.i(
+            UsbDiagnostics.i(
                 tag,
                 "UAC1 endpoint SET_CUR sampleRate=$sampleRate, endpoint=0x${
                     target.endpoint.address.toString(16)
                 }, result=$result",
             )
+            return null
         } catch (error: RuntimeException) {
-            Log.w(tag, "USB audio clock configuration failed.", error)
+            UsbDiagnostics.w(tag, "USB audio clock configuration failed.", error)
+            return null
         } finally {
             if (claimedControl && controlInterface != null) {
                 runCatching { connection.releaseInterface(controlInterface) }
@@ -904,7 +924,7 @@ class UsbExclusiveAudioEngine(
         } else {
             null
         }
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "UAC2 clock GET_CUR $label result=$result, clockSourceId=$clockSourceId, " +
                 "controlInterface=$controlInterfaceNumber, sampleRate=${sampleRate ?: "n/a"}, " +
@@ -954,13 +974,10 @@ class UsbExclusiveAudioEngine(
         return -1
     }
 
-    private fun findOutputTarget(
+    private fun collectOutputCandidates(
         device: UsbDevice,
-        streamingFormats: Map<Pair<Int, Int>, StreamingFormatInfo> = emptyMap(),
-        sampleRate: Int? = null,
-        channels: Int = 2,
-        bitDepth: Int? = null,
-    ): OutputTarget? {
+        streamingFormats: Map<Pair<Int, Int>, StreamingFormatInfo>,
+    ): List<OutputTarget> {
         val candidates = mutableListOf<OutputTarget>()
         for (index in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(index)
@@ -987,6 +1004,93 @@ class UsbExclusiveAudioEngine(
                 }
             }
         }
+        return candidates
+    }
+
+    /**
+     * 汇总诊断报告所需的“App 解析结果”部分（原始描述符、AS 格式、输出候选、UAC2 时钟源）。
+     * 只在有权限时临时打开设备读取描述符，读完即关，不影响正在进行的独占播放。
+     */
+    fun collectDiagnostics(usbManager: UsbManager, device: UsbDevice?): Map<String, Any?> {
+        if (device == null) {
+            return mapOf("available" to false, "message" to "未检测到 USB 音频设备。")
+        }
+        if (!usbManager.hasPermission(device)) {
+            return mapOf(
+                "available" to false,
+                "permissionGranted" to false,
+                "message" to "未授权，无法读取描述符。",
+            )
+        }
+
+        val connection = usbManager.openDevice(device)
+            ?: return mapOf(
+                "available" to false,
+                "permissionGranted" to true,
+                "message" to "无法打开 USB 设备读取描述符。",
+            )
+
+        return try {
+            val descriptors = connection.rawDescriptors
+            val streamingFormats = parseStreamingFormatInfo(descriptors)
+            val candidates = collectOutputCandidates(device, streamingFormats)
+                .sortedWith(compareBy<OutputTarget> { it.endpoint.maxPacketSize }.thenBy { it.alternateSetting })
+            val clockSourceId = candidates.firstOrNull()?.let {
+                findUac2ClockSourceId(descriptors, it.usbInterface.id, it.alternateSetting)
+            }
+            mapOf(
+                "available" to true,
+                "permissionGranted" to true,
+                "rawDescriptorLength" to (descriptors?.size ?: 0),
+                "rawDescriptorsHex" to descriptors?.let { hexDump(it) },
+                "streamingFormats" to streamingFormats.values
+                    .sortedWith(compareBy<StreamingFormatInfo> { it.interfaceNumber }.thenBy { it.alternateSetting })
+                    .map { it.toString() },
+                "outputCandidates" to candidates.map { candidate ->
+                    "alt=${candidate.alternateSetting}/max=${candidate.endpoint.maxPacketSize}/" +
+                        "outAttr=0x${candidate.endpoint.attributes.toString(16)}/" +
+                        "interval=${candidate.endpoint.interval}/" +
+                        "feedback=${candidate.feedbackEndpointLabel}/" +
+                        "usbBytes=${candidate.usbBytesPerSample}/bits=${candidate.usbBitResolution}/" +
+                        "format=${candidate.formatInfo}"
+                },
+                "clockSourceId" to clockSourceId,
+            )
+        } catch (error: RuntimeException) {
+            mapOf(
+                "available" to false,
+                "permissionGranted" to true,
+                "message" to "读取描述符失败：${error.message}",
+            )
+        } finally {
+            connection.close()
+        }
+    }
+
+    private fun hexDump(bytes: ByteArray): String {
+        val builder = StringBuilder(bytes.size * 3)
+        for (index in bytes.indices) {
+            if (index % 16 == 0) {
+                if (index != 0) {
+                    builder.append('\n')
+                }
+                builder.append(String.format(Locale.US, "%04x: ", index))
+            } else {
+                builder.append(' ')
+            }
+            builder.append(String.format(Locale.US, "%02x", bytes[index].toInt() and 0xff))
+        }
+        return builder.toString()
+    }
+
+    private fun findOutputTarget(
+        device: UsbDevice,
+        streamingFormats: Map<Pair<Int, Int>, StreamingFormatInfo> = emptyMap(),
+        sampleRate: Int? = null,
+        channels: Int = 2,
+        bitDepth: Int? = null,
+    ): OutputTarget? {
+        val candidates = collectOutputCandidates(device, streamingFormats)
 
         if (candidates.isEmpty()) {
             return null
@@ -1039,14 +1143,14 @@ class UsbExclusiveAudioEngine(
             selected.usbBytesPerSample,
         )
         if (selected.endpoint.maxPacketSize < selectedRequiredPacketBytes) {
-            Log.w(
+            UsbDiagnostics.w(
                 tag,
                 "selected USB alt may be too small: requiredPacketBytes=$selectedRequiredPacketBytes, " +
                     "selectedMaxPacket=${selected.endpoint.maxPacketSize}, sampleRate=$sampleRate, " +
                     "channels=$channels, bitDepth=${bitDepth ?: "auto"}",
             )
         }
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "selected USB alt=${selected.alternateSetting}, maxPacket=${selected.endpoint.maxPacketSize}, " +
                 "requiredPacketBytes=$selectedRequiredPacketBytes, " +
@@ -1083,7 +1187,7 @@ class UsbExclusiveAudioEngine(
 
     private fun parseStreamingFormatInfo(descriptors: ByteArray?): Map<Pair<Int, Int>, StreamingFormatInfo> {
         if (descriptors == null) {
-            Log.w(tag, "USB raw descriptors unavailable; cannot parse AS format descriptors.")
+            UsbDiagnostics.w(tag, "USB raw descriptors unavailable; cannot parse AS format descriptors.")
             return emptyMap()
         }
 
@@ -1163,7 +1267,7 @@ class UsbExclusiveAudioEngine(
             offset += length
         }
 
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "USB AS formats parsed: ${formats.values.sortedWith(
                 compareBy<StreamingFormatInfo> { it.interfaceNumber }.thenBy { it.alternateSetting },
@@ -1243,7 +1347,7 @@ class UsbExclusiveAudioEngine(
         val result = linkedTerminal?.let {
             inputTerminalClockIds[it] ?: outputTerminalClockIds[it]
         } ?: firstClockSourceId
-        Log.i(
+        UsbDiagnostics.i(
             tag,
             "parsed UAC2 clock source: streamingInterface=$streamingInterfaceNumber, " +
                 "alt=$streamingAlternateSetting, terminalLink=$terminalLink, clockSourceId=$result",
@@ -1472,7 +1576,7 @@ class UsbExclusiveAudioEngine(
                 }
                 if (packetLogCount < 5) {
                     ++packetLogCount
-                    Log.d(
+                    UsbDiagnostics.d(
                         "UsbExclusiveAudioEngine",
                         "USB PCM packet bytes=${packet.size}, filled=$length",
                     )
@@ -1519,7 +1623,7 @@ class UsbExclusiveAudioEngine(
                     }
                 } else if (feedbackRejectLogCount < 8) {
                     ++feedbackRejectLogCount
-                    Log.w(
+                    UsbDiagnostics.w(
                         "UsbExclusiveAudioEngine",
                         "USB feedback ignored outputFrames=${q16ToFrames(outputFeedbackQ16)}, " +
                             "nominalFrames=${q16ToFrames(nominalFramesQ16)}, " +
@@ -1594,7 +1698,7 @@ class UsbExclusiveAudioEngine(
                 sumAbs += kotlin.math.abs(sample.toLong())
             }
             val averageAbs = if (samplesToInspect > 0) sumAbs / samplesToInspect else 0
-            Log.i(
+            UsbDiagnostics.i(
                 "UsbExclusiveAudioEngine",
                 "USB PCM preview reason=$reason, inputBytes=${input.size}, convertedBytes=${converted.size}, frames=$frames, " +
                     "inputBitDepth=$inputBitDepth, usbBytesPerSample=$usbBytesPerSample, " +

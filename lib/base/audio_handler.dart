@@ -7,9 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:sylvakru/base/services/emby_client.dart';
 import 'package:sylvakru/base/services/metadata_service.dart';
-import 'package:sylvakru/base/services/playback_position_bridge.dart';
-import 'package:sylvakru/base/services/super_lyric_bridge.dart';
-import 'package:sylvakru/base/services/super_lyric_position_publisher.dart';
+import 'package:sylvakru/base/services/super_lyric.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
@@ -88,7 +86,7 @@ Future<void> initAudioService() async {
 
 class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   final _player = Player();
-  late final SuperLyricPositionPublisher _superLyricPublisher;
+  final _superLyric = SuperLyric();
   bool _started = false;
   int currentIndex = -1;
   List<MyAudioMetadata> _playQueueTmp = [];
@@ -98,7 +96,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   Duration _usbExclusivePosition = Duration.zero;
   bool _usbExclusiveActive = false;
   bool _suppressPlayerCompleted = false;
-  late final PlaybackPositionBridge _positionBridge;
+  final _positionController = StreamController<Duration>.broadcast();
 
   late final File _playQueueState;
   late final File _playState;
@@ -108,11 +106,6 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   bool isSyncing = false;
 
   MyAudioHandler() {
-    _superLyricPublisher = SuperLyricPositionPublisher(
-      sendLyricLine: SuperLyricBridge.sendLyricLine,
-      sendStop: SuperLyricBridge.sendStop,
-    );
-
     // avoid reading .lrc files
     (_player.platform as NativePlayer).setProperty('sub-auto', 'no');
 
@@ -158,20 +151,19 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     });
 
     _player.stream.position.listen((position) {
+      // 非独占播放时，播放器位置直接驱动进度流。
+      if (!_usbExclusiveActive) {
+        _positionController.add(position);
+      }
       if (isLoading || isSyncing) {
         return;
       }
       if (!isPlayingNotifier.value) {
         return;
       }
-      unawaited(_superLyricPublisher.publishAt(position));
+      unawaited(_superLyric.publishAt(position));
     });
 
-    _positionBridge = PlaybackPositionBridge(
-      playerPositionStream: _player.stream.position,
-      playerPosition: () => _player.state.position,
-      exclusiveStateListenable: usbExclusivePlaybackStateNotifier,
-    );
     usbExclusivePlaybackStateNotifier.addListener(_handleUsbExclusiveState);
     if (Platform.isAndroid) {
       WidgetsBinding.instance.addObserver(this);
@@ -216,12 +208,14 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     _usbExclusiveActive = state.active;
 
     if (state.active) {
+      // 独占播放时，位置由独占链路上报，驱动进度流。
+      _positionController.add(state.position);
       if (isPlayingNotifier.value != state.playing) {
         updateIsPlaying(state.playing);
       }
       updatePlaybackState(postion: state.position);
       if (state.playing) {
-        unawaited(_superLyricPublisher.publishAt(state.position));
+        unawaited(_superLyric.publishAt(state.position));
       }
       return;
     }
@@ -604,7 +598,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     final currentSong = playQueue[currentIndex];
 
     await _setLyricsAndUpdateColors(currentSong);
-    _superLyricPublisher.updateLines(currentSong.parsedLyrics!.lines);
+    _superLyric.updateLines(currentSong.parsedLyrics!.lines);
 
     currentSongNotifier.value = currentSong;
 
@@ -675,10 +669,10 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     updateServiceMediaItem(currentSong);
 
     if (isPlayingNotifier.value) {
-      unawaited(_superLyricPublisher.publishAt(Duration.zero));
+      unawaited(_superLyric.publishAt(Duration.zero));
     } else {
-      _superLyricPublisher.reset();
-      unawaited(SuperLyricBridge.sendStop());
+      _superLyric.reset();
+      unawaited(_superLyric.sendStop());
     }
     updatePlaybackState(postion: Duration.zero);
   }
@@ -714,12 +708,24 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
       return false;
     }
 
+    final exclusiveSampleRate = _preferredExclusiveSampleRate(song);
+    if (exclusiveSampleRate == null) {
+      // 源采样率无法在独占直驱下与 DAC 时钟对齐（没有 SRC），干净回退到系统输出而不是变调播放。
+      logger.output(
+        "usb exclusive fallback:unsupported source samplerate=${song.samplerate}",
+      );
+      debugPrint(
+        "usb exclusive fallback:unsupported source samplerate=${song.samplerate}",
+      );
+      return false;
+    }
+
     final state = await usbAudioService.startExclusivePlayback(
       UsbExclusivePlaybackRequest(
         filePath: filePath,
         title: getTitle(song),
         sourceFormat: _normalizedExclusiveFormat(song),
-        sampleRate: _preferredExclusiveSampleRate(song),
+        sampleRate: exclusiveSampleRate,
         bitDepth: _preferredExclusiveBitDepth(),
         targetBufferMs: _exclusiveTargetBufferMsForLifecycle(
           WidgetsBinding.instance.lifecycleState,
@@ -799,8 +805,13 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   }
 
   int? _preferredExclusiveSampleRate(MyAudioMetadata song) {
-    return usbAudioPreferences.preferredFixedSampleRate() ??
-        _matchedSafeSampleRate(song.samplerate);
+    // 真独占按源采样率打包并直驱 DAC，输出时钟必须等于源采样率，否则会变调 + 持续欠载。
+    // 因此忽略“固定采样率”偏好（那是给系统共享链路用的），只有源采样率本身可用时才允许独占。
+    final source = song.samplerate;
+    if (source == null || source <= 0) {
+      return null;
+    }
+    return UsbAudioPreferences.sampleRates.contains(source) ? source : null;
   }
 
   Future<void> _applyUsbOutputForSong(MyAudioMetadata song) async {
@@ -935,7 +946,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
         "usb exclusive resume result: active=${state.active}, playing=${state.playing}, position=${state.position.inMilliseconds}, message=${state.message}",
       );
       updateIsPlaying(state.playing);
-      unawaited(_superLyricPublisher.publishAt(state.position));
+      unawaited(_superLyric.publishAt(state.position));
       updatePlaybackState(postion: state.position);
       return;
     }
@@ -945,7 +956,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     final openedExclusive = await _tryOpenUsbExclusive(currentSong);
     if (openedExclusive) {
       await _stopPlayerForUsbExclusive();
-      unawaited(_superLyricPublisher.publishAt(_usbExclusivePosition));
+      unawaited(_superLyric.publishAt(_usbExclusivePosition));
       updatePlaybackState(postion: _usbExclusivePosition);
       return;
     }
@@ -953,7 +964,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     await _applyUsbOutputForSong(currentSong);
     _player.play();
 
-    unawaited(_superLyricPublisher.publishAt(_player.state.position));
+    unawaited(_superLyric.publishAt(_player.state.position));
     updatePlaybackState();
   }
 
@@ -964,16 +975,16 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     );
     if (_usbExclusiveActive) {
       final state = await usbAudioService.pauseExclusivePlayback();
-      unawaited(SuperLyricBridge.sendStop());
-      _superLyricPublisher.reset();
+      unawaited(_superLyric.sendStop());
+      _superLyric.reset();
       updateIsPlaying(state.playing);
       updatePlaybackState(postion: state.position);
       return;
     }
 
     _player.pause();
-    unawaited(SuperLyricBridge.sendStop());
-    _superLyricPublisher.reset();
+    unawaited(_superLyric.sendStop());
+    _superLyric.reset();
     updateIsPlaying(false);
     updatePlaybackState();
   }
@@ -987,8 +998,8 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     }
 
     _player.stop();
-    unawaited(SuperLyricBridge.sendStop());
-    _superLyricPublisher.reset();
+    unawaited(_superLyric.sendStop());
+    _superLyric.reset();
     updateIsPlaying(false);
     updatePlaybackState(stop: true);
   }
@@ -999,7 +1010,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     if (_usbExclusiveActive) {
       final state = await usbAudioService.seekExclusivePlayback(position);
       if (isPlayingNotifier.value) {
-        unawaited(_superLyricPublisher.publishAt(state.position));
+        unawaited(_superLyric.publishAt(state.position));
       }
       updateLyricsNotifier.value++;
       updatePlaybackState(postion: state.position);
@@ -1010,7 +1021,7 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
     // ensure position is updated
     await Future.delayed(Duration(milliseconds: 50));
     if (isPlayingNotifier.value) {
-      unawaited(_superLyricPublisher.publishAt(position));
+      unawaited(_superLyric.publishAt(position));
     }
     updateLyricsNotifier.value++;
   }
@@ -1040,11 +1051,11 @@ class MyAudioHandler extends BaseAudioHandler with WidgetsBindingObserver {
   }
 
   Stream<Duration> getPositionStream() {
-    return _positionBridge.stream;
+    return _positionController.stream;
   }
 
   Duration getPosition() {
-    return _positionBridge.position;
+    return _usbExclusiveActive ? _usbExclusivePosition : _player.state.position;
   }
 
   void setVolume(double volume) {
