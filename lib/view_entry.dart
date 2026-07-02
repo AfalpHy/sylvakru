@@ -41,6 +41,12 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
         );
       });
     }
+
+    if (Platform.isIOS || Platform.isMacOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await NativeMenu.initIcons();
+      });
+    }
   }
 
   @override
