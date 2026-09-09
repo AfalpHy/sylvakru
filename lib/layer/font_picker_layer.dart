@@ -87,43 +87,44 @@ class _FontPickerLayerState extends State<FontPickerLayer> {
       type: .custom,
       allowedExtensions: ['ttf', 'otf', 'ttc'],
     );
-    if (fileResult != null) {
-      if (context.mounted) {
-        final result = await getInputTextDialog(context, l10n.setFontName);
-        if (result == '') {
-          return;
-        }
-        if (Platform.isMacOS || Platform.isWindows) {
-          for (final font in JustFontScan.scan().map((e) => e.name).toList()) {
-            if (font == result) {
-              if (context.mounted) {
-                showCenterMessage('Conflict name with system font');
-              }
-              return;
+    if (fileResult.isEmpty) {
+      return;
+    }
+    if (context.mounted) {
+      final result = await getInputTextDialog(context, l10n.setFontName);
+      if (result == '') {
+        return;
+      }
+      if (Platform.isMacOS || Platform.isWindows) {
+        for (final font in JustFontScan.scan().map((e) => e.name).toList()) {
+          if (font == result) {
+            if (context.mounted) {
+              showCenterMessage('Conflict name with system font');
             }
+            return;
           }
         }
-        final loader = FontLoader(result);
+      }
+      final loader = FontLoader(result);
 
-        for (final file in fileResult.files) {
-          final bytes = await File(file.path!).readAsBytes();
-          loader.addFont(Future.value(ByteData.view(bytes.buffer)));
-        }
+      for (final file in fileResult) {
+        final bytes = await File(file.path!).readAsBytes();
+        loader.addFont(Future.value(ByteData.view(bytes.buffer)));
+      }
 
-        await loader.load();
+      await loader.load();
 
-        await fontManager.addFonts(
-          result,
-          fileResult.files.map((e) => e.path!).toList(),
-        );
+      await fontManager.addFonts(
+        result,
+        fileResult.map((e) => e.path!).toList(),
+      );
 
-        if (importedFonts.contains(result)) {
-          setState(() {});
-        } else {
-          importedFonts.add(result);
-          allFonts.clear();
-          reloadAllFonts();
-        }
+      if (importedFonts.contains(result)) {
+        setState(() {});
+      } else {
+        importedFonts.add(result);
+        allFonts.clear();
+        reloadAllFonts();
       }
     }
   }
