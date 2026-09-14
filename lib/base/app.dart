@@ -24,7 +24,7 @@ final lyricsPageThemeNotifier = ValueNotifier(ThemeType.vivid);
 
 final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
 
-enum SourceType { local, webdav, navidrome, emby }
+enum SourceType { local, webdav, navidrome, emby, feiniu }
 
 SourceType sourceType = .local;
 

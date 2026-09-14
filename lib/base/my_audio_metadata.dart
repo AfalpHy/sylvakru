@@ -97,8 +97,9 @@ class MyAudioMetadata {
 
   factory MyAudioMetadata.fromMap(
     Map<String, dynamic> song,
-    SourceType sourceType,
-  ) {
+    SourceType sourceType, {
+    bool cache = true,
+  }) {
     if (sourceType == .navidrome) {
       return library.id2Song.putIfAbsent(
         song['id'],
@@ -129,6 +130,41 @@ class MyAudioMetadata {
               : null,
         ),
       );
+    }
+
+    if (sourceType == .feiniu) {
+      final audioSpec = song['audioSpec'] as Map? ?? const {};
+      final album = song['album'] as Map? ?? const {};
+      final artists = (song['artists'] as List?) ?? const [];
+      final genres = (song['genres'] as List?) ?? const [];
+      final durationMs = (song['duration'] ?? audioSpec['duration']) as num?;
+      final bitrate = audioSpec['bitrate'] as num?;
+      final releaseDate = DateTime.tryParse(album['releaseDate'] ?? '');
+      MyAudioMetadata createMetadata() => MyAudioMetadata(
+        AudioMetadata(
+          format: audioSpec['format'],
+          title: song['title'],
+          artist: artists.map((artist) => artist['name']).join('/'),
+          album: album['name'],
+          genre: genres.map((genre) => genre['name']).join('/'),
+          year: (song['year'] as num?)?.toInt() ?? releaseDate?.year,
+          track: (song['trackNo'] as num?)?.toInt(),
+          disc: (song['discNo'] as num?)?.toInt(),
+          // 飞牛时长为毫秒、码率为 bps；播放器码率统一使用 kbps。
+          bitrate: bitrate == null ? null : (bitrate / 1000).round(),
+          samplerate: (audioSpec['sampleRate'] as num?)?.toInt(),
+          duration: durationMs == null
+              ? null
+              : Duration(milliseconds: durationMs.toInt()),
+        ),
+        id: song['guid'],
+        path: audioSpec['path'],
+        artistId: artists.isEmpty ? null : artists.first['guid'],
+        albumId: album['guid'],
+      )..isFavoriteNotifier.value = song['isFavorite'] == true;
+      return cache
+          ? library.id2Song.putIfAbsent(song['guid'], createMetadata)
+          : createMetadata();
     }
 
     final mediaSources = (song['MediaSources'] as List?) ?? [];

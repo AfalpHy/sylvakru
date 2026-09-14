@@ -10,6 +10,7 @@ import 'package:sylvakru/base/services/my_window_listener.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
 import 'package:sylvakru/base/services/play_queue_logic.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
+import 'package:sylvakru/base/services/feiniu_client.dart';
 import 'package:sylvakru/base/services/taskbar_service.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
@@ -88,6 +89,7 @@ class MyAudioHandler extends BaseAudioHandler {
   Timer? _positionTimer;
 
   bool isLoading = false;
+  int _loadGeneration = 0;
 
   MyAudioHandler() {
     // avoid reading .lrc files
@@ -181,7 +183,7 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   void _prepare() {
-    if (isNotStreamSource) {
+    if (isNotStreamSource || sourceType == .feiniu) {
       _playQueueState = File(
         "${appSupportDir.path}/${sourceType.name}/play_queue_state.json",
       );
@@ -232,10 +234,30 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> _loadPlayQueueState() async {
-    if (isNotStreamSource) {
+    if (isNotStreamSource || sourceType == .feiniu) {
       final content = await _playQueueState!.readAsString();
 
       final json = jsonDecode(content) as Map<String, dynamic>;
+
+      if (sourceType == .feiniu) {
+        // 飞牛未提供队列重排接口，沿用本地队列文件保留顺序和重复歌曲。
+        playQueue.clear();
+        _playQueueTmp.clear();
+        final client = streamClient;
+        if (client is! FeiniuClient ||
+            json['server'] != client.baseUrl ||
+            json['username'] != client.username ||
+            !await client.ping()) {
+          return;
+        }
+        final ids = <String>{
+          ...List<String>.from(json['playQueueTmp'] as List? ?? []),
+          ...List<String>.from(json['playQueue'] as List? ?? []),
+        };
+        for (final id in ids) {
+          if (!library.id2Song.containsKey(id)) await client.getSong(id);
+        }
+      }
 
       _playQueueTmp.addAll(_restoreQueue(json['playQueueTmp']));
       playQueue.addAll(_restoreQueue(json['playQueue']));
@@ -249,9 +271,13 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> _savePlayQueueState() async {
-    if (isNotStreamSource) {
+    if (isNotStreamSource || sourceType == .feiniu) {
       _playQueueState!.writeAsStringSync(
         jsonEncode({
+          if (sourceType == .feiniu) ...{
+            'server': streamClient?.baseUrl,
+            'username': streamClient?.username,
+          },
           'playQueueTmp': _playQueueTmp.map((e) => e.id).toList(),
           'playQueue': playQueue.map((e) => e.id).toList(),
         }),
@@ -475,6 +501,8 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   void justClear() {
+    ++_loadGeneration;
+    isLoading = false;
     _player.stop();
     updateIsPlaying(false);
     updatePlaybackState(stop: true);
@@ -556,6 +584,7 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> load({Duration? start}) async {
+    final generation = ++_loadGeneration;
     if (currentSongNotifier.value != null) {
       if (_playLastSyncTime != null) {
         _playedDuration += DateTime.now().difference(_playLastSyncTime!);
@@ -570,6 +599,7 @@ class MyAudioHandler extends BaseAudioHandler {
             currentSongNotifier.value!,
             _player.state.duration,
           );
+          if (generation != _loadGeneration) return;
         }
       }
       if (durationSeconds > 0) {
@@ -589,6 +619,7 @@ class MyAudioHandler extends BaseAudioHandler {
     final currentSong = playQueue[currentIndex];
 
     await _setLyricsAndUpdateColors(currentSong);
+    if (generation != _loadGeneration) return;
 
     currentSongNotifier.value = currentSong;
 
@@ -601,6 +632,7 @@ class MyAudioHandler extends BaseAudioHandler {
         );
       } else {
         String? resource;
+        Map<String, String>? streamHeaders;
         bool needHeader = false;
         switch (sourceType) {
           case .webdav:
@@ -615,25 +647,39 @@ class MyAudioHandler extends BaseAudioHandler {
           case .emby:
             resource = streamClient?.getStreamUrl(currentSong.id);
             break;
+          case .feiniu:
+            final client = streamClient;
+            final authenticated = client is FeiniuClient && await client.ping();
+            if (generation != _loadGeneration) return;
+            if (!authenticated) {
+              throw StateError('Feiniu music authentication failed');
+            }
+            resource = client.getStreamUrl(currentSong.id);
+            streamHeaders = client.headers;
+            break;
           default:
             break;
         }
         resource ??= currentSong.path!;
+        if (generation != _loadGeneration) return;
 
         await _player.open(
           Media(
             resource,
-            httpHeaders: needHeader ? webdavClient?.headers : null,
+            httpHeaders:
+                streamHeaders ?? (needHeader ? webdavClient?.headers : null),
             start: start,
           ),
           play: isPlayingNotifier.value,
         );
       }
 
+      if (generation != _loadGeneration) return;
       if (isPlayingNotifier.value) {
         _playLastSyncTime = DateTime.now();
       }
     } catch (error) {
+      if (generation != _loadGeneration) return;
       stop();
       logger.output("[${currentSong.title}] $error");
     }
@@ -692,6 +738,8 @@ class MyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> stop() async {
+    ++_loadGeneration;
+    isLoading = false;
     _player.stop();
     updateIsPlaying(false);
     updatePlaybackState(stop: true);

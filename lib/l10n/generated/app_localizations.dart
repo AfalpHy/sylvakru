@@ -1345,6 +1345,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a Music Source'**
   String get chooseMusicSource;
+
+  /// No description provided for @feiniuMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'FnOS Music'**
+  String get feiniuMusic;
+
+  /// No description provided for @feiniuConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to connect to FnOS Music. Check the server URL and your music app username and password.'**
+  String get feiniuConnectionFailed;
+
+  /// No description provided for @savedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved successfully'**
+  String get savedSuccessfully;
 }
 
 class _AppLocalizationsDelegate

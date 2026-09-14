@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/library.dart';
+import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/big_picture_view/panels/big_song_list_base_panel.dart';
@@ -16,10 +17,21 @@ class _BigSongsPanelState extends BigSongListBasePanelState {
   @override
   List<MyAudioMetadata> get songList => library.songList;
 
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: Loader.stateNotifier,
+      builder: (context, value, child) => super.build(context),
+    );
+  }
+
   bool _isLoadingMoreData = false;
   bool _reachEnd = false;
 
   void _onScroll() async {
+    if (sourceType == .feiniu) {
+      return;
+    }
     if (firstLoading | _isLoadingMoreData | _reachEnd) {
       return;
     }
@@ -55,7 +67,7 @@ class _BigSongsPanelState extends BigSongListBasePanelState {
     super.initState();
     scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (isStreamSource && songList.isEmpty) {
+      if (isStreamSource && sourceType != .feiniu && songList.isEmpty) {
         firstLoading = true;
         final songs = await streamClient?.getSongs(100, 0) ?? [];
         songList.addAll(songs);

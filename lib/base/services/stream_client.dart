@@ -120,6 +120,8 @@ abstract class StreamClient {
 
   String getStreamUrl(String id);
 
+  Map<String, String> get headers => const {};
+
   Future<Uint8List?> getPictureBytes(String songId);
 
   Future<String> getLyricsById(String songId);

@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/database.dart';
 import 'package:sylvakru/base/extensions/metadata_extension.dart';
+import 'package:sylvakru/base/services/feiniu_client.dart';
 import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/picture_load_scheduler.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
@@ -117,6 +118,20 @@ class Library {
     }
   }
 
+  Future<bool> _loadFeiniuSongs() async {
+    final client = streamClient;
+    if (client is! FeiniuClient) return false;
+    final songs = await client.getAllSongs();
+    if (songs == null) return false;
+    songList
+      ..clear()
+      ..addAll(songs);
+    id2Song
+      ..clear()
+      ..addEntries(songs.map((song) => MapEntry(song.id, song)));
+    return true;
+  }
+
   Future<void> load() async {
     if (isNotStreamSource) {
       await initFolders();
@@ -150,6 +165,8 @@ class Library {
       for (final folder in folderList) {
         await folder.load();
       }
+    } else if (sourceType == .feiniu && await _loadFeiniuSongs()) {
+      changeNotifier.value++;
     }
 
     await _accumulateCache();
@@ -437,6 +454,8 @@ class Library {
         }
 
         await _saveMetadata();
+      case .feiniu:
+        await _loadFeiniuSongs();
       default:
         id2Song = {};
         songList = [];

@@ -98,8 +98,18 @@ Future<void> setParsedLyrics(MyAudioMetadata song) async {
     }
   }
 
-  if (sourceType == .navidrome) {
+  if (sourceType == .navidrome || sourceType == .feiniu) {
     final lyrics = await streamClient?.getLyricsById(song.id) ?? '';
+    if (sourceType == .feiniu &&
+        lyrics.trim().isNotEmpty &&
+        !RegExp(
+          r'^[\[<]\d{2}:\d{2}[.:]\d{2,3}[\]>]',
+          multiLine: true,
+        ).hasMatch(lyrics)) {
+      // 没有时间标签的歌词按原文显示，不生成虚假的同步时间。
+      result.lines.add(LyricLine(Duration.zero, lyrics.trim(), []));
+      return;
+    }
     lines = lyrics.split(RegExp(r'[\n]'));
   } else if (sourceType == .emby) {
     result.lines.add(LyricLine(Duration.zero, l10n.noLyrics, []));

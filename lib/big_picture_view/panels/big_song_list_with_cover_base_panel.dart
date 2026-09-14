@@ -166,7 +166,9 @@ abstract class BigSongListWithCoverBasePanelState<
                               builder: (context, value, child) {
                                 return SelectableSongListPage(
                                   songList: songList,
-                                  reorderable: true,
+                                  reorderable:
+                                      !(sourceType == .feiniu &&
+                                          playlist != null),
                                   folder: folder,
                                   playlist: playlist,
                                   isSelectedNotifierMap: isSelectedNotifierMap,
@@ -325,7 +327,9 @@ abstract class BigSongListWithCoverBasePanelState<
               showSongOptions(
                 context: context,
                 song: song,
-                moveToTop: () => moveToTop(song),
+                moveToTop: sourceType == .feiniu && playlist != null
+                    ? null
+                    : () => moveToTop(song),
                 includeGoToArtist: true,
                 includeGoToAlbum: true,
                 playlist: playlist,
