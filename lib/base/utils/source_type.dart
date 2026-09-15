@@ -11,8 +11,10 @@ String getSourceTypeDisplayName(AppLocalizations l10n, SourceType sourceType) {
       return 'WebDAV';
     case .navidrome:
       return 'Navidrome';
-    default:
+    case .emby:
       return 'Emby';
+    case .feiniu:
+      return l10n.feiniuMusic;
   }
 }
 
@@ -24,7 +26,9 @@ AssetImage getSourceTypeImage(SourceType sourceType) {
       return webdavImage;
     case .navidrome:
       return navidromeImage;
-    default:
+    case .emby:
       return embyImage;
+    case .feiniu:
+      return feiniuImage;
   }
 }

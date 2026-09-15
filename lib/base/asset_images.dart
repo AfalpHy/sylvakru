@@ -19,6 +19,7 @@ const AssetImage desktopLyricsImage = AssetImage(
 const AssetImage embyImage = AssetImage('assets/images/emby.png');
 const AssetImage equalizerImage = AssetImage('assets/images/equalizer.png');
 const AssetImage exportLogImage = AssetImage('assets/images/export_log.png');
+const AssetImage feiniuImage = AssetImage('assets/images/feiniu.png');
 const AssetImage folderImage = AssetImage('assets/images/folder.png');
 const AssetImage fontImage = AssetImage('assets/images/font.png');
 const AssetImage forwardImage = AssetImage('assets/images/forward.png');

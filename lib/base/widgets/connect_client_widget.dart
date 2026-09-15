@@ -5,6 +5,7 @@ import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/feiniu_client.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/navidrome_client.dart';
@@ -39,10 +40,14 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
       baseUrlTmp.text = config.navidromeBaseUrl ?? '';
       usernameTmp.text = config.navidromeUsername ?? '';
       passwordTmp.text = config.navidromePassword ?? '';
-    } else {
+    } else if (widget.sourceType == .emby) {
       baseUrlTmp.text = config.embyBaseUrl ?? '';
       usernameTmp.text = config.embyUsername ?? '';
       passwordTmp.text = config.embyPassword ?? '';
+    } else if (widget.sourceType == .feiniu) {
+      baseUrlTmp.text = config.feiniuBaseUrl ?? '';
+      usernameTmp.text = config.feiniuUsername ?? '';
+      passwordTmp.text = config.feiniuPassword ?? '';
     }
   }
 
@@ -198,10 +203,17 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
       if (sourceType == widget.sourceType) {
         streamClient = null;
       }
-    } else {
+    } else if (widget.sourceType == .emby) {
       config.embyBaseUrl = null;
       config.embyUsername = null;
       config.embyPassword = null;
+      if (sourceType == widget.sourceType) {
+        streamClient = null;
+      }
+    } else if (widget.sourceType == .feiniu) {
+      config.feiniuBaseUrl = null;
+      config.feiniuUsername = null;
+      config.feiniuPassword = null;
       if (sourceType == widget.sourceType) {
         streamClient = null;
       }
@@ -212,11 +224,16 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
 
     await config.save();
     if (widget.sourceType == sourceType) {
-      await Loader.sync();
+      if (sourceType == .feiniu) {
+        await Loader.reload();
+      } else {
+        await Loader.sync();
+      }
     }
   }
 
   void onSave() async {
+    final l10n = AppLocalizations.of(context);
     try {
       if (widget.sourceType == .webdav) {
         final tmp = webdavClient;
@@ -248,7 +265,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
         config.navidromeBaseUrl = baseUrlTmp.text;
         config.navidromeUsername = usernameTmp.text;
         config.navidromePassword = passwordTmp.text;
-      } else {
+      } else if (widget.sourceType == .emby) {
         final tmp = streamClient;
         final embyClient = EmbyClient(
           baseUrl: baseUrlTmp.text,
@@ -267,10 +284,31 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
         config.embyBaseUrl = baseUrlTmp.text;
         config.embyUsername = usernameTmp.text;
         config.embyPassword = passwordTmp.text;
+      } else if (widget.sourceType == .feiniu) {
+        final feiniuClient = FeiniuClient(
+          baseUrl: baseUrlTmp.text,
+          username: usernameTmp.text,
+          password: passwordTmp.text,
+        );
+        if (!await feiniuClient.ping()) {
+          showCenterMessage(l10n.feiniuConnectionFailed);
+          return;
+        }
+        if (widget.sourceType == sourceType) {
+          streamClient = feiniuClient;
+        }
+        config.feiniuBaseUrl = baseUrlTmp.text;
+        config.feiniuUsername = usernameTmp.text;
+        config.feiniuPassword = passwordTmp.text;
       }
     } catch (e) {
       if (context.mounted) {
-        showCenterMessage(e.toString(), duration: 5000);
+        showCenterMessage(
+          widget.sourceType == .feiniu
+              ? l10n.feiniuConnectionFailed
+              : e.toString(),
+          duration: 5000,
+        );
       }
       logger.output(e.toString());
       return;
@@ -279,13 +317,17 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
     if (!firstLaunch && mounted) {
       Navigator.pop(context);
     }
-    showCenterMessage('Save successfully');
+    showCenterMessage(l10n.savedSuccessfully);
     await config.save();
 
     if (!firstLaunch &&
         widget.sourceType != .webdav &&
         widget.sourceType == sourceType) {
-      await Loader.sync();
+      if (sourceType == .feiniu) {
+        await Loader.reload();
+      } else {
+        await Loader.sync();
+      }
     }
   }
 }

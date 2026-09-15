@@ -206,5 +206,8 @@
   "immersiveWideLayout": "宽布局启用沉浸模式",
   "menuOnRight": "从右侧弹出菜单",
   "save": "保存",
-  "chooseMusicSource": "选择音乐来源"
+  "chooseMusicSource": "选择音乐来源",
+  "feiniuMusic": "飞牛音乐",
+  "feiniuConnectionFailed": "无法连接飞牛音乐，请检查服务器地址及音乐应用账号密码",
+  "savedSuccessfully": "保存成功"
 }

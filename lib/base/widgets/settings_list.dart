@@ -11,6 +11,7 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
 import 'package:sylvakru/base/services/emby_client.dart';
+import 'package:sylvakru/base/services/feiniu_client.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/navidrome_client.dart';
@@ -329,7 +330,9 @@ class _SettingsListState extends State<SettingsList> {
                             }
                             sourceType = tmp;
                             isStreamSource =
-                                sourceType == .navidrome || sourceType == .emby;
+                                sourceType == .navidrome ||
+                                sourceType == .emby ||
+                                sourceType == .feiniu;
                             isNotStreamSource = !isStreamSource;
                             streamClient = null;
                             if (sourceType == .navidrome &&
@@ -345,6 +348,13 @@ class _SettingsListState extends State<SettingsList> {
                                 baseUrl: config.embyBaseUrl!,
                                 username: config.embyUsername!,
                                 password: config.embyPassword!,
+                              );
+                            } else if (sourceType == .feiniu &&
+                                config.feiniuBaseUrl != null) {
+                              streamClient = FeiniuClient(
+                                baseUrl: config.feiniuBaseUrl!,
+                                username: config.feiniuUsername!,
+                                password: config.feiniuPassword!,
                               );
                             }
                             setState(() {});
@@ -393,6 +403,7 @@ class _SettingsListState extends State<SettingsList> {
                       webdavListTile(context, l10n),
                       navidromeListTile(context, l10n),
                       embyListTile(context, l10n),
+                      feiniuListTile(context, l10n),
                     ],
                   );
                 },
@@ -457,6 +468,23 @@ class _SettingsListState extends State<SettingsList> {
         showAnimationDialog(
           context: context,
           child: ConnectClientWidget(sourceType: .emby),
+        );
+      },
+    );
+  }
+
+  Widget feiniuListTile(BuildContext context, AppLocalizations l10n) {
+    return ListTile(
+      leading: Image(image: feiniuImage, width: 30, height: 30),
+      title: Text(getSourceTypeDisplayName(l10n, .feiniu)),
+      onTap: () {
+        if (Loader.busy && sourceType == .feiniu) {
+          showCenterMessage(l10n.syncingTryLater);
+          return;
+        }
+        showAnimationDialog(
+          context: context,
+          child: ConnectClientWidget(sourceType: .feiniu),
         );
       },
     );

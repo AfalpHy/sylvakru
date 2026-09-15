@@ -647,4 +647,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chooseMusicSource => '选择音乐来源';
+
+  @override
+  String get feiniuMusic => '飞牛音乐';
+
+  @override
+  String get feiniuConnectionFailed => '无法连接飞牛音乐，请检查服务器地址及音乐应用账号密码';
+
+  @override
+  String get savedSuccessfully => '保存成功';
 }

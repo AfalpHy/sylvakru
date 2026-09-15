@@ -62,7 +62,7 @@ class History {
   Future<void> addSongTimes(MyAudioMetadata song, int times) async {
     _addSongTimes(song, times);
 
-    if (sourceType == .navidrome) {
+    if (sourceType == .navidrome || sourceType == .feiniu) {
       while (times-- > 0) {
         await streamClient?.scrobble(song.id);
       }

@@ -57,7 +57,8 @@ class Loader {
 
     await library.load();
 
-    audioHandler.loadStates();
+    final restoring = audioHandler.loadStates();
+    if (sourceType == .feiniu) await restoring;
 
     history.load();
 
@@ -102,7 +103,8 @@ class Loader {
 
     await library.sync();
 
-    audioHandler.sync();
+    final restoring = audioHandler.sync();
+    if (sourceType == .feiniu) await restoring;
 
     history.load();
 
@@ -128,7 +130,8 @@ class Loader {
 
     await library.sync();
 
-    audioHandler.loadStates();
+    final restoring = audioHandler.loadStates();
+    if (sourceType == .feiniu) await restoring;
 
     history.load();
 
