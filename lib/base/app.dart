@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:corner_radius_plugin/corner_radius_plugin.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:screen_corner_radius/screen_corner_radius.dart';
 
 const String versionNumber = '4.1.0';
 
@@ -15,7 +15,7 @@ const isTV = bool.fromEnvironment('TV', defaultValue: false);
 
 final globalNavigatorKey = GlobalKey<NavigatorState>();
 
-late final ScreenRadius? screenRadius;
+late final CornerRadius screenRadius;
 
 enum ThemeType { vivid, light, dark, custom }
 

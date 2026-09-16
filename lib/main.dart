@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:corner_radius_plugin/corner_radius_plugin.dart';
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
@@ -20,7 +21,6 @@ import 'package:sylvakru/portrait_view/custom_page_transition_builder.dart';
 import 'package:sylvakru/view_entry.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
-import 'package:screen_corner_radius/screen_corner_radius.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -52,7 +52,7 @@ Future<void> main() async {
 
   await logger.init();
   if (isMobile) {
-    screenRadius = await ScreenCornerRadius.get();
+    screenRadius = await CornerRadiusPlugin.init();
   } else {
     if (kReleaseMode) {
       await SingleInstance.start();

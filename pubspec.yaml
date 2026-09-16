@@ -38,9 +38,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   provider: ^6.1.5+1
-  file_picker: ^12.2.0
+  file_picker: ^13.1.0
   permission_handler: ^13.0.1
-  audio_tags_lofty: ^0.0.6
+  audio_tags_lofty: ^0.0.7
   audio_service: ^0.18.18
   audio_service_mpris: ^0.2.0
   audio_service_win:
@@ -68,7 +68,7 @@ dependencies:
         path: packages/window_manager
   tray_manager: ^0.5.3
   lpinyin: ^2.0.3
-  flex_color_picker: ^3.8.0
+  flex_color_picker: ^4.0.0
   google_fonts: ^8.0.2
   http: ^1.6.0
   url_launcher: ^6.3.2
@@ -76,7 +76,7 @@ dependencies:
   crypto: ^3.0.7
   charset: ^2.0.1
   pool: ^1.5.2
-  screen_corner_radius: ^3.0.0
+  corner_radius_plugin: ^0.1.1
   xml: ^7.0.1
   drift: ^2.33.0
   drift_flutter: ^0.3.0
