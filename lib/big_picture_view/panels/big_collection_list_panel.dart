@@ -69,7 +69,7 @@ abstract class BigCollectionListPanelState
                         tag: 'big${picture?.id ?? ''}${textList[index]}',
                         child: CoverArtWidget(
                           size: constraints.maxWidth,
-                          borderRadius: constraints.maxWidth * 0.1,
+                          borderRadius: constraints.maxWidth * 0.05,
                           picture: picture,
                         ),
                       ),

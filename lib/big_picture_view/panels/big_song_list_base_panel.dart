@@ -136,7 +136,7 @@ abstract class BigSongListBasePanelState extends State<BigSongListBasePanel> {
     return Row(
       children: [
         SizedBox(width: 60, child: Center(child: Text('${index + 1}'))),
-        CoverArtWidget(picture: song.picture, size: 60, borderRadius: 10),
+        CoverArtWidget(picture: song.picture, size: 60, borderRadius: 6),
         SizedBox(width: 10),
 
         Expanded(

@@ -56,7 +56,7 @@ class Setting {
         json['playlistsUseLargePicture'] as bool? ??
         playlistsUseLargePictureNotifier.value;
 
-    endDrawerNotifier.value = json['endDrawer'] as bool? ?? Platform.isIOS;
+    endDrawerNotifier.value = json['endDrawer'] as bool? ?? false;
 
     vibrationOnNoitifier.value =
         json['vibrationOn'] as bool? ?? vibrationOnNoitifier.value;

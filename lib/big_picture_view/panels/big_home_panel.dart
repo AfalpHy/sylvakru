@@ -163,62 +163,74 @@ class _BigHomePanelState extends State<BigHomePanel> {
           },
         ),
 
-        _ListView(
-          title: l10n.ranking,
-          count: history.rankingSongList.length,
-          getPicture: (index) => history.rankingSongList[index].picture,
-          onTap: (index) async {
-            showSongOptions(
-              context: context,
-              song: history.rankingSongList[index],
-              includeGoToArtist: true,
-              includeGoToAlbum: true,
-            );
-          },
-          getBottomWidget: (index) {
-            final song = history.rankingSongList[index];
-            return ListTile(
-              contentPadding: .zero,
-              mouseCursor: SystemMouseCursors.click,
-              title: Text(getTitle(song), style: .new(overflow: .ellipsis)),
-              subtitle: Text(
-                '${getArtist(song)} - ${getAlbum(song)}',
-                style: .new(overflow: .ellipsis),
-              ),
+        ValueListenableBuilder(
+          valueListenable: history.rankingChangeNotifier,
+          builder: (context, value, child) {
+            return _ListView(
+              title: l10n.ranking,
+              count: history.rankingSongList.length,
+              getPicture: (index) => history.rankingSongList[index].picture,
+              onTap: (index) async {
+                showSongOptions(
+                  context: context,
+                  song: history.rankingSongList[index],
+                  includeGoToArtist: true,
+                  includeGoToAlbum: true,
+                );
+              },
+              getBottomWidget: (index) {
+                final song = history.rankingSongList[index];
+                return ListTile(
+                  contentPadding: .zero,
+                  mouseCursor: SystemMouseCursors.click,
+                  title: Text(getTitle(song), style: .new(overflow: .ellipsis)),
+                  subtitle: Text(
+                    '${getArtist(song)} - ${getAlbum(song)}',
+                    style: .new(overflow: .ellipsis),
+                  ),
 
-              visualDensity: .new(vertical: -4),
+                  visualDensity: .new(vertical: -4),
+                );
+              },
+              verticalController: verticalController,
+              doubleLine: true,
             );
           },
-          verticalController: verticalController,
         ),
 
-        _ListView(
-          title: l10n.recently,
-          count: history.recentlySongList.length,
-          getPicture: (index) => history.recentlySongList[index].picture,
-          onTap: (index) async {
-            showSongOptions(
-              context: context,
-              song: history.recentlySongList[index],
-              includeGoToArtist: true,
-              includeGoToAlbum: true,
-            );
-          },
-          getBottomWidget: (index) {
-            final song = history.recentlySongList[index];
-            return ListTile(
-              contentPadding: .zero,
-              mouseCursor: SystemMouseCursors.click,
-              title: Text(getTitle(song), style: .new(overflow: .ellipsis)),
-              subtitle: Text(
-                '${getArtist(song)} - ${getAlbum(song)}',
-                style: .new(overflow: .ellipsis),
-              ),
+        ValueListenableBuilder(
+          valueListenable: history.recentlyChangeNotifier,
+          builder: (context, value, child) {
+            return _ListView(
+              title: l10n.recently,
+              count: history.recentlySongList.length,
+              getPicture: (index) => history.recentlySongList[index].picture,
+              onTap: (index) async {
+                showSongOptions(
+                  context: context,
+                  song: history.recentlySongList[index],
+                  includeGoToArtist: true,
+                  includeGoToAlbum: true,
+                );
+              },
+              getBottomWidget: (index) {
+                final song = history.recentlySongList[index];
+                return ListTile(
+                  contentPadding: .zero,
+                  mouseCursor: SystemMouseCursors.click,
+                  title: Text(getTitle(song), style: .new(overflow: .ellipsis)),
+                  subtitle: Text(
+                    '${getArtist(song)} - ${getAlbum(song)}',
+                    style: .new(overflow: .ellipsis),
+                  ),
 
-              visualDensity: .new(vertical: -4),
+                  visualDensity: .new(vertical: -4),
+                );
+              },
+              verticalController: verticalController,
+              doubleLine: true,
             );
           },
-          verticalController: verticalController,
         ),
 
         ValueListenableBuilder(
@@ -283,6 +295,7 @@ class _ListView extends StatefulWidget {
   final String Function(int)? getTag;
   final ScrollController verticalController;
   final ValueNotifier Function(int)? changeNotifier;
+  final bool doubleLine;
 
   const _ListView({
     required this.title,
@@ -293,6 +306,7 @@ class _ListView extends StatefulWidget {
     this.getTag,
     required this.verticalController,
     this.changeNotifier,
+    this.doubleLine = false,
   });
 
   @override
@@ -313,6 +327,9 @@ class _ListViewState extends State<_ListView> {
     if (widget.count == 0) {
       return SizedBox.shrink();
     }
+    double coverSize = isTooNarrow(context) ? 150 : 200;
+    double height = (coverSize + (widget.doubleLine ? 50 : 30)) * 1.1;
+
     return Column(
       mainAxisSize: .min,
       children: [
@@ -327,7 +344,7 @@ class _ListViewState extends State<_ListView> {
           ],
         ),
         SizedBox(
-          height: isTooNarrow(context) ? 260 : 280,
+          height: height,
           child: ListView.separated(
             key: rowKey,
             controller: controller,
@@ -337,7 +354,7 @@ class _ListViewState extends State<_ListView> {
             scrollDirection: .horizontal,
             itemCount: widget.count,
             separatorBuilder: (context, index) {
-              return const SizedBox(width: 20);
+              return SizedBox(width: coverSize / 10);
             },
             itemBuilder: (context, index) {
               return ListenableBuilder(
@@ -396,23 +413,23 @@ class _ListViewState extends State<_ListView> {
                     child: Column(
                       mainAxisSize: .min,
                       children: [
-                        SizedBox(height: 15),
+                        SizedBox(height: height / 20),
                         widget.getTag != null
                             ? Hero(
                                 tag: widget.getTag!.call(index),
                                 child: CoverArtWidget(
-                                  size: isTooNarrow(context) ? 180 : 200,
-                                  borderRadius: 20,
+                                  size: coverSize,
+                                  borderRadius: coverSize / 20,
                                   picture: picture,
                                 ),
                               )
                             : CoverArtWidget(
-                                size: isTooNarrow(context) ? 180 : 200,
-                                borderRadius: 20,
+                                size: coverSize,
+                                borderRadius: coverSize / 20,
                                 picture: picture,
                               ),
                         SizedBox(
-                          width: isTooNarrow(context) ? 160 : 180,
+                          width: coverSize - 10,
                           child: widget.getBottomWidget(index),
                         ),
                       ],
