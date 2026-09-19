@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/interaction.dart';
+import 'package:sylvakru/base/services/picture_service.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/utils/path.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
@@ -182,9 +183,7 @@ class Playlist {
     isNotFavorite = !isFavorite;
   }
 
-  MyAudioMetadata? getCoverSong() {
-    return getFirstSong(songList);
-  }
+  MyPicture? get picture => getFirstSong(songList)?.picture;
 
   int get totalCount => songList.length;
 

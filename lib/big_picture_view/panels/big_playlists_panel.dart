@@ -22,12 +22,12 @@ class _BigPlaylistsPanelState extends BigCollectionListPanelState {
         .where((e) => (e.name.toLowerCase().contains(value.toLowerCase())))
         .toList();
 
-    pictureList = list.map((e) => e.getCoverSong()?.picture).toList();
+    pictureList = list.map((e) => e.picture).toList();
     textList = list.map((e) => e.name).toList();
     onTapList = list
         .map(
           (e) => () async {
-            final baseColor = await computeColor(e.getCoverSong()?.picture);
+            final baseColor = await computeColor(e.picture);
             if (!mounted) {
               return;
             }

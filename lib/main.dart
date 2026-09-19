@@ -74,7 +74,7 @@ Future<void> main() async {
     FocusManager.instance.highlightStrategy =
         FocusHighlightStrategy.alwaysTraditional;
   } else if (viewModeNotifier.value != .bigPicture && !firstLaunch) {
-    layersManager.switchRootLayer('songs');
+    layersManager.switchRootLayer('home');
   }
 
   runApp(

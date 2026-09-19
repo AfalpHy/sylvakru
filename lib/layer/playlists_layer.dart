@@ -42,14 +42,13 @@ class _PlaylistsLayerState extends CollectionListState {
       return playlist.name.toLowerCase().contains(value.toLowerCase());
     }).toList();
 
-    currentPictureList = list.map((e) => e.getCoverSong()?.picture).toList();
+    currentPictureList = list.map((e) => e.picture).toList();
     currentTextList = list.map((e) => e.name).toList();
     currentSubCountList = list.map((e) => e.totalCount).toList();
     currentOnTapList = list
         .map(
           (e) => () {
-            if (e.getCoverSong() == null ||
-                e.getCoverSong()!.picture.isLoaded) {
+            if (e.picture?.isLoaded ?? true) {
               layersManager.pushDetail('playlists', e);
             }
           },

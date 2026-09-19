@@ -31,6 +31,7 @@ const AssetImage futurePremiumImage = AssetImage(
   'assets/images/futurePremium.png',
 );
 const AssetImage gridImage = AssetImage('assets/images/grid.png');
+const AssetImage homeImage = AssetImage('assets/images/home.png');
 const AssetImage iconImage = AssetImage('assets/images/icon.png');
 const AssetImage infoImage = AssetImage('assets/images/info.png');
 const AssetImage languageImage = AssetImage('assets/images/language.png');

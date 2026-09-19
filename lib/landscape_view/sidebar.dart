@@ -199,6 +199,19 @@ class Sidebar extends StatelessWidget {
 
                     SliverToBoxAdapter(
                       child: sidebarItem(
+                        label: 'home',
+
+                        leading: ImageIcon(homeImage, size: 30),
+                        content: l10n.home,
+
+                        onTap: () {
+                          layersManager.switchRootLayer('home');
+                        },
+                      ),
+                    ),
+
+                    SliverToBoxAdapter(
+                      child: sidebarItem(
                         label: 'songs',
 
                         leading: ImageIcon(songsImage, size: 30),
@@ -445,16 +458,15 @@ class Sidebar extends StatelessWidget {
             leading: ValueListenableBuilder(
               valueListenable: playlist.changeNotifier,
               builder: (context, value, child) {
-                final coverSong = playlist.getCoverSong();
                 return ListenableBuilder(
                   listenable: Listenable.merge([
-                    coverSong?.picture.changeNotifier,
+                    playlist.picture?.changeNotifier,
                   ]),
                   builder: (_, _) {
                     return CoverArtWidget(
                       size: 30,
                       borderRadius: 3,
-                      picture: coverSong?.picture,
+                      picture: playlist.picture,
                     );
                   },
                 );
