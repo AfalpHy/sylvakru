@@ -70,6 +70,10 @@ class AppDelegate: FlutterAppDelegate {
         if let iconData = item["iconBytes"] as? FlutterStandardTypedData {
           menuItem.image = NSImage(data: iconData.data)
           menuItem.image?.size = NSSize(width: 18, height: 18)
+
+          if #available(macOS 27.0, *) {
+            menuItem.preferredImageVisibility = .visible
+          }
         }
 
         menuItem.tag = index

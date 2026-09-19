@@ -14,7 +14,6 @@ import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
-import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/base/utils/zoom_page_route.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
@@ -1211,26 +1210,33 @@ Future<String?> _selectArtist(
     child: SizedBox(
       width: 300,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
+        padding: const EdgeInsets.all(12),
         child: ListView.builder(
           shrinkWrap: true,
           itemCount: artists.length,
-          itemExtent: 60,
           itemBuilder: (context, index) {
             String name = artists[index];
 
-            return Center(
-              child: ListTile(
-                leading: CoverArtWidget(
-                  size: 50,
-                  borderRadius: 5,
-                  picture: artistAlbumManager.artistMap[name]!.picture,
+            return InkWell(
+              mouseCursor: SystemMouseCursors.click,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  children: [
+                    SizedBox(width: 10),
+                    CoverArtWidget(
+                      size: 50,
+                      borderRadius: 5,
+                      picture: artistAlbumManager.artistMap[name]!.picture,
+                    ),
+                    SizedBox(width: 10),
+                    Text(name, style: .new(overflow: .ellipsis)),
+                  ],
                 ),
-                title: Text(name, style: .new(overflow: .ellipsis)),
-                onTap: () {
-                  Navigator.pop(context, name);
-                },
               ),
+              onTap: () {
+                Navigator.pop(context, name);
+              },
             );
           },
         ),
@@ -1246,28 +1252,14 @@ void goToArtist(
   String? excludedArtist,
 }) async {
   Artist? artist;
-  if (isNotStreamSource) {
-    final artistName = await _selectArtist(
-      context,
-      getArtists(getArtist(song)),
-      excludedArtist: excludedArtist,
-    );
-    artist = artistAlbumManager.artistMap[artistName];
-    if (artist == null) {
-      return;
-    }
-  } else {
-    if (artistAlbumManager.artistList.isEmpty) {
-      showCenterLoading();
-      await artistAlbumManager.loadArtists();
-      removeCenterLoading();
-    }
-
-    artist = artistAlbumManager.artistMap[song.artist];
-    if (artist == null) {
-      showCenterMessage('Get artist failed');
-      return;
-    }
+  final artistName = await _selectArtist(
+    context,
+    getArtists(getArtist(song)),
+    excludedArtist: excludedArtist,
+  );
+  artist = artistAlbumManager.artistMap[artistName];
+  if (artist == null) {
+    return;
   }
 
   if (bigPictureMode) {
@@ -1289,30 +1281,6 @@ void goToArtist(
   }
 }
 
-Future<Album?> _loadStreamAlbum(MyAudioMetadata song) async {
-  // it probably would not happen
-  if (song.albumId == null) {
-    showCenterMessage('Can not get this album');
-    return null;
-  }
-
-  showCenterLoading();
-  if (artistAlbumManager.albumList.isEmpty) {
-    await artistAlbumManager.loadAlbums();
-  }
-  if (artistAlbumManager.albumMap[song.albumId] == null) {
-    final album = await streamClient?.getAlbum(song.albumId!);
-    if (album != null) {
-      artistAlbumManager.albumList.add(album);
-      artistAlbumManager.sortAlbums();
-      artistAlbumManager.updateNotifier.value++;
-    }
-  }
-  removeCenterLoading();
-
-  return artistAlbumManager.albumMap[song.albumId];
-}
-
 void goToAlbum(
   MyAudioMetadata song, {
   bool bigPictureMode = false,
@@ -1321,11 +1289,7 @@ void goToAlbum(
   await Future.delayed(Duration(milliseconds: 250));
 
   Album? album;
-  if (isNotStreamSource) {
-    album = artistAlbumManager.albumMap[getAlbum(song)];
-  } else {
-    album = await _loadStreamAlbum(song);
-  }
+  album = artistAlbumManager.albumMap[getAlbum(song)];
   if (album == null) {
     showCenterMessage('Get album failed');
     return;

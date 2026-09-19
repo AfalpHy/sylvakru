@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/interaction.dart';
@@ -117,157 +116,22 @@ class NavidromeClient extends StreamClient {
   }
 
   @override
-  Future<List<Artist>?> getArtistList() async {
-    final res = await safeRequest('/rest/getArtists.view');
-    if (res == null) {
-      return null;
+  Future<int> getSongCount() async {
+    final response = await safeRequest('/rest/getScanStatus.view');
+
+    if (response == null) {
+      return 0;
     }
 
-    final indexs = normalize(res['artists']['index']) ?? [];
-    List<Artist> artistList = [];
-    for (final index in indexs) {
-      for (final map in normalize(index['artist']) ?? []) {
-        final name = map['name'];
-        artistList.add(
-          Artist(name, id: map['id'], coverArtId: map['coverArt']),
-        );
-      }
-    }
-
-    return artistList;
+    return response['scanStatus']['count'];
   }
 
   @override
-  Future<List<Album>?> getArtistAlbumList(String id) async {
-    final res = await safeRequest('/rest/getArtist.view', query: {'id': id});
-
-    if (res == null) {
-      return null;
-    }
-    return (normalize(res['artist']['album']) ?? []).map((map) {
-      final name = map['name'];
-      final id = map['id'];
-      return artistAlbumManager.albumMap.putIfAbsent(
-        id,
-        () => Album(name, id: id, coverArtId: map['coverArt']),
-      );
-    }).toList();
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> getArtistSongs(String id) async {
-    final res = await safeRequest('/rest/getArtist.view', query: {'id': id});
-
-    if (res == null) {
-      return null;
-    }
-    final albums = normalize(res['artist']['album']) ?? [];
-    List<MyAudioMetadata> songs = [];
-    for (final album in albums) {
-      songs.addAll(await getAlbumSongs(album['id']) ?? []);
-    }
-    return songs;
-  }
-
-  @override
-  Future<List<Album>?> getAlbumList(
-    int offset, {
-    String type = 'alphabeticalByName',
-  }) async {
-    final res = await safeRequest(
-      '/rest/getAlbumList2.view',
-      query: {'type': type, 'size': 500, 'offset': offset},
-    );
-    if (res == null) {
-      return null;
-    }
-    final albumList = <Album>[];
-    for (final map in normalize(res['albumList2']['album']) ?? []) {
-      final name = map['name'];
-      final id = map['id'];
-      albumList.add(
-        artistAlbumManager.albumMap.putIfAbsent(
-          id,
-          () => Album(
-            name,
-            id: id,
-            coverArtId: map['coverArt'],
-            year: map['year'],
-          ),
-        ),
-      );
-    }
-    return albumList;
-  }
-
-  @override
-  Future<Album?> getAlbum(String id) async {
-    final albumRes = await safeRequest(
-      '/rest/getAlbum.view',
-      query: {'id': id},
-    );
-
-    if (albumRes == null) {
-      return null;
-    }
-
-    final map = albumRes['album'];
-
-    final name = map['name'];
-
-    return artistAlbumManager.albumMap.putIfAbsent(
-      id,
-      () => Album(name, id: id, coverArtId: map['coverArt'], year: map['year']),
-    );
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> getAlbumSongs(String id) async {
-    final albumRes = await safeRequest(
-      '/rest/getAlbum.view',
-      query: {'id': id},
-    );
-
-    if (albumRes == null) {
-      return null;
-    }
-
-    return (normalize(albumRes['album']['song']) ?? [])
-        .map((e) => MyAudioMetadata.fromMap(e, .navidrome))
-        .toList();
-  }
-
-  // @override
-  // Future<List<MyAudioMetadata>?> getPlayQueue() async {
-  //   final res = await safeRequest('/rest/getPlayQueue.view');
-  //   if (res == null) {
-  //     return null;
-  //   }
-
-  //   return (normalize(res['playQueue']['entry']) ?? [])
-  //       .map((e) => MyAudioMetadata.fromMap(e, .navidrome))
-  //       .toList();
-  // }
-
-  // @override
-  // Future<bool> savePlayQueue(List<String> songIds) async {
-  //   final res = await safeRequest(
-  //     '/rest/savePlayQueue.view',
-  //     query: {'id': songIds},
-  //   );
-  //   return res == null ? false : res['status'] == 'ok';
-  // }
-
-  @override
-  Future<List<MyAudioMetadata>?> searchSongs(
-    String query,
-    int size,
-    int offset,
-  ) async {
+  Future<List<MyAudioMetadata>?> getSongs(int size, int offset) async {
     final response = await safeRequest(
       '/rest/search3.view',
       query: {
-        'query': query,
+        'query': '',
         'albumCount': 0,
         'artistCount': 0,
         'songCount': size,
@@ -279,17 +143,11 @@ class NavidromeClient extends StreamClient {
     if (response == null) {
       return null;
     }
-
-    return (normalize(response['searchResult3']['song']) ?? [])
+    final songs = (normalize(response['searchResult3']['song']) ?? [])
         .map((e) => MyAudioMetadata.fromMap(e, .navidrome))
         .toList();
-  }
 
-  @override
-  Future<List<MyAudioMetadata>?> getSongs(int size, int offset) async {
-    final songs = await searchSongs('', size, offset);
-
-    if (songs != null) {
+    if (songs.isNotEmpty) {
       logger.output('[Navidrome] Fetched ${offset + songs.length} songs...');
     }
 

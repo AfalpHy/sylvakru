@@ -573,8 +573,7 @@ extension _SongListPage on _SongListState {
                               goToArtist(song, context);
                             },
                           )
-                        else if (isNotStreamSource &&
-                            artist!.name != song.artist)
+                        else if (artist!.name != song.artist)
                           optionItem(
                             text: l10n.go2Artist,
                             leading: Icon(Icons.people),

@@ -32,6 +32,7 @@ extension MetadataItemMapper on MetadataItem {
       ),
 
       id: id,
+      coverId: coverId,
       path: path,
 
       modified: modified != null
@@ -51,6 +52,7 @@ extension MyAudioMetadataMapper on MyAudioMetadata {
   MetadataItemsCompanion toCompanion() {
     return MetadataItemsCompanion.insert(
       id: id,
+      coverId: Value(coverId),
 
       modified: Value(modified?.millisecondsSinceEpoch),
 

@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sylvakru/base/app.dart';
-import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/interaction.dart';
@@ -11,8 +10,6 @@ import 'package:sylvakru/base/services/stream_client.dart';
 class EmbyClient extends StreamClient {
   String? accessToken;
   String? userId;
-
-  late String _libraryId;
 
   EmbyClient({
     required super.baseUrl,
@@ -115,13 +112,6 @@ class EmbyClient extends StreamClient {
       accessToken = response.data['AccessToken'];
       userId = response.data['User']['Id'];
 
-      final libraries = await _getMusicLibraries();
-      if (libraries.isNotEmpty) {
-        _libraryId = libraries.first['Id'];
-      } else {
-        _libraryId = '';
-      }
-
       return true;
     } catch (e) {
       showCenterMessage('[$runtimeType] Login failed');
@@ -139,166 +129,33 @@ class EmbyClient extends StreamClient {
     return result != null;
   }
 
-  /// Get all libraries
-  Future<List<dynamic>> _getLibraries() async {
-    final result = await safeRequest<List<dynamic>>(
-      () => dio.get('/Users/$userId/Views'),
-      parser: (response) => response.data['Items'] as List<dynamic>?,
-    );
-    return result ?? [];
-  }
-
-  /// Get music libraries only
-  Future<List<dynamic>> _getMusicLibraries() async {
-    try {
-      final libraries = await _getLibraries();
-      return libraries.where((e) => e['CollectionType'] == 'music').toList();
-    } catch (e) {
-      logger.output('[$runtimeType] Get music libraries error: $e');
-      return [];
-    }
-  }
-
   @override
-  Future<List<Artist>?> getArtistList() async {
+  Future<int> getSongCount() async {
     final response = await safeRequest<Map<String, dynamic>>(
-      () => dio.get(
-        '/Artists',
-        queryParameters: {
-          'ParentId': _libraryId,
-          'StartIndex': 0,
-          'Limit': 500,
-          'SortBy': 'SortName',
-        },
-      ),
+      () => dio.get('/Items/Counts'),
       parser: (res) => res.data as Map<String, dynamic>?,
     );
 
     if (response == null) {
-      return null;
+      return 0;
     }
 
-    final artistList = <Artist>[];
-    final items = normalize(response['Items']) ?? [];
-
-    for (final map in items) {
-      final name = map['Name'] ?? '';
-      final id = map['Id']?.toString();
-      artistList.add(Artist(name, id: id, coverArtId: id));
-    }
-
-    return artistList;
+    return response['SongCount'] as int? ?? 0;
   }
 
   @override
-  Future<List<MyAudioMetadata>?> getArtistSongs(String id) async {
+  Future<List<MyAudioMetadata>?> getSongs(int size, int offset) async {
     final response = await safeRequest<Map<String, dynamic>>(
       () => dio.get(
         '/Users/$userId/Items',
         queryParameters: {
-          'ArtistIds': id,
-          'IncludeItemTypes': 'Audio',
-          'Recursive': true,
-          'SortBy': 'SortName',
-        },
-      ),
-      parser: (res) => res.data as Map<String, dynamic>?,
-    );
-
-    if (response == null) {
-      return null;
-    }
-
-    return (normalize(response['Items']) ?? [])
-        .map((e) => MyAudioMetadata.fromMap(e, .emby))
-        .toList();
-  }
-
-  @override
-  Future<List<Album>?> getAlbumList(
-    int offset, {
-    String type = 'SortName',
-  }) async {
-    final response = await safeRequest<Map<String, dynamic>>(
-      () => dio.get(
-        '/Users/$userId/Items',
-        queryParameters: {
-          'ParentId': _libraryId,
-          'IncludeItemTypes': 'MusicAlbum',
-          'Recursive': true,
-          'StartIndex': offset,
-          'Limit': 500,
-          'SortBy': type,
-        },
-      ),
-      parser: (res) => res.data as Map<String, dynamic>?,
-    );
-
-    if (response == null) {
-      return null;
-    }
-
-    final albumList = <Album>[];
-    final items = normalize(response['Items']) ?? [];
-    for (final map in items) {
-      final name = map['Name'] ?? '';
-      final id = map['Id']?.toString() ?? '';
-      albumList.add(
-        artistAlbumManager.albumMap.putIfAbsent(
-          id,
-          () => Album(
-            name,
-            id: id,
-            coverArtId: map['ImageTags']?['Primary'] ?? id,
-          ),
-        ),
-      );
-    }
-
-    return albumList;
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> getAlbumSongs(String id) async {
-    final response = await safeRequest<Map<String, dynamic>>(
-      () => dio.get(
-        '/Users/$userId/Items',
-        queryParameters: {
-          'ParentId': id,
-          'IncludeItemTypes': 'Audio',
-          'Recursive': true,
-          'SortBy': 'ParentIndexNumber,IndexNumber',
-        },
-      ),
-      parser: (res) => res.data as Map<String, dynamic>?,
-    );
-
-    if (response == null) {
-      return null;
-    }
-
-    return (normalize(response['Items']) ?? [])
-        .map((e) => MyAudioMetadata.fromMap(e, .emby))
-        .toList();
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> searchSongs(
-    String query,
-    int size,
-    int offset,
-  ) async {
-    final response = await safeRequest<Map<String, dynamic>>(
-      () => dio.get(
-        '/Users/$userId/Items',
-        queryParameters: {
-          'SearchTerm': query,
+          'SearchTerm': '',
           'IncludeItemTypes': 'Audio',
           'Recursive': true,
           'StartIndex': offset,
           'Limit': size,
           'Fields':
-              'Id,Name,Album,AlbumId,Artists,ArtistItems,AlbumArtist,RunTimeTicks,Genres,ProductionYear,IndexNumber,ParentIndexNumber,MediaSources,UserData',
+              'Id,Name,Album,Artists,ArtistItems,AlbumArtist,RunTimeTicks,Genres,ProductionYear,IndexNumber,ParentIndexNumber,MediaSources,UserData',
         },
       ),
       parser: (res) => res.data as Map<String, dynamic>?,
@@ -308,16 +165,11 @@ class EmbyClient extends StreamClient {
       return null;
     }
 
-    return (normalize(response['Items']) ?? [])
+    final songs = (normalize(response['Items']) ?? [])
         .map((e) => MyAudioMetadata.fromMap(e, .emby))
         .toList();
-  }
 
-  @override
-  Future<List<MyAudioMetadata>?> getSongs(int size, int offset) async {
-    final songs = await searchSongs('', size, offset);
-
-    if (songs != null) {
+    if (songs.isNotEmpty) {
       logger.output('[Emby] Fetched ${offset + songs.length} songs...');
     }
 
@@ -566,15 +418,5 @@ class EmbyClient extends StreamClient {
     );
 
     return response != null;
-  }
-
-  @override
-  Future<List<Album>?> getArtistAlbumList(String id) async {
-    return null;
-  }
-
-  @override
-  Future<Album?> getAlbum(String id) async {
-    return null;
   }
 }

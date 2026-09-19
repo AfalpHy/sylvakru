@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sylvakru/base/audio_handler.dart';
-import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 
@@ -28,81 +26,16 @@ abstract class StreamClient {
     if (data == null) {
       return null;
     }
-    return List<Map<String, dynamic>>.from(data);
+    return (data as List).cast();
   }
 
   Future<bool> ping();
 
-  Future<List<MyAudioMetadata>?> searchSongs(
-    String query,
-    int size,
-    int offset,
-  );
+  Future<int> getSongCount() async {
+    return 0;
+  }
 
   Future<List<MyAudioMetadata>?> getSongs(int size, int offset);
-
-  Future<List<Artist>?> getArtistList();
-
-  Future<List<Album>?> getArtistAlbumList(String id);
-
-  Future<List<MyAudioMetadata>?> getArtistSongs(String id);
-
-  Future<List<Album>?> getAlbumList(int offset, {String type});
-
-  Future<Album?> getAlbum(String id);
-
-  Future<List<MyAudioMetadata>?> getAlbumSongs(String id);
-
-  // use playlist to save playqueue(no limit)
-  Future<List<MyAudioMetadata>?> getPlayQueue() async {
-    final ids = <String>[];
-    for (Playlist pl in await getPlaylists() ?? []) {
-      if (pl.name == playQueueForStreamName) {
-        // if mutiple instance, chose the latest one
-        playQueueForStreamId = pl.id;
-        ids.add(pl.id!);
-      }
-    }
-    if (ids.isNotEmpty) {
-      ids.removeLast();
-    }
-    for (final id in ids) {
-      await deletePlaylist(id);
-    }
-
-    if (playQueueForStreamId == null) {
-      return null;
-    }
-
-    return getPlaylistSongs(playQueueForStreamId!);
-  }
-
-  Timer? _savePlayQueueTimer;
-  bool _saving = false;
-  Future<bool> savePlayQueue(List<String> songIds) async {
-    if (_saving) {
-      return false;
-    }
-    _savePlayQueueTimer?.cancel();
-    _savePlayQueueTimer = Timer(Duration(seconds: 5), () async {
-      _saving = true;
-
-      if (playQueueForStreamId != null) {
-        await deletePlaylist(playQueueForStreamId!);
-        playQueueForStreamId = null;
-      }
-
-      playQueueForStreamId ??= await createPlaylist(playQueueForStreamName);
-      if (playQueueForStreamId == null) {
-        _saving = false;
-        return;
-      }
-      await updatePlaylistSongs(playQueueForStreamId!, songIds);
-      _saving = false;
-    });
-
-    return true;
-  }
 
   Future<List<MyAudioMetadata>?> getStarredSongs();
 

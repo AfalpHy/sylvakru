@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
-import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/utils/path.dart';
@@ -26,13 +25,7 @@ class PlaylistManager {
     addPlaylist(Playlist(name: 'Favorite'));
   }
 
-  Future<void> _prepare() async {
-    playlists.clear();
-    playlistMap.clear();
-
-    addPlaylist(Playlist(name: 'Favorite'));
-    updateNotifier.value++;
-
+  Future<void> _prepareForLoad() async {
     _playlistsFile = File(
       "${getPlaylistConfigPath(sourceType)}/sylvakru_playlists.json",
     );
@@ -43,10 +36,20 @@ class PlaylistManager {
       final playlist = Playlist(name: name);
       addPlaylist(playlist);
     }
+    updateNotifier.value++;
+  }
+
+  Future<void> _prepareForSync() async {
     if (isStreamSource) {
+      _playlistsFile = File(
+        "${getPlaylistConfigPath(sourceType)}/sylvakru_playlists.json",
+      );
+      initFile(_playlistsFile, true);
+
       final tmpPlaylist = await streamClient?.getPlaylists();
       for (final playlist in tmpPlaylist ?? <Playlist>[]) {
-        if (playlist.name == playQueueForStreamName) {
+        if (playlist.name == '_sylvakru_play_queue_') {
+          streamClient?.deletePlaylist(playlist.id!);
           continue;
         }
         if (playlistMap[playlist.name] == null) {
@@ -54,17 +57,21 @@ class PlaylistManager {
         }
         playlistMap[playlist.name]!.id = playlist.id;
       }
-      playlists.removeWhere((e) => e.isNotFavorite && e.id == null);
-      playlistMap.removeWhere((k, v) => v.isNotFavorite && v.id == null);
+      update();
     }
-
-    update();
   }
 
   Future<void> load() async {
-    await _prepare();
+    await _prepareForLoad();
     for (final playlist in playlists) {
       await playlist.load();
+    }
+  }
+
+  Future<void> sync() async {
+    await _prepareForSync();
+    for (final playlist in playlists) {
+      await playlist.sync();
     }
   }
 
@@ -107,7 +114,7 @@ class PlaylistManager {
   }
 
   Future<void> deletePlaylist(Playlist playlist) async {
-    playlist.songListFile?.deleteSync();
+    playlist.songListFile.deleteSync();
 
     if (playlist.id != null && streamClient != null) {
       if (!await streamClient!.deletePlaylist(playlist.id!)) {
@@ -133,6 +140,8 @@ class PlaylistManager {
   void clear() {
     playlists.clear();
     playlistMap.clear();
+    addPlaylist(Playlist(name: 'Favorite'));
+    updateNotifier.value++;
   }
 }
 
@@ -141,7 +150,7 @@ class Playlist {
 
   String? id;
 
-  File? songListFile;
+  late File songListFile;
 
   List<MyAudioMetadata> songList = [];
 
@@ -154,10 +163,8 @@ class Playlist {
   bool canModify = true;
 
   Playlist({required this.name, this.id}) {
-    if (isNotStreamSource) {
-      songListFile = File("${getPlaylistConfigPath(sourceType)}/$name.json");
-      initFile(songListFile!, true);
-    }
+    songListFile = File("${getPlaylistConfigPath(sourceType)}/$name.json");
+    initFile(songListFile, true);
 
     isFavorite = name == 'Favorite';
     isNotFavorite = !isFavorite;
@@ -172,22 +179,34 @@ class Playlist {
   Future<void> load() async {
     canModify = false;
     changeNotifier.value++;
-    if (isNotStreamSource) {
-      final decoded = await readJsonListFile(songListFile!);
-      for (String id in decoded) {
-        MyAudioMetadata? song = library.id2Song[id];
-        if (song == null) {
-          continue;
-        }
-        songList.add(song);
-        if (isFavorite) {
-          song.isFavoriteNotifier.value = true;
-        }
+
+    final decoded = await readJsonListFile(songListFile);
+    for (String id in decoded) {
+      MyAudioMetadata? song = library.id2Song[id];
+      if (song == null) {
+        continue;
       }
-      await songListFile!.writeAsString(
-        jsonEncode(songList.map((e) => e.id).toList()),
-      );
+      songList.add(song);
+      if (isFavorite) {
+        song.isFavoriteNotifier.value = true;
+      }
+    }
+    await songListFile.writeAsString(
+      jsonEncode(songList.map((e) => e.id).toList()),
+    );
+
+    canModify = true;
+    changeNotifier.value++;
+    layersManager.updateBackground();
+  }
+
+  Future<void> sync() async {
+    songList.clear();
+    if (isNotStreamSource) {
+      await load();
     } else {
+      canModify = false;
+      changeNotifier.value++;
       List<MyAudioMetadata>? tmpSongs;
       if (isFavorite) {
         tmpSongs = (await streamClient?.getStarredSongs());
@@ -200,16 +219,12 @@ class Playlist {
           song.isFavoriteNotifier.value = true;
         }
       }
+      canModify = true;
+      changeNotifier.value++;
+      layersManager.updateBackground();
     }
-
-    canModify = true;
-    changeNotifier.value++;
-    layersManager.updateBackground();
-  }
-
-  Future<void> reload() async {
-    songList.clear();
-    await load();
+    final songIds = songList.map((e) => e.id).toList();
+    await songListFile.writeAsString(jsonEncode(songIds));
   }
 
   Future<void> add(List<MyAudioMetadata> songList) async {
@@ -258,7 +273,7 @@ class Playlist {
     layersManager.updateBackground();
 
     final songIds = songList.map((e) => e.id).toList();
-    await songListFile?.writeAsString(jsonEncode(songIds));
+    await songListFile.writeAsString(jsonEncode(songIds));
     if (isStreamSource) {
       late bool success;
       if (isFavorite) {

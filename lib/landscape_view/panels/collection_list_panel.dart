@@ -155,6 +155,7 @@ extension _CollectionListPanel on CollectionListState {
                 itemBuilder: (context, index) {
                   final picture = currentPictureList[index];
                   final text = currentTextList[index];
+
                   return LayoutBuilder(
                     builder: (context, constraints) {
                       return Column(
@@ -182,14 +183,9 @@ extension _CollectionListPanel on CollectionListState {
 
                           SizedBox(
                             width: constraints.maxWidth - 10,
-                            child: Center(
-                              child: Text(
-                                text,
-                                textAlign: .center,
-                                style: TextStyle(
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
+                            child: Text(
+                              text,
+                              style: TextStyle(overflow: TextOverflow.ellipsis),
                             ),
                           ),
                         ],

@@ -13,7 +13,6 @@ import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
 import 'package:sylvakru/base/services/system_ui_service.dart';
 import 'package:sylvakru/base/services/taskbar_service.dart';
-import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/utils/source_type.dart';
 import 'package:sylvakru/base/widgets/connect_client_widget.dart';
@@ -23,7 +22,6 @@ import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/landscape_view.dart';
 import 'package:sylvakru/landscape_view/sidebar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
-import 'package:sylvakru/layer/lyrics_page_layer.dart';
 import 'package:sylvakru/mini_view/mini_view.dart';
 import 'package:sylvakru/portrait_view/portrait_view.dart';
 
@@ -44,14 +42,6 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
     super.initState();
     if (Platform.isAndroid) {
       WidgetsBinding.instance.addObserver(this);
-    }
-
-    if (autoPlayOnStartupNotifier.value && currentSongNotifier.value != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context, rootNavigator: true).push(
-          DynamicLyricsPageRoute(pageBuilder: (_, _, _) => LyricsPageLayer()),
-        );
-      });
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {

@@ -29,6 +29,8 @@ class Loader {
 
   static final stateNotifier = ValueNotifier(0);
 
+  static bool _needSync = false;
+
   static Future<void> init() async {
     if (Platform.isAndroid) {
       await Permission.storage.request();
@@ -52,21 +54,23 @@ class Loader {
   }
 
   static Future<void> load() async {
+    if (_needSync && isStreamSource) {
+      await firstSync();
+      return;
+    }
     _busy = true;
     stateNotifier.value++;
 
     await library.load();
 
-    final restoring = audioHandler.loadStates();
-    if (sourceType == .feiniu) await restoring;
+    audioHandler.loadStates();
 
     history.load();
 
     await playlistManager.load();
 
-    if (isNotStreamSource) {
-      artistAlbumManager.classify();
-    }
+    artistAlbumManager.classify();
+
     _busy = false;
     stateNotifier.value++;
   }
@@ -81,8 +85,9 @@ class Loader {
     globalPictureList = [];
 
     library = Library();
-    artistAlbumManager = ArtistAlbumManager();
-    history = History();
+    artistAlbumManager.clear();
+    history.clear();
+    playlistManager.clear();
 
     await load();
   }
@@ -97,22 +102,21 @@ class Loader {
 
     globalPictureList = [];
 
-    artistAlbumManager = ArtistAlbumManager();
+    artistAlbumManager.clear();
 
-    history = History();
+    history.clear();
+
+    playlistManager.clear();
 
     await library.sync();
 
-    final restoring = audioHandler.sync();
-    if (sourceType == .feiniu) await restoring;
+    audioHandler.sync();
 
     history.load();
 
-    await playlistManager.load();
+    await playlistManager.sync();
 
-    if (isNotStreamSource) {
-      artistAlbumManager.classify();
-    }
+    artistAlbumManager.classify();
 
     _busy = false;
     stateNotifier.value++;
@@ -124,22 +128,15 @@ class Loader {
 
     layersManager.switchRootLayer('songs');
 
-    artistAlbumManager = ArtistAlbumManager();
-
-    history = History();
-
     await library.sync();
 
-    final restoring = audioHandler.loadStates();
-    if (sourceType == .feiniu) await restoring;
+    audioHandler.loadStates();
 
     history.load();
 
-    await playlistManager.load();
+    await playlistManager.sync();
 
-    if (isNotStreamSource) {
-      artistAlbumManager.classify();
-    }
+    artistAlbumManager.classify();
 
     _busy = false;
     stateNotifier.value++;
@@ -171,7 +168,9 @@ class Loader {
             playlistsFile.writeAsStringSync(jsonEncode(list.skip(1).toList()));
           }
         }
+      }
 
+      if (compareVersion('4.2.0', jsonDecode(tmp.readAsStringSync())) > 0) {
         Directory tmpDir = Directory('${appSupportDir.path}/subsonic');
         if (tmpDir.existsSync()) {
           tmpDir.deleteSync(recursive: true);
@@ -186,6 +185,8 @@ class Loader {
         if (tmpDir.existsSync()) {
           tmpDir.deleteSync(recursive: true);
         }
+
+        _needSync = true;
       }
     }
     tmp.writeAsStringSync(jsonEncode(versionNumber));

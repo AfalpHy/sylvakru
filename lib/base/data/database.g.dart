@@ -18,6 +18,17 @@ class $MetadataItemsTable extends MetadataItems
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _coverIdMeta = const VerificationMeta(
+    'coverId',
+  );
+  @override
+  late final GeneratedColumn<String> coverId = GeneratedColumn<String>(
+    'cover_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _modifiedMeta = const VerificationMeta(
     'modified',
   );
@@ -180,6 +191,7 @@ class $MetadataItemsTable extends MetadataItems
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    coverId,
     modified,
     format,
     title,
@@ -213,6 +225,12 @@ class $MetadataItemsTable extends MetadataItems
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('cover_id')) {
+      context.handle(
+        _coverIdMeta,
+        coverId.isAcceptableOrUnknown(data['cover_id']!, _coverIdMeta),
+      );
     }
     if (data.containsKey('modified')) {
       context.handle(
@@ -326,6 +344,10 @@ class $MetadataItemsTable extends MetadataItems
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      coverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_id'],
+      ),
       modified: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}modified'],
@@ -401,6 +423,7 @@ class $MetadataItemsTable extends MetadataItems
 
 class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   final String id;
+  final String? coverId;
   final int? modified;
   final String? format;
   final String? title;
@@ -419,6 +442,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   final int? lastPlayed;
   const MetadataItem({
     required this.id,
+    this.coverId,
     this.modified,
     this.format,
     this.title,
@@ -440,6 +464,9 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || coverId != null) {
+      map['cover_id'] = Variable<String>(coverId);
+    }
     if (!nullToAbsent || modified != null) {
       map['modified'] = Variable<int>(modified);
     }
@@ -492,6 +519,9 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   MetadataItemsCompanion toCompanion(bool nullToAbsent) {
     return MetadataItemsCompanion(
       id: Value(id),
+      coverId: coverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverId),
       modified: modified == null && nullToAbsent
           ? const Value.absent()
           : Value(modified),
@@ -544,6 +574,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MetadataItem(
       id: serializer.fromJson<String>(json['id']),
+      coverId: serializer.fromJson<String?>(json['coverId']),
       modified: serializer.fromJson<int?>(json['modified']),
       format: serializer.fromJson<String?>(json['format']),
       title: serializer.fromJson<String?>(json['title']),
@@ -567,6 +598,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'coverId': serializer.toJson<String?>(coverId),
       'modified': serializer.toJson<int?>(modified),
       'format': serializer.toJson<String?>(format),
       'title': serializer.toJson<String?>(title),
@@ -588,6 +620,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
 
   MetadataItem copyWith({
     String? id,
+    Value<String?> coverId = const Value.absent(),
     Value<int?> modified = const Value.absent(),
     Value<String?> format = const Value.absent(),
     Value<String?> title = const Value.absent(),
@@ -606,6 +639,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     Value<int?> lastPlayed = const Value.absent(),
   }) => MetadataItem(
     id: id ?? this.id,
+    coverId: coverId.present ? coverId.value : this.coverId,
     modified: modified.present ? modified.value : this.modified,
     format: format.present ? format.value : this.format,
     title: title.present ? title.value : this.title,
@@ -626,6 +660,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   MetadataItem copyWithCompanion(MetadataItemsCompanion data) {
     return MetadataItem(
       id: data.id.present ? data.id.value : this.id,
+      coverId: data.coverId.present ? data.coverId.value : this.coverId,
       modified: data.modified.present ? data.modified.value : this.modified,
       format: data.format.present ? data.format.value : this.format,
       title: data.title.present ? data.title.value : this.title,
@@ -655,6 +690,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   String toString() {
     return (StringBuffer('MetadataItem(')
           ..write('id: $id, ')
+          ..write('coverId: $coverId, ')
           ..write('modified: $modified, ')
           ..write('format: $format, ')
           ..write('title: $title, ')
@@ -678,6 +714,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   @override
   int get hashCode => Object.hash(
     id,
+    coverId,
     modified,
     format,
     title,
@@ -700,6 +737,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       identical(this, other) ||
       (other is MetadataItem &&
           other.id == this.id &&
+          other.coverId == this.coverId &&
           other.modified == this.modified &&
           other.format == this.format &&
           other.title == this.title &&
@@ -720,6 +758,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
 
 class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   final Value<String> id;
+  final Value<String?> coverId;
   final Value<int?> modified;
   final Value<String?> format;
   final Value<String?> title;
@@ -739,6 +778,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   final Value<int> rowid;
   const MetadataItemsCompanion({
     this.id = const Value.absent(),
+    this.coverId = const Value.absent(),
     this.modified = const Value.absent(),
     this.format = const Value.absent(),
     this.title = const Value.absent(),
@@ -759,6 +799,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   });
   MetadataItemsCompanion.insert({
     required String id,
+    this.coverId = const Value.absent(),
     this.modified = const Value.absent(),
     this.format = const Value.absent(),
     this.title = const Value.absent(),
@@ -779,6 +820,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   }) : id = Value(id);
   static Insertable<MetadataItem> custom({
     Expression<String>? id,
+    Expression<String>? coverId,
     Expression<int>? modified,
     Expression<String>? format,
     Expression<String>? title,
@@ -799,6 +841,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (coverId != null) 'cover_id': coverId,
       if (modified != null) 'modified': modified,
       if (format != null) 'format': format,
       if (title != null) 'title': title,
@@ -821,6 +864,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
 
   MetadataItemsCompanion copyWith({
     Value<String>? id,
+    Value<String?>? coverId,
     Value<int?>? modified,
     Value<String?>? format,
     Value<String?>? title,
@@ -841,6 +885,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   }) {
     return MetadataItemsCompanion(
       id: id ?? this.id,
+      coverId: coverId ?? this.coverId,
       modified: modified ?? this.modified,
       format: format ?? this.format,
       title: title ?? this.title,
@@ -866,6 +911,9 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (coverId.present) {
+      map['cover_id'] = Variable<String>(coverId.value);
     }
     if (modified.present) {
       map['modified'] = Variable<int>(modified.value);
@@ -925,6 +973,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   String toString() {
     return (StringBuffer('MetadataItemsCompanion(')
           ..write('id: $id, ')
+          ..write('coverId: $coverId, ')
           ..write('modified: $modified, ')
           ..write('format: $format, ')
           ..write('title: $title, ')
@@ -961,6 +1010,7 @@ abstract class _$MetadataDB extends GeneratedDatabase {
 typedef $$MetadataItemsTableCreateCompanionBuilder =
     MetadataItemsCompanion Function({
       required String id,
+      Value<String?> coverId,
       Value<int?> modified,
       Value<String?> format,
       Value<String?> title,
@@ -982,6 +1032,7 @@ typedef $$MetadataItemsTableCreateCompanionBuilder =
 typedef $$MetadataItemsTableUpdateCompanionBuilder =
     MetadataItemsCompanion Function({
       Value<String> id,
+      Value<String?> coverId,
       Value<int?> modified,
       Value<String?> format,
       Value<String?> title,
@@ -1012,6 +1063,11 @@ class $$MetadataItemsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverId => $composableBuilder(
+    column: $table.coverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1110,6 +1166,11 @@ class $$MetadataItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverId => $composableBuilder(
+    column: $table.coverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get modified => $composableBuilder(
     column: $table.modified,
     builder: (column) => ColumnOrderings(column),
@@ -1203,6 +1264,9 @@ class $$MetadataItemsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get coverId =>
+      $composableBuilder(column: $table.coverId, builder: (column) => column);
+
   GeneratedColumn<int> get modified =>
       $composableBuilder(column: $table.modified, builder: (column) => column);
 
@@ -1290,6 +1354,7 @@ class $$MetadataItemsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String?> coverId = const Value.absent(),
                 Value<int?> modified = const Value.absent(),
                 Value<String?> format = const Value.absent(),
                 Value<String?> title = const Value.absent(),
@@ -1309,6 +1374,7 @@ class $$MetadataItemsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => MetadataItemsCompanion(
                 id: id,
+                coverId: coverId,
                 modified: modified,
                 format: format,
                 title: title,
@@ -1330,6 +1396,7 @@ class $$MetadataItemsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String?> coverId = const Value.absent(),
                 Value<int?> modified = const Value.absent(),
                 Value<String?> format = const Value.absent(),
                 Value<String?> title = const Value.absent(),
@@ -1349,6 +1416,7 @@ class $$MetadataItemsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => MetadataItemsCompanion.insert(
                 id: id,
+                coverId: coverId,
                 modified: modified,
                 format: format,
                 title: title,
@@ -1368,7 +1436,16 @@ class $$MetadataItemsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$MetadataItemsTable, MetadataItem>(table),
+                  BaseReferences<
+                    _$MetadataDB,
+                    $MetadataItemsTable,
+                    MetadataItem
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

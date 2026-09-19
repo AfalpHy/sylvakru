@@ -9,6 +9,7 @@ part 'database.g.dart';
 
 class MetadataItems extends Table {
   TextColumn get id => text()();
+  TextColumn get coverId => text().nullable()();
 
   IntColumn get modified => integer().nullable()();
 
@@ -43,7 +44,7 @@ class MetadataDB extends _$MetadataDB {
   MetadataDB(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -58,6 +59,10 @@ class MetadataDB extends _$MetadataDB {
 
         if (from < 3) {
           await m.dropColumn(metadataItems, 'source_type');
+        }
+
+        if (from < 4) {
+          await m.addColumn(metadataItems, metadataItems.coverId);
         }
       },
     );

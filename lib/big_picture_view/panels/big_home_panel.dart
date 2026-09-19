@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/data/history.dart';
 import 'package:sylvakru/base/data/library.dart';
@@ -27,47 +26,6 @@ class BigHomePanel extends StatefulWidget {
 
 class _BigHomePanelState extends State<BigHomePanel> {
   final verticalController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (isStreamSource) {
-        if (artistAlbumManager.artistList.isEmpty) {
-          artistAlbumManager.loadArtists().then((_) {
-            if (mounted) {
-              setState(() {});
-            }
-          });
-        }
-
-        if (artistAlbumManager.albumList.isEmpty) {
-          artistAlbumManager.loadAlbums().then((_) {
-            if (mounted) {
-              setState(() {});
-            }
-          });
-        }
-
-        if (sourceType == .navidrome) {
-          if (history.rankingAlbumList.isEmpty) {
-            history.loadAlbums(true).then((_) {
-              if (mounted) {
-                setState(() {});
-              }
-            });
-          }
-          if (history.recentlyAlbumList.isEmpty) {
-            history.loadAlbums(false).then((_) {
-              if (mounted) {
-                setState(() {});
-              }
-            });
-          }
-        }
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,50 +165,17 @@ class _BigHomePanelState extends State<BigHomePanel> {
 
         _ListView(
           title: l10n.ranking,
-          count: sourceType == .navidrome
-              ? history.rankingAlbumList.length
-              : history.rankingSongList.length,
-          getPicture: (index) => sourceType == .navidrome
-              ? history.rankingAlbumList[index].picture
-              : history.rankingSongList[index].picture,
+          count: history.rankingSongList.length,
+          getPicture: (index) => history.rankingSongList[index].picture,
           onTap: (index) async {
-            if (sourceType == .navidrome) {
-              final album = history.rankingAlbumList[index];
-              final baseColor = await computeColor(album.picture);
-              if (!context.mounted) {
-                return;
-              }
-              Navigator.of(context).push(
-                ZoomPageRoute(
-                  builder: (context) {
-                    return BigSingleAlbumPanel(
-                      album: album,
-                      baseColor: baseColor,
-                    );
-                  },
-                ),
-              );
-            } else {
-              showSongOptions(
-                context: context,
-                song: history.rankingSongList[index],
-                includeGoToArtist: true,
-                includeGoToAlbum: true,
-              );
-            }
+            showSongOptions(
+              context: context,
+              song: history.rankingSongList[index],
+              includeGoToArtist: true,
+              includeGoToAlbum: true,
+            );
           },
           getBottomWidget: (index) {
-            if (sourceType == .navidrome) {
-              return ListTile(
-                contentPadding: .zero,
-                mouseCursor: SystemMouseCursors.click,
-                title: Text(
-                  history.rankingAlbumList[index].name,
-                  style: .new(overflow: .ellipsis),
-                ),
-                visualDensity: .new(vertical: -4),
-              );
-            }
             final song = history.rankingSongList[index];
             return ListTile(
               contentPadding: .zero,
@@ -269,50 +194,17 @@ class _BigHomePanelState extends State<BigHomePanel> {
 
         _ListView(
           title: l10n.recently,
-          count: sourceType == .navidrome
-              ? history.recentlyAlbumList.length
-              : history.recentlySongList.length,
-          getPicture: (index) => sourceType == .navidrome
-              ? history.recentlyAlbumList[index].picture
-              : history.recentlySongList[index].picture,
+          count: history.recentlySongList.length,
+          getPicture: (index) => history.recentlySongList[index].picture,
           onTap: (index) async {
-            if (sourceType == .navidrome) {
-              final album = history.recentlyAlbumList[index];
-              final baseColor = await computeColor(album.picture);
-              if (!context.mounted) {
-                return;
-              }
-              Navigator.of(context).push(
-                ZoomPageRoute(
-                  builder: (context) {
-                    return BigSingleAlbumPanel(
-                      album: album,
-                      baseColor: baseColor,
-                    );
-                  },
-                ),
-              );
-            } else {
-              showSongOptions(
-                context: context,
-                song: history.recentlySongList[index],
-                includeGoToArtist: true,
-                includeGoToAlbum: true,
-              );
-            }
+            showSongOptions(
+              context: context,
+              song: history.recentlySongList[index],
+              includeGoToArtist: true,
+              includeGoToAlbum: true,
+            );
           },
           getBottomWidget: (index) {
-            if (sourceType == .navidrome) {
-              return ListTile(
-                contentPadding: .zero,
-                mouseCursor: SystemMouseCursors.click,
-                title: Text(
-                  history.recentlyAlbumList[index].name,
-                  style: .new(overflow: .ellipsis),
-                ),
-                visualDensity: .new(vertical: -4),
-              );
-            }
             final song = history.recentlySongList[index];
             return ListTile(
               contentPadding: .zero,
@@ -435,7 +327,7 @@ class _ListViewState extends State<_ListView> {
           ],
         ),
         SizedBox(
-          height: 280,
+          height: isTooNarrow(context) ? 260 : 280,
           child: ListView.separated(
             key: rowKey,
             controller: controller,
@@ -445,7 +337,7 @@ class _ListViewState extends State<_ListView> {
             scrollDirection: .horizontal,
             itemCount: widget.count,
             separatorBuilder: (context, index) {
-              return const SizedBox(width: 30);
+              return const SizedBox(width: 20);
             },
             itemBuilder: (context, index) {
               return ListenableBuilder(
@@ -509,18 +401,18 @@ class _ListViewState extends State<_ListView> {
                             ? Hero(
                                 tag: widget.getTag!.call(index),
                                 child: CoverArtWidget(
-                                  size: 200,
+                                  size: isTooNarrow(context) ? 180 : 200,
                                   borderRadius: 20,
                                   picture: picture,
                                 ),
                               )
                             : CoverArtWidget(
-                                size: 200,
+                                size: isTooNarrow(context) ? 180 : 200,
                                 borderRadius: 20,
                                 picture: picture,
                               ),
                         SizedBox(
-                          width: 180,
+                          width: isTooNarrow(context) ? 160 : 180,
                           child: widget.getBottomWidget(index),
                         ),
                       ],

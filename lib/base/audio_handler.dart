@@ -17,6 +17,7 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/lyric.dart';
+import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
 import 'package:sylvakru/base/utils/path.dart';
 import 'package:sylvakru/base/widgets/equalizer.dart';
 import 'package:sylvakru/base/widgets/lyric_list_view.dart';
@@ -26,6 +27,7 @@ import 'package:sylvakru/base/utils/contrast_color_generator.dart';
 import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
+import 'package:sylvakru/layer/lyrics_page_layer.dart';
 import 'dart:async';
 
 import 'package:sylvakru/portrait_view/sleep_timer.dart';
@@ -36,7 +38,6 @@ late MyAudioHandler audioHandler;
 
 List<MyAudioMetadata> playQueue = [];
 String? playQueueForStreamId;
-const String playQueueForStreamName = '_sylvakru_play_queue_';
 
 final ValueNotifier<MyAudioMetadata?> currentSongNotifier = ValueNotifier(null);
 final isPlayingNotifier = ValueNotifier(false);
@@ -183,14 +184,12 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   void _prepare() {
-    if (isNotStreamSource || sourceType == .feiniu) {
-      _playQueueState = File(
-        "${appSupportDir.path}/${sourceType.name}/play_queue_state.json",
-      );
-      if (!(_playQueueState!.existsSync())) {
-        _playQueueState!.createSync(recursive: true);
-        _savePlayQueueState();
-      }
+    _playQueueState = File(
+      "${appSupportDir.path}/${sourceType.name}/play_queue_state.json",
+    );
+    if (!(_playQueueState!.existsSync())) {
+      _playQueueState!.createSync(recursive: true);
+      _savePlayQueueState();
     }
 
     _playState = File(
@@ -234,57 +233,21 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> _loadPlayQueueState() async {
-    if (isNotStreamSource || sourceType == .feiniu) {
-      final content = await _playQueueState!.readAsString();
+    final content = await _playQueueState!.readAsString();
 
-      final json = jsonDecode(content) as Map<String, dynamic>;
+    final json = jsonDecode(content) as Map<String, dynamic>;
 
-      if (sourceType == .feiniu) {
-        // 飞牛未提供队列重排接口，沿用本地队列文件保留顺序和重复歌曲。
-        playQueue.clear();
-        _playQueueTmp.clear();
-        final client = streamClient;
-        if (client is! FeiniuClient ||
-            json['server'] != client.baseUrl ||
-            json['username'] != client.username ||
-            !await client.ping()) {
-          return;
-        }
-        final ids = <String>{
-          ...List<String>.from(json['playQueueTmp'] as List? ?? []),
-          ...List<String>.from(json['playQueue'] as List? ?? []),
-        };
-        for (final id in ids) {
-          if (!library.id2Song.containsKey(id)) await client.getSong(id);
-        }
-      }
-
-      _playQueueTmp.addAll(_restoreQueue(json['playQueueTmp']));
-      playQueue.addAll(_restoreQueue(json['playQueue']));
-    } else {
-      playQueue.clear();
-      playQueue = await streamClient?.getPlayQueue() ?? [];
-      if (playModeNotifier.value == 1) {
-        _playQueueTmp = List.from(playQueue);
-      }
-    }
+    _playQueueTmp.addAll(_restoreQueue(json['playQueueTmp']));
+    playQueue.addAll(_restoreQueue(json['playQueue']));
   }
 
   Future<void> _savePlayQueueState() async {
-    if (isNotStreamSource || sourceType == .feiniu) {
-      _playQueueState!.writeAsStringSync(
-        jsonEncode({
-          if (sourceType == .feiniu) ...{
-            'server': streamClient?.baseUrl,
-            'username': streamClient?.username,
-          },
-          'playQueueTmp': _playQueueTmp.map((e) => e.id).toList(),
-          'playQueue': playQueue.map((e) => e.id).toList(),
-        }),
-      );
-    } else {
-      await streamClient?.savePlayQueue(playQueue.map((e) => e.id).toList());
-    }
+    _playQueueState!.writeAsStringSync(
+      jsonEncode({
+        'playQueueTmp': _playQueueTmp.map((e) => e.id).toList(),
+        'playQueue': playQueue.map((e) => e.id).toList(),
+      }),
+    );
   }
 
   Future<void> _tryPlay() async {
@@ -300,6 +263,15 @@ class MyAudioHandler extends BaseAudioHandler {
         } else {
           currentIndex = -1;
         }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (currentSongNotifier.value != null) {
+            globalNavigatorKey.currentState?.push(
+              DynamicLyricsPageRoute(
+                pageBuilder: (_, _, _) => LyricsPageLayer(),
+              ),
+            );
+          }
+        });
       }
     }
 

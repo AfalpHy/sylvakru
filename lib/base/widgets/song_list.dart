@@ -14,7 +14,6 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/keyboard.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
-import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/utils/common_utils.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/utils/source_type.dart';
@@ -39,8 +38,6 @@ import 'package:sylvakru/layer/artists_layer.dart';
 import 'package:sylvakru/layer/folders_layer.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/layer/playlists_layer.dart';
-import 'package:sylvakru/layer/ranking_layer.dart';
-import 'package:sylvakru/layer/recently_layer.dart';
 import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
 import 'package:sylvakru/portrait_view/my_search_field.dart';
 import 'package:text_scroll/text_scroll.dart';
@@ -58,8 +55,6 @@ class SongList extends StatefulWidget {
 
   final bool isRoot;
 
-  final String? albumRootLabel;
-
   const SongList({
     super.key,
     this.playlist,
@@ -69,8 +64,6 @@ class SongList extends StatefulWidget {
     this.isRanking = false,
     this.isRecently = false,
     this.isRoot = true,
-
-    this.albumRootLabel,
   });
 
   @override
@@ -171,20 +164,6 @@ class _SongListState extends State<SongList> {
     return picture;
   }
 
-  int currentRequestId = 0;
-  Future<List<MyAudioMetadata>?> _fetchSongList(int offset) async {
-    currentRequestId++;
-    int tmp = currentRequestId;
-    final result = await streamClient?.searchSongs(searchValue, 100, offset);
-    if (!mounted) {
-      return null;
-    }
-    if (tmp == currentRequestId) {
-      return result;
-    }
-    return null;
-  }
-
   void resetSelectedAndUpdateSongList() {
     continuousSelectBeginIndex = 0;
     for (final tmp in isSelectedNotifierMap.values) {
@@ -224,63 +203,10 @@ class _SongListState extends State<SongList> {
     searchTimer?.cancel();
     searchTimer = Timer(Duration(milliseconds: 300), () async {
       if (searchValue.isNotEmpty) {
-        tmpSongList.clear();
-        if (isLibrary && (sourceType == .navidrome || sourceType == .feiniu)) {
-          tmpSongList = await _fetchSongList(0) ?? [];
-          if (!mounted) {
-            return;
-          }
-        } else {
-          tmpSongList = filterSongList(songList, searchValue);
-        }
+        tmpSongList = filterSongList(songList, searchValue);
       }
-      _reachEnd = false;
       resetSelectedAndUpdateSongList();
     });
-  }
-
-  bool _isLoadingMoreData = false;
-  bool _reachEnd = false;
-  void _onScroll() async {
-    if (sourceType == .feiniu && searchValue.isEmpty) {
-      return;
-    }
-    if (prepareing | _isLoadingMoreData | _reachEnd) {
-      return;
-    }
-    _isLoadingMoreData = true;
-
-    if (scrollController.position.pixels >=
-        scrollController.position.maxScrollExtent) {
-      if (searchValue.isEmpty) {
-        final fetchedSongList = await streamClient?.getSongs(
-          100,
-          songList.length,
-        );
-        if (!mounted) {
-          return;
-        }
-        if (fetchedSongList == null) {
-          _isLoadingMoreData = false;
-          return;
-        }
-        _reachEnd = fetchedSongList.isEmpty;
-        songList.addAll(fetchedSongList);
-      } else {
-        final fetchedSongList = await _fetchSongList(tmpSongList.length);
-        if (!mounted) {
-          return;
-        }
-        if (fetchedSongList == null) {
-          _isLoadingMoreData = false;
-          return;
-        }
-        _reachEnd = fetchedSongList.isEmpty;
-        tmpSongList.addAll(fetchedSongList);
-      }
-      updateSongList();
-    }
-    _isLoadingMoreData = false;
   }
 
   @override
@@ -318,16 +244,10 @@ class _SongListState extends State<SongList> {
     } else if (album != null) {
       title = album!.name;
       songList = album!.songList;
-      rootLabel = widget.albumRootLabel!;
-      if (rootLabel == 'albums') {
-        rootVisibleNotifier = albumsVisibleNotifier;
-      } else if (rootLabel == 'ranking') {
-        rootVisibleNotifier = rankingVisibleNotifier;
-      } else {
-        rootVisibleNotifier = recentlyVisibleNotifier;
-      }
+      rootLabel = 'albums';
+      rootVisibleNotifier = albumsVisibleNotifier;
       backToRoot = () {
-        layersManager.popDetail(widget.albumRootLabel!);
+        layersManager.popDetail('albums');
       };
     } else if (folder != null) {
       title = folder!.id;
@@ -349,37 +269,11 @@ class _SongListState extends State<SongList> {
       isLibrary = true;
       songList = library.songList;
       library.changeNotifier.addListener(updateSongList);
-      if (isStreamSource) {
-        scrollController.addListener(_onScroll);
-      }
     }
 
     rootVisibleNotifier?.addListener(updateHideOthers);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (isStreamSource) {
-        if (songList.isEmpty) {
-          if (isLibrary && sourceType != .feiniu) {
-            final songs = await streamClient?.getSongs(100, 0) ?? [];
-
-            if (!mounted) {
-              return;
-            }
-            songList.addAll(songs);
-            layersManager.updateBackground();
-          } else if (artist != null) {
-            await artist!.load();
-            if (!mounted) {
-              return;
-            }
-          } else if (album != null) {
-            await album!.load();
-            if (!mounted) {
-              return;
-            }
-          }
-        }
-      }
       updateSongList();
     });
 

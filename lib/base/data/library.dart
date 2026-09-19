@@ -7,7 +7,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/database.dart';
 import 'package:sylvakru/base/extensions/metadata_extension.dart';
-import 'package:sylvakru/base/services/feiniu_client.dart';
 import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/picture_load_scheduler.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
@@ -39,10 +38,8 @@ class Library {
 
   Library() {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+    _metadataDB = MetadataDB(openMetadataDB('${sourceType.name}/metadata.db'));
     if (isNotStreamSource) {
-      _metadataDB = MetadataDB(
-        openMetadataDB('${sourceType.name}/metadata.db'),
-      );
       _folderIdListFile = File(
         "${getFolderConfigPath(sourceType)}/folder_id_list.json",
       );
@@ -118,55 +115,38 @@ class Library {
     }
   }
 
-  Future<bool> _loadFeiniuSongs() async {
-    final client = streamClient;
-    if (client is! FeiniuClient) return false;
-    final songs = await client.getAllSongs();
-    if (songs == null) return false;
-    songList
-      ..clear()
-      ..addAll(songs);
-    id2Song
-      ..clear()
-      ..addEntries(songs.map((song) => MapEntry(song.id, song)));
-    return true;
-  }
-
   Future<void> load() async {
     if (isNotStreamSource) {
       await initFolders();
+    }
 
-      List<MetadataItem> rows = [];
-      int offset = 0;
+    do {
+      final rows = await (_metadataDB!.select(
+        _metadataDB!.metadataItems,
+      )..limit(1000, offset: songList.length)).get();
 
-      do {
-        rows = await (_metadataDB!.select(
-          _metadataDB!.metadataItems,
-        )..limit(10000, offset: offset)).get();
+      if (rows.isEmpty) {
+        break;
+      }
 
-        if (rows.isEmpty) {
-          break;
-        }
+      for (final row in rows) {
+        final song = row.toMetadata();
+        id2Song.putIfAbsent(row.id, () => song);
+        songList.add(song);
+      }
 
-        for (final row in rows) {
-          final song = row.toMetadata();
-          id2Song.putIfAbsent(row.id, () => song);
-          songList.add(song);
-        }
-
+      if (songList.length == 1000 || songList.length % 10000 == 0) {
         changeNotifier.value++;
         layersManager.updateBackground();
-        offset += rows.length;
-      } while (true);
-
-      canModify = true;
-      changeNotifier.value++;
-
-      for (final folder in folderList) {
-        await folder.load();
       }
-    } else if (sourceType == .feiniu && await _loadFeiniuSongs()) {
-      changeNotifier.value++;
+    } while (true);
+
+    canModify = true;
+    changeNotifier.value++;
+    layersManager.updateBackground();
+
+    for (final folder in folderList) {
+      await folder.load();
     }
 
     await _accumulateCache();
@@ -261,6 +241,25 @@ class Library {
           songList.map((e) => e.toCompanion()).toList(),
         );
       });
+    });
+  }
+
+  Future<void> _saveBatchMetadata(List<MyAudioMetadata> songs) async {
+    final db = _metadataDB!;
+    await db.transaction(() async {
+      await db.batch((batch) {
+        batch.insertAll(
+          db.metadataItems,
+          songs.map((e) => e.toCompanion()).toList(),
+        );
+      });
+    });
+  }
+
+  Future<void> _clearMetadata() async {
+    final db = _metadataDB!;
+    db.transaction(() async {
+      await db.delete(db.metadataItems).go();
     });
   }
 
@@ -454,11 +453,47 @@ class Library {
         }
 
         await _saveMetadata();
-      case .feiniu:
-        await _loadFeiniuSongs();
       default:
-        id2Song = {};
-        songList = [];
+        id2Song.clear();
+        songList.clear();
+
+        await _clearMetadata();
+
+        int songCount = await streamClient?.getSongCount() ?? 0;
+
+        int nextIndex = 0;
+        final results = <int, List<MyAudioMetadata>>{};
+
+        final pool = Pool(6);
+        final tasks = <Future>[];
+        final batchSize = 1000;
+        for (int i = 0; i * batchSize < songCount; i++) {
+          tasks.add(
+            pool.withResource(() async {
+              final songs =
+                  await streamClient?.getSongs(batchSize, i * batchSize) ?? [];
+
+              results[i] = songs;
+
+              while (results.containsKey(nextIndex)) {
+                final songs = results.remove(nextIndex)!;
+
+                songList.addAll(songs);
+
+                await _saveBatchMetadata(songs);
+
+                if (songList.length == batchSize ||
+                    songList.length % 10000 == 0) {
+                  _syncNotify();
+                }
+
+                nextIndex++;
+              }
+            }),
+          );
+        }
+        await Future.wait(tasks);
+        await pool.close();
     }
 
     canModify = true;

@@ -871,7 +871,7 @@ extension _SongListPanel on _SongListState {
             callback: () => goToArtist(song, context),
           ),
         );
-      } else if (isNotStreamSource && artist!.name != song.artist) {
+      } else if (artist!.name != song.artist) {
         menuItems.add(
           MenuItem(
             text: l10n.go2Artist,

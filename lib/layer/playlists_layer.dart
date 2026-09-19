@@ -35,9 +35,6 @@ class _PlaylistsLayerState extends CollectionListState {
       AppLocalizations.of(context).playlistCount;
 
   @override
-  bool get reachEnd => true;
-
-  @override
   void updateCurrentList() {
     preparing = false;
     final value = textController.text;

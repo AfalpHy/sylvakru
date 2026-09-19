@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/logger.dart';
@@ -14,7 +13,6 @@ import 'package:sylvakru/base/services/stream_client.dart';
 class FeiniuClient extends StreamClient {
   String? _token;
   Future<bool>? _loginFuture;
-  final Map<String, String> _coverIds = {};
   late final String _deviceId;
 
   FeiniuClient({
@@ -174,51 +172,19 @@ class FeiniuClient extends StreamClient {
     }
   }
 
-  void _rememberCover(Map<String, dynamic> item) {
-    final guid = item['guid'] as String?;
-    final coverId = item['coverId'] as String?;
-    if (guid != null && item.containsKey('coverId')) {
-      _coverIds[guid] = coverId ?? '';
-    }
-  }
+  List<MyAudioMetadata> _songs(List<Map<String, dynamic>> rows) =>
+      rows.map((song) {
+        return MyAudioMetadata.fromMap(song, .feiniu);
+      }).toList();
 
-  List<MyAudioMetadata> _songs(
-    List<Map<String, dynamic>> rows, {
-    bool cache = true,
-  }) => rows.map((song) {
-    _rememberCover(song);
-    final album = song['album'];
-    if (album is Map<String, dynamic>) {
-      _rememberCover(album);
-      final songGuid = song['guid'] as String?;
-      final songCoverId = song['coverId'] as String?;
-      final albumCoverId = album['coverId'] as String?;
-      if (songGuid != null &&
-          _coverIds[songGuid]?.isNotEmpty != true &&
-          (songCoverId == null || songCoverId.isEmpty) &&
-          albumCoverId?.isNotEmpty == true) {
-        _coverIds[songGuid] = albumCoverId!;
-      }
-    }
-    for (final artist in normalize(song['artists']) ?? []) {
-      _rememberCover(artist);
-    }
-    return MyAudioMetadata.fromMap(song, .feiniu, cache: cache);
-  }).toList();
-
-  Album _album(Map<String, dynamic> item) {
-    _rememberCover(item);
-    final id = item['guid'] as String;
-    final releaseDate = item['releaseDate'] as String?;
-    return artistAlbumManager.albumMap.putIfAbsent(
-      id,
-      () => Album(
-        item['name'] as String,
-        id: id,
-        coverArtId: id,
-        year: releaseDate == null ? null : DateTime.tryParse(releaseDate)?.year,
-      ),
+  @override
+  Future<int> getSongCount() async {
+    final response = await _request(
+      '/track/list',
+      query: {'sort': 'title,asc', 'page': 1, 'size': 1},
     );
+    final data = response?['data'];
+    return data['total'];
   }
 
   @override
@@ -229,96 +195,7 @@ class FeiniuClient extends StreamClient {
       size: size,
       offset: offset,
     );
-    return rows == null ? null : _songs(rows);
-  }
 
-  Future<List<MyAudioMetadata>?> getAllSongs() async {
-    final rows = await _list('/track/list', query: {'sort': 'title,asc'});
-    return rows == null ? null : _songs(rows, cache: false);
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> searchSongs(
-    String query,
-    int size,
-    int offset,
-  ) async {
-    if (offset < 0 || size <= 0) return [];
-    // 搜索接口返回全部匹配项，不按 page/size 分页。
-    final response = await _request('/search/track', query: {'q': query});
-    final rows = normalize(response?['data']?['list']);
-    return rows == null ? null : _songs(rows.skip(offset).take(size).toList());
-  }
-
-  Future<MyAudioMetadata?> getSong(String id) async {
-    final response = await _request('/track/metadata', query: {'guid': id});
-    final data = response?['data'];
-    final song = data?['track'];
-    return song is Map<String, dynamic>
-        ? _songs([
-            {...song, 'audioSpec': data['audioSpec'] ?? song['audioSpec']},
-          ]).first
-        : null;
-  }
-
-  @override
-  Future<List<Artist>?> getArtistList() async {
-    final rows = await _list('/artist/list', query: {'sort': 'name,asc'});
-    return rows?.map((item) {
-      _rememberCover(item);
-      return Artist(
-        item['name'] as String,
-        id: item['guid'] as String,
-        coverArtId: item['guid'] as String,
-      );
-    }).toList();
-  }
-
-  @override
-  Future<List<Album>?> getArtistAlbumList(String id) async {
-    final rows = await _list(
-      '/album/artist-detail/list',
-      query: {'artistGUID': id, 'sort': 'name,asc'},
-    );
-    return rows?.map(_album).toList();
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> getArtistSongs(String id) async {
-    final rows = await _list(
-      '/track/artist-detail/list',
-      query: {'artistGUID': id, 'sort': 'title,asc'},
-    );
-    return rows == null ? null : _songs(rows);
-  }
-
-  @override
-  Future<List<Album>?> getAlbumList(
-    int offset, {
-    String type = 'alphabeticalByName',
-  }) async {
-    final rows = await _list(
-      '/album/list',
-      query: {'sort': 'name,asc'},
-      offset: offset,
-      size: 500,
-    );
-    return rows?.map(_album).toList();
-  }
-
-  @override
-  Future<Album?> getAlbum(String id) async {
-    final response = await _request('/album/detail', query: {'guid': id});
-    final data = response?['data'];
-    return data is Map<String, dynamic> ? _album(data) : null;
-  }
-
-  @override
-  Future<List<MyAudioMetadata>?> getAlbumSongs(String id) async {
-    final rows = await _list(
-      '/track/album-detail/list',
-      query: {'albumGUID': id, 'sort': 'trackNo,asc'},
-    );
     return rows == null ? null : _songs(rows);
   }
 
@@ -387,26 +264,25 @@ class FeiniuClient extends StreamClient {
     String playlistId,
     List<String> songIds,
   ) async {
-    final oldSongs = await getPlaylistSongs(playlistId);
+    final rows = await _list(
+      '/track/playlist-detail/list',
+      query: {'playlistGUID': playlistId, 'sort': 'trackAddedAt,asc'},
+    );
+
+    final oldSongs = rows?.map((e) => e['guid']).toList();
     if (oldSongs == null) return false;
-    final oldIds = oldSongs.map((song) => song.id).toSet();
-    final newIds = songIds.toSet();
-    final removed = oldIds.difference(newIds).toList();
-    final added = newIds.difference(oldIds).toList();
-    if (removed.isNotEmpty &&
-        await _request(
-              '/playlist/remove-track',
-              data: {'guid': playlistId, 'trackGUIDs': removed},
-            ) ==
-            null) {
+    if (await _request(
+          '/playlist/remove-track',
+          data: {'guid': playlistId, 'trackGUIDs': oldSongs},
+        ) ==
+        null) {
       return false;
     }
-    if (added.isNotEmpty &&
-        await _request(
-              '/playlist/add-track',
-              data: {'guid': playlistId, 'trackGUIDs': added},
-            ) ==
-            null) {
+    if (await _request(
+          '/playlist/add-track',
+          data: {'guid': playlistId, 'trackGUIDs': songIds},
+        ) ==
+        null) {
       return false;
     }
     return true;
@@ -431,12 +307,9 @@ class FeiniuClient extends StreamClient {
   @override
   Future<Uint8List?> getPictureBytes(String id) async {
     try {
-      if (!_coverIds.containsKey(id)) await getSong(id);
-      final coverId = _coverIds[id];
-      if (coverId == null || coverId.isEmpty) return null;
       final response = await _openResource(
         '/static/cover',
-        query: {'coverId': coverId},
+        query: {'coverId': id},
       );
       if (response == null) return null;
       final bytes = <int>[];

@@ -1,17 +1,13 @@
-import 'dart:async';
-
 import 'package:lpinyin/lpinyin.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/data/setting.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
-import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 
-ArtistAlbumManager artistAlbumManager = ArtistAlbumManager();
+final artistAlbumManager = ArtistAlbumManager();
 
 class ArtistAlbumManager {
   List<Artist> artistList = [];
@@ -21,6 +17,8 @@ class ArtistAlbumManager {
   // streamSoure will has duplicate name album
   Map<String, Album> albumMap = {};
   final updateNotifier = ValueNotifier(0);
+
+  bool done = false;
 
   ArtistAlbumManager() {
     artistsIsAscendingNotifier.addListener(() {
@@ -51,7 +49,7 @@ class ArtistAlbumManager {
         : albumsUseLargePictureNotifier;
   }
 
-  void classify() {
+  void classify() async {
     for (final song in library.songList) {
       _processSong(song);
     }
@@ -67,6 +65,7 @@ class ArtistAlbumManager {
       artist.combineAlbums();
     }
 
+    done = true;
     updateNotifier.value++;
   }
 
@@ -75,7 +74,7 @@ class ArtistAlbumManager {
 
     Album? album = albumMap[albumName];
     if (album == null) {
-      album = Album(albumName);
+      album = Album(name: albumName);
       albumList.add(album);
       albumMap[albumName] = album;
     }
@@ -89,7 +88,7 @@ class ArtistAlbumManager {
     for (String artistName in getArtists(getArtist(song))) {
       Artist? artist = artistMap[artistName];
       if (artist == null) {
-        artist = Artist(artistName);
+        artist = Artist(name: artistName);
         artistList.add(artist);
         artistMap[artistName] = artist;
       }
@@ -119,69 +118,20 @@ class ArtistAlbumManager {
 
   void updateArtistAlbum() {
     layersManager.clearArtistAlbum();
+    clear();
+    classify();
+  }
+
+  void clear() {
     artistList.clear();
     albumList.clear();
     artistMap.clear();
     albumMap.clear();
-
-    classify();
-  }
-
-  // use completer to avoid loading same data multiple times
-  Completer<void>? artistCompleter;
-  Completer<int?>? ablumCompleter;
-
-  Future<void> loadArtists() async {
-    if (artistCompleter == null) {
-      artistCompleter = Completer<void>();
-      final tmpArtistList = await streamClient?.getArtistList();
-      if (tmpArtistList == null) {
-        artistAlbumManager.updateNotifier.value++;
-        artistCompleter!.complete();
-        return;
-      }
-
-      for (final artist in tmpArtistList) {
-        artistList.add(artist);
-        artistMap[artist.name] = artist;
-      }
-      sortArtists();
-      artistAlbumManager.updateNotifier.value++;
-      artistCompleter!.complete();
-      return;
-    }
-    artistAlbumManager.updateNotifier.value++;
-    return artistCompleter!.future;
-  }
-
-  // null: error; 0: end
-  Future<int?> loadAlbums() async {
-    if (ablumCompleter == null) {
-      ablumCompleter = Completer<int?>();
-      final albumList = await streamClient?.getAlbumList(
-        artistAlbumManager.albumList.length,
-      );
-      if (albumList == null) {
-        artistAlbumManager.updateNotifier.value++;
-        ablumCompleter!.complete(null);
-        ablumCompleter = null;
-        return null;
-      }
-
-      artistAlbumManager.albumList.addAll(albumList);
-      sortAlbums();
-      artistAlbumManager.updateNotifier.value++;
-
-      ablumCompleter!.complete(albumList.length);
-      ablumCompleter = null;
-      return albumList.length;
-    }
-    return ablumCompleter!.future;
+    done = false;
   }
 }
 
 abstract class ArtistAlbumBase {
-  String? id;
   final String name;
   late final String compareName;
 
@@ -189,32 +139,19 @@ abstract class ArtistAlbumBase {
 
   final bool isArtist;
 
-  MyPicture? _picture;
-  MyPicture get picture => isStreamSource ? _picture! : getCoverSong().picture;
+  MyPicture get picture => songList.first.picture;
 
-  ArtistAlbumBase(this.name, this.isArtist, {this.id, String? coverArtId}) {
-    id ??= name;
+  ArtistAlbumBase({required this.name, required this.isArtist}) {
     compareName = PinyinHelper.getPinyinE(name);
-    if (isStreamSource) {
-      _picture = MyPicture.form(coverArtId ?? '');
-    }
   }
 
   bool get isEmpty => songList.isEmpty;
 
-  MyAudioMetadata getCoverSong() {
-    return songList.first;
-  }
-
   int get totalCount => songList.length;
-
-  Completer<void>? completer;
-
-  Future<void> load();
 }
 
 class Artist extends ArtistAlbumBase {
-  Artist(String name, {super.id, super.coverArtId}) : super(name, false);
+  Artist({required super.name}) : super(isArtist: true);
 
   Set<Album> albumSet = {};
 
@@ -228,57 +165,26 @@ class Artist extends ArtistAlbumBase {
     albumList.sort((a, b) {
       int aYear = a.year ?? 9999;
       int bYear = b.year ?? 9999;
-
-      return aYear.compareTo(bYear);
+      final yearCompre = aYear.compareTo(bYear);
+      if (yearCompre != 0) {
+        return yearCompre;
+      }
+      return a.compareName.compareTo(b.compareName);
     });
 
     for (final album in albumList) {
-      songList.addAll(album.artist2SongList[name]!);
-    }
-  }
-
-  @override
-  Future<void> load() async {
-    if (completer == null) {
-      completer = Completer<void>();
-      if (sourceType == .navidrome || sourceType == .feiniu) {
-        final albums = await streamClient?.getArtistAlbumList(id!);
-        if (albums == null) {
-          completer!.complete();
-          return;
-        } else {
-          albumList.addAll(albums);
+      for (final song in album.songList) {
+        if (getArtist(song).contains(name)) {
+          songList.add(song);
         }
-
-        for (final album in albumList) {
-          await album.load();
-          if (sourceType == .navidrome) {
-            songList.addAll(album.songList);
-          }
-          changeNotifier.value++;
-        }
-        if (sourceType == .feiniu) {
-          songList.addAll(await streamClient?.getArtistSongs(id!) ?? []);
-          changeNotifier.value++;
-        }
-        completer!.complete();
-        return;
-      } else {
-        songList.addAll(await streamClient?.getArtistSongs(id!) ?? []);
-        changeNotifier.value++;
-        completer!.complete();
-        return;
       }
     }
-    return completer!.future;
   }
 }
 
 class Album extends ArtistAlbumBase {
-  Album(String name, {super.id, super.coverArtId, this.year})
-    : super(name, false);
+  Album({required super.name}) : super(isArtist: false);
 
-  Map<String, List<MyAudioMetadata>> artist2SongList = {};
   int? year;
 
   int _sort(MyAudioMetadata a, MyAudioMetadata b) {
@@ -296,23 +202,5 @@ class Album extends ArtistAlbumBase {
 
   void sort() {
     songList.sort((a, b) => _sort(a, b));
-    for (final song in songList) {
-      for (String artistName in getArtists(getArtist(song))) {
-        final tmp = artist2SongList.putIfAbsent(artistName, () => []);
-        tmp.add(song);
-      }
-    }
-  }
-
-  @override
-  Future<void> load() async {
-    if (completer == null) {
-      // ensure load one time
-      completer = Completer<void>();
-      songList.addAll(await streamClient?.getAlbumSongs(id!) ?? []);
-      completer!.complete();
-      return;
-    }
-    return completer!.future;
   }
 }

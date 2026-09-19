@@ -44,7 +44,8 @@ class MyPicture {
     }
   }
 
-  factory MyPicture.form(String id, {String? md5Hash}) {
+  factory MyPicture.form(String id) {
+    final md5Hash = md5.convert(utf8.encode(id)).toString();
     final picture = MyPicture(id, md5Hash: md5Hash);
     globalPictureList.add(picture);
     return picture;

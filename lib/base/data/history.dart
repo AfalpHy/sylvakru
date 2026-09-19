@@ -2,22 +2,18 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
-import 'package:sylvakru/base/data/artist_album.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 
-History history = History();
+final history = History();
 
 class History {
   final List<MyAudioMetadata> rankingSongList = [];
   final List<MyAudioMetadata> recentlySongList = [];
   final rankingChangeNotifier = ValueNotifier(0);
   final recentlyChangeNotifier = ValueNotifier(0);
-
-  final List<Album> rankingAlbumList = [];
-  final List<Album> recentlyAlbumList = [];
 
   void load() {
     for (final song in library.songList) {
@@ -69,9 +65,7 @@ class History {
     }
 
     song.lastPlayed = DateTime.now();
-    if (isNotStreamSource) {
-      await library.updatePlayCount(song);
-    }
+    await library.updatePlayCount(song);
 
     _add2Recently(song);
 
@@ -84,56 +78,8 @@ class History {
     recentlyChangeNotifier.value++;
   }
 
-  Completer<int?>? rankingCompleter;
-  Completer<int?>? recentlyCompleter;
-
-  // null: error; 0: end
-  Future<int?> loadAlbums(bool isRanking) async {
-    if (isRanking && rankingCompleter != null) {
-      rankingChangeNotifier.value++;
-      return rankingCompleter!.future;
-    }
-    if (!isRanking && recentlyCompleter != null) {
-      recentlyChangeNotifier.value++;
-      return recentlyCompleter!.future;
-    }
-
-    Completer<int?> tmpCompleter = Completer<int?>();
-
-    if (isRanking) {
-      rankingCompleter = tmpCompleter;
-    } else {
-      recentlyCompleter = tmpCompleter;
-    }
-
-    final albumList = await streamClient?.getAlbumList(
-      isRanking ? rankingAlbumList.length : recentlyAlbumList.length,
-      type: isRanking ? 'frequent' : 'recent',
-    );
-
-    if (albumList == null) {
-      tmpCompleter.complete(null);
-      if (isRanking) {
-        rankingCompleter = null;
-        rankingChangeNotifier.value++;
-      } else {
-        recentlyCompleter = null;
-        recentlyChangeNotifier.value++;
-      }
-      return null;
-    }
-
-    if (isRanking) {
-      rankingAlbumList.addAll(albumList);
-      rankingChangeNotifier.value++;
-      rankingCompleter = null;
-    } else {
-      recentlyAlbumList.addAll(albumList);
-      recentlyChangeNotifier.value++;
-      recentlyCompleter = null;
-    }
-
-    tmpCompleter.complete(albumList.length);
-    return albumList.length;
+  void clear() {
+    rankingSongList.clear();
+    recentlySongList.clear();
   }
 }

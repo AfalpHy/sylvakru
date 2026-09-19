@@ -1,7 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/artist_album.dart';
-import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/data/setting.dart';
 import 'package:sylvakru/base/widgets/collection_list.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
@@ -34,7 +32,7 @@ class _ArtistsLayerState extends CollectionListState {
 
   @override
   void updateCurrentList() {
-    preparing = false;
+    preparing = !artistAlbumManager.done;
 
     final value = textController.text;
     final list = artistAlbumManager.artistList
@@ -70,17 +68,7 @@ class _ArtistsLayerState extends CollectionListState {
 
     isListViewNotifier = artistsIsListViewNotifier;
 
-    reachEnd = true;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (artistAlbumManager.artistList.isNotEmpty ||
-          (isNotStreamSource && !Loader.busy)) {
-        updateCurrentList();
-      } else if (isStreamSource) {
-        await artistAlbumManager.loadArtists();
-        updateCurrentList();
-      }
-    });
+    updateCurrentList();
 
     artistAlbumManager.updateNotifier.addListener(updateCurrentList);
   }

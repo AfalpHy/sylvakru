@@ -66,17 +66,6 @@ class _BigSingleAlbumPanelState extends State<BigSingleAlbumPanel> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       colorManager.updateBigPictureRelatedColors(widget.album.picture);
-
-      if (isStreamSource) {
-        if (currentSongList.isEmpty) {
-          await widget.album.load();
-          if (!mounted) {
-            return;
-          }
-        }
-      }
-
-      setState(() {});
     });
 
     super.initState();

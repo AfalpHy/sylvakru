@@ -1,7 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/artist_album.dart';
-import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/widgets/collection_list.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/base/asset_images.dart';
@@ -36,7 +34,7 @@ class _AlbumsLayerState extends CollectionListState {
 
   @override
   void updateCurrentList() {
-    preparing = false;
+    preparing = !artistAlbumManager.done;
 
     final value = textController.text;
     final list = artistAlbumManager.albumList
@@ -47,6 +45,7 @@ class _AlbumsLayerState extends CollectionListState {
     }
     currentPictureList = list.map((e) => e.picture).toList();
     currentTextList = list.map((e) => e.name).toList();
+
     currentOnTapList = list
         .map(
           (e) => () {
@@ -60,11 +59,6 @@ class _AlbumsLayerState extends CollectionListState {
   }
 
   @override
-  Future<void> fetchCollectionList() async {
-    reachEnd = await artistAlbumManager.loadAlbums() == 0;
-  }
-
-  @override
   void initState() {
     super.initState();
 
@@ -74,15 +68,8 @@ class _AlbumsLayerState extends CollectionListState {
       false,
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (artistAlbumManager.albumList.isNotEmpty ||
-          (isNotStreamSource && !Loader.busy)) {
-        updateCurrentList();
-      } else if (isStreamSource) {
-        reachEnd = await artistAlbumManager.loadAlbums() == 0;
-        updateCurrentList();
-      }
-    });
+    updateCurrentList();
+
     artistAlbumManager.updateNotifier.addListener(updateCurrentList);
   }
 
