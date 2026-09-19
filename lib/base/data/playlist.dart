@@ -31,10 +31,15 @@ class PlaylistManager {
     );
     initFile(_playlistsFile, true);
 
-    final playlistNames = await readJsonListFile(_playlistsFile);
-    for (final name in playlistNames) {
-      final playlist = Playlist(name: name);
-      addPlaylist(playlist);
+    final contentList = await readJsonListFile(_playlistsFile);
+    for (final content in contentList) {
+      if (isNotStreamSource) {
+        final playlist = Playlist(name: content);
+        addPlaylist(playlist);
+      } else {
+        final playlist = Playlist(name: content['name'], id: content['id']);
+        addPlaylist(playlist);
+      }
     }
     updateNotifier.value++;
   }
@@ -131,7 +136,14 @@ class PlaylistManager {
 
   void update() {
     _playlistsFile.writeAsStringSync(
-      jsonEncode(playlists.map((pl) => pl.name).skip(1).toList()),
+      jsonEncode(
+        playlists
+            .map(
+              (pl) => isStreamSource ? {'id': pl.id, 'name': pl.name} : pl.name,
+            )
+            .skip(1)
+            .toList(),
+      ),
     );
 
     updateNotifier.value++;

@@ -179,9 +179,8 @@ class _SongListState extends State<SongList> {
       searchValue.isEmpty ? songList : tmpSongList,
     );
 
-    showPlayButtonNotifierMap.clear();
     for (var e in currentSongList) {
-      showPlayButtonNotifierMap[e] = ValueNotifier(false);
+      showPlayButtonNotifierMap.putIfAbsent(e, () => ValueNotifier(false));
       isSelectedNotifierMap.putIfAbsent(e, () => ValueNotifier(false));
     }
 
@@ -302,41 +301,40 @@ class _SongListState extends State<SongList> {
       builder: (_, _, _) {
         MyPicture? picture = mainPicture;
         return ListenableBuilder(
-          listenable: Listenable.merge([picture?.changeNotifier]),
+          listenable: Listenable.merge([
+            picture?.changeNotifier,
+            mainPageThemeNotifier,
+            layersManager.backgroundChangeNotifier,
+          ]),
           builder: (_, _) {
-            return ValueListenableBuilder(
-              valueListenable: mainPageThemeNotifier,
-              builder: (_, _, _) {
-                final coverArt = CoverArtWidget(
-                  size: size,
-                  borderRadius: size / 10,
-                  picture: picture,
-                  elevation: 5,
-                  color: colorManager.getSpecificMainPageCoverArtBaseColorForm(
-                    picture,
-                  ), // keep stable color
-                );
-
-                return widget.isRoot
-                    ? coverArt
-                    : Hero(
-                        tag:
-                            (picture?.id ?? '') +
-                            (album != null ? rootLabel : '') +
-                            getTitleText(AppLocalizations.of(context)),
-                        transitionOnUserGestures: true,
-                        flightShuttleBuilder:
-                            (
-                              flightContext,
-                              animation,
-                              flightDirection,
-                              fromHeroContext,
-                              toHeroContext,
-                            ) => FittedBox(child: toHeroContext.widget),
-                        child: coverArt,
-                      );
-              },
+            final coverArt = CoverArtWidget(
+              size: size,
+              borderRadius: size / 10,
+              picture: picture,
+              elevation: 5,
+              color: colorManager.getSpecificMainPageCoverArtBaseColorForm(
+                picture,
+              ), // keep stable color
             );
+
+            return widget.isRoot
+                ? coverArt
+                : Hero(
+                    tag:
+                        (picture?.id ?? '') +
+                        (album != null ? rootLabel : '') +
+                        getTitleText(AppLocalizations.of(context)),
+                    transitionOnUserGestures: true,
+                    flightShuttleBuilder:
+                        (
+                          flightContext,
+                          animation,
+                          flightDirection,
+                          fromHeroContext,
+                          toHeroContext,
+                        ) => FittedBox(child: toHeroContext.widget),
+                    child: coverArt,
+                  );
           },
         );
       },
