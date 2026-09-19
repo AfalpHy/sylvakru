@@ -13,6 +13,8 @@ class CoverArtWidget extends StatelessWidget {
   final String? picturePath;
   final double elevation;
   final Color? color;
+  final bool useResize;
+
   const CoverArtWidget({
     super.key,
     this.size,
@@ -21,6 +23,7 @@ class CoverArtWidget extends StatelessWidget {
     this.picturePath,
     this.elevation = 0,
     this.color,
+    this.useResize = true,
   });
 
   @override
@@ -58,7 +61,7 @@ class CoverArtWidget extends StatelessWidget {
   }
 
   Widget imageWidget(String path) {
-    final ImageProvider imageProvider = size != null && size! <= 256
+    final ImageProvider imageProvider = size != null && useResize
         ? ResizeImage(FileImage(File(path)), width: (size! * 4).toInt())
         : FileImage(File(path));
 

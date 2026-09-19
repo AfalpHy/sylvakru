@@ -92,6 +92,7 @@ class BottomControl extends StatelessWidget {
                       size: 50,
                       borderRadius: 5,
                       picture: currentSong?.picture,
+                      useResize: false,
                     ),
                   ),
                   title: Text(

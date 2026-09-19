@@ -63,6 +63,7 @@ class PlayBar extends StatelessWidget {
                     size: 35,
                     borderRadius: 3,
                     picture: currentSong.picture,
+                    useResize: false,
                   ),
                 ),
 
