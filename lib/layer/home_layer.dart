@@ -93,6 +93,7 @@ class HomeLayer extends StatelessWidget {
                           cursor: SystemMouseCursors.click,
                           child: Hero(
                             tag: '${album.picture.id}home${album.name}',
+                            transitionOnUserGestures: true,
                             child: CoverArtWidget(
                               size: 150,
                               borderRadius: 15,
@@ -243,6 +244,7 @@ class HomeLayer extends StatelessWidget {
                               child: Hero(
                                 tag:
                                     '${playlist.picture?.id ?? ''}home${playlist.isFavorite ? l10n.favorites : playlist.name}',
+                                transitionOnUserGestures: true,
                                 child: CoverArtWidget(
                                   size: 150,
                                   borderRadius: 15,
