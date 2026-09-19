@@ -85,10 +85,21 @@ class HomeLayer extends StatelessWidget {
                   final album = artistAlbumManager.albumList[index];
                   return Column(
                     children: [
-                      CoverArtWidget(
-                        size: 150,
-                        borderRadius: 8,
-                        picture: album.picture,
+                      GestureDetector(
+                        onTap: () {
+                          layersManager.pushDetail('home', album);
+                        },
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Hero(
+                            tag: '${album.picture.id}home${album.name}',
+                            child: CoverArtWidget(
+                              size: 150,
+                              borderRadius: 15,
+                              picture: album.picture,
+                            ),
+                          ),
+                        ),
                       ),
                       SizedBox(height: 5),
                       SizedBox(
@@ -218,22 +229,39 @@ class HomeLayer extends StatelessWidget {
                   }
                   index--;
                   final playlist = playlistManager.playlists[index];
-                  return Column(
-                    children: [
-                      CoverArtWidget(
-                        size: 150,
-                        borderRadius: 8,
-                        picture: playlist.picture,
-                      ),
-                      SizedBox(height: 5),
-                      SizedBox(
-                        width: 140,
-                        child: Text(
-                          playlist.name,
-                          style: .new(overflow: .ellipsis, fontSize: 15),
-                        ),
-                      ),
-                    ],
+                  return ValueListenableBuilder(
+                    valueListenable: playlist.changeNotifier,
+                    builder: (context, value, child) {
+                      return Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              layersManager.pushDetail('home', playlist);
+                            },
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Hero(
+                                tag:
+                                    '${playlist.picture?.id ?? ''}home${playlist.isFavorite ? l10n.favorites : playlist.name}',
+                                child: CoverArtWidget(
+                                  size: 150,
+                                  borderRadius: 15,
+                                  picture: playlist.picture,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          SizedBox(
+                            width: 140,
+                            child: Text(
+                              playlist.name,
+                              style: .new(overflow: .ellipsis, fontSize: 15),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
               );

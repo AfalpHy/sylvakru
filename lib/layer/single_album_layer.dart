@@ -4,10 +4,15 @@ import 'package:sylvakru/base/widgets/song_list.dart';
 
 class SingleAlbumLayer extends StatelessWidget {
   final Album album;
-  const SingleAlbumLayer({super.key, required this.album});
+  final bool isHomeDetaile;
+  const SingleAlbumLayer({
+    super.key,
+    required this.album,
+    this.isHomeDetaile = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SongList(album: album, isRoot: false);
+    return SongList(album: album, isRoot: false, isHomeDetail: isHomeDetaile);
   }
 }
