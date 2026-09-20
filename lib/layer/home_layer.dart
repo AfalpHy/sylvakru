@@ -43,6 +43,11 @@ class HomeLayerState extends State<HomeLayer> {
   final recentlyDisplayIconNotifier = ValueNotifier(false);
   final playlistsDisplayIconNotifier = ValueNotifier(false);
 
+  final albumsChangeNotifier = ValueNotifier(0);
+  final rankingChangeNotifier = ValueNotifier(0);
+  final recentlyChangeNotifier = ValueNotifier(0);
+  final playlistsChangeNotifier = ValueNotifier(0);
+
   @override
   void dispose() {
     albumsSC.dispose();
@@ -147,6 +152,7 @@ class HomeLayerState extends State<HomeLayer> {
           ),
           scrollController: albumsSC,
           displayIconNotifier: albumsDisplayIconNotifier,
+          changeNotifier: albumsChangeNotifier,
           iconTop: 55,
         ),
 
@@ -186,6 +192,7 @@ class HomeLayerState extends State<HomeLayer> {
           ),
           scrollController: rankingSC,
           displayIconNotifier: rankingDisplayIconNotifier,
+          changeNotifier: rankingChangeNotifier,
           iconTop: 67,
         ),
 
@@ -225,6 +232,7 @@ class HomeLayerState extends State<HomeLayer> {
           ),
           scrollController: recentlySC,
           displayIconNotifier: recentlyDisplayIconNotifier,
+          changeNotifier: rankingChangeNotifier,
           iconTop: 67,
         ),
 
@@ -316,6 +324,7 @@ class HomeLayerState extends State<HomeLayer> {
           ),
           scrollController: playlistsSC,
           displayIconNotifier: playlistsDisplayIconNotifier,
+          changeNotifier: playlistsChangeNotifier,
           iconTop: 55,
         ),
         SizedBox(height: 15),
@@ -429,11 +438,11 @@ class HomeLayerState extends State<HomeLayer> {
     required Widget child,
     required ScrollController scrollController,
     required ValueNotifier<bool> displayIconNotifier,
+    required ValueNotifier<int> changeNotifier,
     required double iconTop,
   }) {
     bool isScrolling = false;
     final scrollDistance = MediaQuery.sizeOf(context).width / 2;
-    final changeNotifier = ValueNotifier(0);
     return MouseRegion(
       onEnter: (event) {
         displayIconNotifier.value = true;
@@ -447,8 +456,8 @@ class HomeLayerState extends State<HomeLayer> {
           ListenableBuilder(
             listenable: Listenable.merge([displayIconNotifier, changeNotifier]),
             builder: (context, child) {
-              if (scrollController.position.pixels == 0 ||
-                  !displayIconNotifier.value) {
+              if (!displayIconNotifier.value ||
+                  scrollController.position.pixels == 0) {
                 return SizedBox.shrink();
               }
               return Positioned(
@@ -496,9 +505,9 @@ class HomeLayerState extends State<HomeLayer> {
           ListenableBuilder(
             listenable: Listenable.merge([displayIconNotifier, changeNotifier]),
             builder: (context, child) {
-              if (scrollController.position.pixels ==
-                      scrollController.position.maxScrollExtent ||
-                  !displayIconNotifier.value) {
+              if (!scrollController.position.hasContentDimensions ||
+                  !displayIconNotifier.value ||
+                  scrollController.position.extentAfter <= 0) {
                 return SizedBox.shrink();
               }
               return Positioned(
