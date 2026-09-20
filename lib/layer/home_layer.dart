@@ -69,7 +69,8 @@ class HomeLayerState extends State<HomeLayer> {
 
   Widget content(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    double extraSize = max(0, (shortestSide - 750) * 0.2);
     return ListView(
       children: [
         Row(
@@ -99,7 +100,7 @@ class HomeLayerState extends State<HomeLayer> {
 
         mouseRegionForScroll(
           child: SizedBox(
-            height: 180,
+            height: 180 + extraSize,
             child: ValueListenableBuilder(
               valueListenable: artistAlbumManager.updateNotifier,
               builder: (context, value, child) {
@@ -128,7 +129,7 @@ class HomeLayerState extends State<HomeLayer> {
                               tag: '${album.picture.id}home${album.name}',
                               transitionOnUserGestures: true,
                               child: CoverArtWidget(
-                                size: 150,
+                                size: 150 + extraSize,
                                 borderRadius: 15,
                                 picture: album.picture,
                               ),
@@ -137,7 +138,7 @@ class HomeLayerState extends State<HomeLayer> {
                         ),
                         SizedBox(height: 5),
                         SizedBox(
-                          width: 140,
+                          width: 140 + extraSize,
                           child: Text(
                             album.name,
                             style: .new(overflow: .ellipsis, fontSize: 15),
@@ -153,7 +154,7 @@ class HomeLayerState extends State<HomeLayer> {
           scrollController: albumsSC,
           displayIconNotifier: albumsDisplayIconNotifier,
           changeNotifier: albumsChangeNotifier,
-          iconTop: 55,
+          iconTop: 55 + extraSize / 2,
         ),
 
         SizedBox(height: 15),
@@ -265,7 +266,7 @@ class HomeLayerState extends State<HomeLayer> {
 
         mouseRegionForScroll(
           child: SizedBox(
-            height: 180,
+            height: 180 + extraSize,
             child: ValueListenableBuilder(
               valueListenable: playlistManager.updateNotifier,
               builder: (context, value, child) {
@@ -298,7 +299,7 @@ class HomeLayerState extends State<HomeLayer> {
                                       '${playlist.picture?.id ?? ''}home${playlist.isFavorite ? l10n.favorites : playlist.name}',
                                   transitionOnUserGestures: true,
                                   child: CoverArtWidget(
-                                    size: 150,
+                                    size: 150 + extraSize,
                                     borderRadius: 15,
                                     picture: playlist.picture,
                                   ),
@@ -307,7 +308,7 @@ class HomeLayerState extends State<HomeLayer> {
                             ),
                             SizedBox(height: 5),
                             SizedBox(
-                              width: 140,
+                              width: 140 + extraSize,
                               child: Text(
                                 playlist.name,
                                 style: .new(overflow: .ellipsis, fontSize: 15),
@@ -325,7 +326,7 @@ class HomeLayerState extends State<HomeLayer> {
           scrollController: playlistsSC,
           displayIconNotifier: playlistsDisplayIconNotifier,
           changeNotifier: playlistsChangeNotifier,
-          iconTop: 55,
+          iconTop: 55 + extraSize / 2,
         ),
         SizedBox(height: 15),
 
@@ -456,7 +457,8 @@ class HomeLayerState extends State<HomeLayer> {
           ListenableBuilder(
             listenable: Listenable.merge([displayIconNotifier, changeNotifier]),
             builder: (context, child) {
-              if (!displayIconNotifier.value ||
+              if (isMobile ||
+                  !displayIconNotifier.value ||
                   scrollController.position.pixels == 0) {
                 return SizedBox.shrink();
               }
@@ -505,7 +507,8 @@ class HomeLayerState extends State<HomeLayer> {
           ListenableBuilder(
             listenable: Listenable.merge([displayIconNotifier, changeNotifier]),
             builder: (context, child) {
-              if (!scrollController.position.hasContentDimensions ||
+              if (isMobile ||
+                  !scrollController.position.hasContentDimensions ||
                   !displayIconNotifier.value ||
                   scrollController.position.extentAfter <= 0) {
                 return SizedBox.shrink();
@@ -526,7 +529,6 @@ class HomeLayerState extends State<HomeLayer> {
                         ),
                         child: IconButton(
                           color: value,
-
                           onPressed: () async {
                             if (isScrolling) {
                               return;
