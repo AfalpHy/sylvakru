@@ -100,11 +100,17 @@ class SelectableSongListPage extends StatelessWidget {
                   ),
                   Text(l10n.selectAll, style: TextStyle(fontSize: 16)),
                   Spacer(),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: Text(l10n.complete, style: TextStyle(fontSize: 16)),
+                  Transform.translate(
+                    offset: Offset(0, -2),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        l10n.complete,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
                   ),
                   SizedBox(width: 20),
                 ],

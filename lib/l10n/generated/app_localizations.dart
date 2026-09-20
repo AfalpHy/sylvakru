@@ -533,13 +533,13 @@ abstract class AppLocalizations {
   /// No description provided for @add2Playlist.
   ///
   /// In en, this message translates to:
-  /// **'Add to a Playlist'**
+  /// **'Add to Playlist'**
   String get add2Playlist;
 
   /// No description provided for @added2Playlist.
   ///
   /// In en, this message translates to:
-  /// **'Added to a playlist'**
+  /// **'Added to playlist'**
   String get added2Playlist;
 
   /// No description provided for @selectAll.

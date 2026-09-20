@@ -239,10 +239,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editMetadata => 'Edit Metadata';
 
   @override
-  String get add2Playlist => 'Add to a Playlist';
+  String get add2Playlist => 'Add to Playlist';
 
   @override
-  String get added2Playlist => 'Added to a playlist';
+  String get added2Playlist => 'Added to playlist';
 
   @override
   String get selectAll => 'Select All';

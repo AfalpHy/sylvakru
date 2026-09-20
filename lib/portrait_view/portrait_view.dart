@@ -39,13 +39,6 @@ class _PortraitViewState extends State<PortraitView>
   }
 
   void updateDrawerSetting() {
-    _slideAnimation =
-        Tween<Offset>(
-          begin: Offset(endDrawerNotifier.value ? 1.0 : -1.0, 0.0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(parent: _controller, curve: Curves.linearToEaseOut),
-        );
     setState(() {
       _slideAnimation =
           Tween<Offset>(

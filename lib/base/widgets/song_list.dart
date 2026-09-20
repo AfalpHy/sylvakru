@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:rive_animated_icon/rive_animated_icon.dart';
@@ -41,7 +42,6 @@ import 'package:sylvakru/layer/home_layer.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/layer/playlists_layer.dart';
 import 'package:sylvakru/portrait_view/my_search_field.dart';
-import 'package:text_scroll/text_scroll.dart';
 
 part '../../landscape_view/panels/song_list_panel.dart';
 part '../../portrait_view/pages/song_list_page.dart';
