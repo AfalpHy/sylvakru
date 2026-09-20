@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/asset_images.dart';
@@ -12,7 +13,7 @@ class SelectableSongListTile extends StatelessWidget {
   final ValueNotifier<bool> isSelected;
   final ValueNotifier<int> selectedNumNotifier;
   final bool reorderable;
-  final bool isRanking;
+  final bool isFrequently;
 
   const SelectableSongListTile({
     super.key,
@@ -21,7 +22,7 @@ class SelectableSongListTile extends StatelessWidget {
     required this.isSelected,
     required this.selectedNumNotifier,
     this.reorderable = false,
-    this.isRanking = false,
+    this.isFrequently = false,
   });
 
   @override
@@ -105,7 +106,7 @@ class SelectableSongListTile extends StatelessWidget {
           ),
         ),
 
-        if (isRanking)
+        if (isFrequently && sourceType != .emby)
           SizedBox(
             width: 60,
             child: Row(

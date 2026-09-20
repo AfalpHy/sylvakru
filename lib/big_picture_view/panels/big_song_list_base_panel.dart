@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:smooth_corner/smooth_corner.dart';
+import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
@@ -16,7 +17,7 @@ abstract class BigSongListBasePanel extends StatefulWidget {
 
 abstract class BigSongListBasePanelState extends State<BigSongListBasePanel> {
   late final List<MyAudioMetadata> songList;
-  final bool isRanking = false;
+  final bool isFrequently = false;
   final scrollController = ScrollController();
   bool firstLoading = false;
 
@@ -96,7 +97,7 @@ abstract class BigSongListBasePanelState extends State<BigSongListBasePanel> {
         children: [
           SizedBox(
             width: 60,
-            child: isRanking
+            child: isFrequently && sourceType != .emby
                 ? Row(
                     mainAxisAlignment: .center,
                     children: [
@@ -156,7 +157,7 @@ abstract class BigSongListBasePanelState extends State<BigSongListBasePanel> {
 
         Text(formatDuration(getDuration(song))),
 
-        isRanking
+        isFrequently && sourceType != .emby
             ? SizedBox(
                 width: 60,
                 child: Center(child: Text(song.playCount.toString())),

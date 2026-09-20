@@ -164,22 +164,22 @@ class _BigHomePanelState extends State<BigHomePanel> {
         ),
 
         ValueListenableBuilder(
-          valueListenable: history.rankingChangeNotifier,
+          valueListenable: history.frequentlyChangeNotifier,
           builder: (context, value, child) {
             return _ListView(
-              title: l10n.ranking,
-              count: history.rankingSongList.length,
-              getPicture: (index) => history.rankingSongList[index].picture,
+              title: l10n.frequently,
+              count: history.frequentlySongList.length,
+              getPicture: (index) => history.frequentlySongList[index].picture,
               onTap: (index) async {
                 showSongOptions(
                   context: context,
-                  song: history.rankingSongList[index],
+                  song: history.frequentlySongList[index],
                   includeGoToArtist: true,
                   includeGoToAlbum: true,
                 );
               },
               getBottomWidget: (index) {
-                final song = history.rankingSongList[index];
+                final song = history.frequentlySongList[index];
                 return ListTile(
                   contentPadding: .zero,
                   mouseCursor: SystemMouseCursors.click,

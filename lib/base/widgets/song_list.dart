@@ -51,7 +51,7 @@ class SongList extends StatefulWidget {
   final Artist? artist;
   final Album? album;
   final Folder? folder;
-  final bool isRanking;
+  final bool isFrequently;
   final bool isRecently;
 
   final bool isRoot;
@@ -64,7 +64,7 @@ class SongList extends StatefulWidget {
     this.artist,
     this.album,
     this.folder,
-    this.isRanking = false,
+    this.isFrequently = false,
     this.isRecently = false,
     this.isRoot = true,
     this.isHomeDetail = false,
@@ -85,7 +85,7 @@ class _SongListState extends State<SongList> {
   Folder? folder;
 
   bool isLibrary = false;
-  bool isRanking = false;
+  bool isFrequently = false;
   bool isRecently = false;
 
   bool canModify = false;
@@ -128,7 +128,7 @@ class _SongListState extends State<SongList> {
   bool prepareing = true;
 
   bool get reorderable {
-    return !(sourceType == .feiniu && playlist != null) &&
+    return canModify &&
         searchValue.isEmpty &&
         sortTypeNotifier.value == 0 &&
         (playlist != null ||
@@ -149,8 +149,8 @@ class _SongListState extends State<SongList> {
         ? l10n.songs
         : playlist?.isFavorite == true
         ? l10n.favorites
-        : isRanking
-        ? l10n.ranking
+        : isFrequently
+        ? l10n.frequently
         : isRecently
         ? l10n.recently
         : title;
@@ -220,7 +220,7 @@ class _SongListState extends State<SongList> {
     artist = widget.artist;
     album = widget.album;
     folder = widget.folder;
-    isRanking = widget.isRanking;
+    isFrequently = widget.isFrequently;
     isRecently = widget.isRecently;
 
     if (playlist != null) {
@@ -262,9 +262,9 @@ class _SongListState extends State<SongList> {
         layersManager.popDetail('folders');
       };
       rootLabel = 'folders';
-    } else if (isRanking) {
-      songList = history.rankingSongList;
-      history.rankingChangeNotifier.addListener(updateSongList);
+    } else if (isFrequently) {
+      songList = history.frequentlySongList;
+      history.frequentlyChangeNotifier.addListener(updateSongList);
     } else if (isRecently) {
       songList = history.recentlySongList;
       history.recentlyChangeNotifier.addListener(updateSongList);

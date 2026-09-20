@@ -97,7 +97,7 @@ extension _SongListPage on _SongListState {
                         songList: currentSongList,
                         playlist: playlist,
                         folder: folder,
-                        isRanking: isRanking,
+                        isFrequently: isFrequently,
                         isRecently: isRecently,
                         isLibrary: isLibrary,
                         reorderable: reorderable,
@@ -109,7 +109,7 @@ extension _SongListPage on _SongListState {
               );
             },
           ),
-          if (!isRanking && !isRecently)
+          if (!isFrequently && !isRecently)
             ListTile(
               leading: ImageIcon(sequenceImage),
               title: Text(
@@ -419,7 +419,7 @@ extension _SongListPage on _SongListState {
           visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
           onTap: () =>
               audioHandler.setPlayQueue(currentSongList, 0, targetIndex: index),
-          trailing: isRanking
+          trailing: isFrequently && sourceType != .emby
               ? SizedBox(
                   width: 100,
                   child: Row(

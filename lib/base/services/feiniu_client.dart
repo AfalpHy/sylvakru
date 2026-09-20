@@ -199,6 +199,12 @@ class FeiniuClient extends StreamClient {
     return rows == null ? null : _songs(rows);
   }
 
+  Future<List<MyAudioMetadata>?> getRecentlySongs() async {
+    final rows = await _list('/play-history/list', size: 100, offset: 0);
+
+    return rows == null ? null : _songs(rows);
+  }
+
   @override
   Future<List<MyAudioMetadata>?> getStarredSongs() async {
     final rows = await _list('/favorite-track/list');

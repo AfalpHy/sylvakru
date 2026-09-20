@@ -111,9 +111,6 @@ Future<void> setParsedLyrics(MyAudioMetadata song) async {
       return;
     }
     lines = lyrics.split(RegExp(r'[\n]'));
-  } else if (sourceType == .emby) {
-    result.lines.add(LyricLine(Duration.zero, l10n.noLyrics, []));
-    return;
   } else {
     if (song.lyrics == null || song.lyrics!.isEmpty) {
       String path = song.path!;

@@ -15,7 +15,7 @@ class SelectableSongListPage extends StatelessWidget {
   final List<MyAudioMetadata> songList;
   final Playlist? playlist;
   final Folder? folder;
-  final bool isRanking;
+  final bool isFrequently;
   final bool isRecently;
   final bool isLibrary;
   final bool reorderable;
@@ -30,7 +30,7 @@ class SelectableSongListPage extends StatelessWidget {
     required this.songList,
     this.playlist,
     this.folder,
-    this.isRanking = false,
+    this.isFrequently = false,
     this.isRecently = false,
     this.isLibrary = false,
     this.reorderable = false,
@@ -153,7 +153,7 @@ class SelectableSongListPage extends StatelessWidget {
                         isSelected: isSelectedNotifierMap[songList[index]]!,
                         selectedNumNotifier: selectedNumNotifier,
                         reorderable: reorderable,
-                        isRanking: isRanking,
+                        isFrequently: isFrequently,
                       ),
                     );
                   },

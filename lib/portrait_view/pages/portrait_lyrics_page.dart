@@ -188,7 +188,7 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
                   color: lyricsPageBackgroundColor.value,
                   child: Column(
                     children: [
-                      SizedBox(height: MediaQuery.of(context).padding.top),
+                      SizedBox(height: MediaQuery.of(context).padding.top + 15),
                       if (isShort)
                         Row(
                           children: [

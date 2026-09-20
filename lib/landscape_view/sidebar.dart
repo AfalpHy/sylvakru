@@ -237,13 +237,13 @@ class Sidebar extends StatelessWidget {
 
                     SliverToBoxAdapter(
                       child: sidebarItem(
-                        label: 'ranking',
+                        label: 'frequently',
 
-                        leading: ImageIcon(rankingImage, size: 30),
-                        content: l10n.ranking,
+                        leading: ImageIcon(frequentlyImage, size: 30),
+                        content: l10n.frequently,
 
                         onTap: () {
-                          layersManager.switchRootLayer('ranking');
+                          layersManager.switchRootLayer('frequently');
                         },
                       ),
                     ),

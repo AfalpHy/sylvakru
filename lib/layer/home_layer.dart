@@ -34,24 +34,24 @@ class HomeLayer extends StatefulWidget {
 
 class HomeLayerState extends State<HomeLayer> {
   final albumsSC = ScrollController();
-  final rankingSC = ScrollController();
+  final frequentlySC = ScrollController();
   final recentlySC = ScrollController();
   final playlistsSC = ScrollController();
 
   final albumsDisplayIconNotifier = ValueNotifier(false);
-  final rankingDisplayIconNotifier = ValueNotifier(false);
+  final frequentlyDisplayIconNotifier = ValueNotifier(false);
   final recentlyDisplayIconNotifier = ValueNotifier(false);
   final playlistsDisplayIconNotifier = ValueNotifier(false);
 
   final albumsChangeNotifier = ValueNotifier(0);
-  final rankingChangeNotifier = ValueNotifier(0);
+  final frequentlyChangeNotifier = ValueNotifier(0);
   final recentlyChangeNotifier = ValueNotifier(0);
   final playlistsChangeNotifier = ValueNotifier(0);
 
   @override
   void dispose() {
     albumsSC.dispose();
-    rankingSC.dispose();
+    frequentlySC.dispose();
     recentlySC.dispose();
     playlistsSC.dispose();
     super.dispose();
@@ -165,14 +165,14 @@ class HomeLayerState extends State<HomeLayer> {
             SizedBox(width: 20),
             GestureDetector(
               onTap: () {
-                layersManager.switchRootLayer('ranking');
+                layersManager.switchRootLayer('frequently');
               },
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Row(
                   children: [
                     Text(
-                      l10n.ranking,
+                      l10n.frequently,
                       style: .new(fontWeight: .bold, fontSize: 20),
                     ),
                     Icon(Icons.arrow_forward_ios_rounded, size: 20),
@@ -186,14 +186,14 @@ class HomeLayerState extends State<HomeLayer> {
 
         mouseRegionForScroll(
           child: ValueListenableBuilder(
-            valueListenable: history.rankingChangeNotifier,
+            valueListenable: history.frequentlyChangeNotifier,
             builder: (context, value, child) {
-              return songListView(history.rankingSongList, rankingSC);
+              return songListView(history.frequentlySongList, frequentlySC);
             },
           ),
-          scrollController: rankingSC,
-          displayIconNotifier: rankingDisplayIconNotifier,
-          changeNotifier: rankingChangeNotifier,
+          scrollController: frequentlySC,
+          displayIconNotifier: frequentlyDisplayIconNotifier,
+          changeNotifier: frequentlyChangeNotifier,
           iconTop: 67,
         ),
 
@@ -233,7 +233,7 @@ class HomeLayerState extends State<HomeLayer> {
           ),
           scrollController: recentlySC,
           displayIconNotifier: recentlyDisplayIconNotifier,
-          changeNotifier: rankingChangeNotifier,
+          changeNotifier: frequentlyChangeNotifier,
           iconTop: 67,
         ),
 

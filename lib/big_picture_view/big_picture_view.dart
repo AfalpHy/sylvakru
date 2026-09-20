@@ -23,7 +23,7 @@ import 'package:sylvakru/big_picture_view/panels/big_artists_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_folders_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_home_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_playlists_panel.dart';
-import 'package:sylvakru/big_picture_view/panels/big_ranking_panel.dart';
+import 'package:sylvakru/big_picture_view/panels/big_frequently_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_recently_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_settings_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_songs_panel.dart';
@@ -48,7 +48,7 @@ class _BigPictureViewState extends State<BigPictureView> {
     BigArtistsPanel(),
     BigAlbumsPanel(),
     BigFoldersPanel(),
-    BigRankingPanel(),
+    BigFrequentlyPanel(),
     BigRecentlyPanel(),
     BigPlaylistsPanel(),
     BigSettingsPanel(),
@@ -159,7 +159,7 @@ class _BigPictureViewState extends State<BigPictureView> {
       l10n.artists,
       l10n.albums,
       l10n.folders,
-      l10n.ranking,
+      l10n.frequently,
       l10n.recently,
       l10n.playlists,
       l10n.settings,
@@ -508,7 +508,7 @@ class _BigPictureViewState extends State<BigPictureView> {
                                 case 5:
                                   showSongListOptions(
                                     context,
-                                    history.rankingSongList,
+                                    history.frequentlySongList,
                                   );
                                 case 6:
                                   showSongListOptions(

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sylvakru/base/app.dart';
+import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/services/interaction.dart';
@@ -174,6 +175,44 @@ class EmbyClient extends StreamClient {
     }
 
     return songs;
+  }
+
+  Future<List<MyAudioMetadata>?> _getHistorySongs(bool isRecently) async {
+    final response = await safeRequest<Map<String, dynamic>>(
+      () => dio.get(
+        '/Users/$userId/Items',
+        queryParameters: {
+          'SearchTerm': '',
+          'SortBy': isRecently ? 'DatePlayed' : 'PlayCount',
+          'SortOrder': 'Descending',
+          'IncludeItemTypes': 'Audio',
+          'Recursive': true,
+          'StartIndex': 0,
+          'Limit': 100,
+        },
+      ),
+      parser: (res) => res.data as Map<String, dynamic>?,
+    );
+
+    if (response == null) {
+      return null;
+    }
+
+    return (normalize(response['Items']) ?? [])
+        .map(
+          (e) =>
+              e['UserData']['Played'] == true ? library.id2Song[e['Id']] : null,
+        )
+        .whereType<MyAudioMetadata>()
+        .toList();
+  }
+
+  Future<List<MyAudioMetadata>?> getFrequentlySongs() async {
+    return _getHistorySongs(false);
+  }
+
+  Future<List<MyAudioMetadata>?> getRecentlySongs() async {
+    return _getHistorySongs(true);
   }
 
   @override
@@ -412,11 +451,28 @@ class EmbyClient extends StreamClient {
 
   @override
   Future<bool> scrobble(String songId) async {
-    final response = await safeRequest<dynamic>(
-      () => dio.post('/Users/$userId/PlayedItems/$songId'),
-      errorMessage: 'Failed to scrobble',
+    await safeRequest<dynamic>(
+      () => dio.post(
+        '/Sessions/Playing',
+        data: {
+          "ItemId": songId,
+          "PlaySessionId": songId,
+          "CanSeek": true,
+          "IsPaused": false,
+          "IsMuted": false,
+          "PositionTicks": 0,
+          "PlayMethod": "DirectPlay",
+        },
+      ),
+    );
+    await safeRequest<dynamic>(
+      () => dio.post(
+        '/Sessions/Playing/Stopped',
+        data: {"ItemId": songId, "PlaySessionId": songId},
+      ),
     );
 
-    return response != null;
+    safeRequest<dynamic>(() => dio.post('/Users/$userId/PlayedItems/$songId'));
+    return true;
   }
 }

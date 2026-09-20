@@ -164,11 +164,11 @@ abstract class AppLocalizations {
   /// **'Folder'**
   String get folder;
 
-  /// No description provided for @ranking.
+  /// No description provided for @frequently.
   ///
   /// In en, this message translates to:
   /// **'Most Played'**
-  String get ranking;
+  String get frequently;
 
   /// No description provided for @recently.
   ///

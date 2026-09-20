@@ -22,7 +22,7 @@ import 'package:sylvakru/layer/home_layer.dart';
 import 'package:sylvakru/layer/license_layer.dart';
 import 'package:sylvakru/layer/playlists_layer.dart';
 import 'package:sylvakru/layer/premium_layer.dart';
-import 'package:sylvakru/layer/ranking_layer.dart';
+import 'package:sylvakru/layer/frequently_layer.dart';
 import 'package:sylvakru/layer/recently_layer.dart';
 import 'package:sylvakru/layer/settings_layer.dart';
 import 'package:sylvakru/layer/single_album_layer.dart';
@@ -134,8 +134,8 @@ class LayersManager {
         return HomeLayer(key: GlobalKey());
       } else if (label == 'songs') {
         return SongsLayer(key: GlobalKey());
-      } else if (label == 'ranking') {
-        return RankingLayer(key: GlobalKey());
+      } else if (label == 'frequently') {
+        return FrequentlyLayer(key: GlobalKey());
       } else if (label == 'recently') {
         return RecentlyLayer(key: GlobalKey());
       } else if (label == 'playlists') {
@@ -370,8 +370,8 @@ class LayersManager {
       return getFirstSong(layer.folder.songList)?.picture;
     } else if (layer is SongsLayer) {
       return getFirstSong(library.songList)?.picture;
-    } else if (layer is RankingLayer) {
-      return getFirstSong(history.rankingSongList)?.picture;
+    } else if (layer is FrequentlyLayer) {
+      return getFirstSong(history.frequentlySongList)?.picture;
     } else if (layer is RecentlyLayer) {
       return getFirstSong(history.recentlySongList)?.picture;
     } else if (layer is SinglePlaylistLayer) {
