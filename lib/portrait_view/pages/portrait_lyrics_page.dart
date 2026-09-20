@@ -63,6 +63,9 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.heightOf(context);
+    final screenWidth = MediaQuery.widthOf(context);
+
+    bool isShort = screenHeight - 400 < screenWidth * 0.85;
 
     return ValueListenableBuilder(
       valueListenable: canDragNotifier,
@@ -135,12 +138,12 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
             child: child,
           );
         },
-        child: content(),
+        child: content(isShort),
       ),
     );
   }
 
-  Widget content() {
+  Widget content(bool isShort) {
     return ValueListenableBuilder(
       valueListenable: currentSongNotifier,
       builder: (context, currentSong, child) {
@@ -185,76 +188,139 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
                   color: lyricsPageBackgroundColor.value,
                   child: Column(
                     children: [
-                      SizedBox(height: 60),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: SizedBox(
-                          height: 36,
-                          child: ValueListenableBuilder(
-                            valueListenable: enableAllNotifier,
-                            builder: (context, value, child) {
-                              final data = getTitle(currentSong);
-                              final textStyle = TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                                color: lyricsPageHighlightTextColor.value,
-                                overflow: .ellipsis,
-                              );
-                              if (!value) {
-                                return Text(data, style: textStyle);
-                              }
-                              return TextScroll(
-                                textAlign: .center,
-                                getTitle(currentSong),
-                                velocity: const Velocity(
-                                  pixelsPerSecond: Offset(40, 0),
-                                ),
-                                style: textStyle,
-                                intervalSpaces: 10,
-                                pauseBetween: Duration(seconds: 2),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
+                      SizedBox(height: MediaQuery.of(context).padding.top),
+                      if (isShort)
+                        Row(
+                          children: [
+                            SizedBox(width: 20),
+                            Hero(
+                              tag: 'cover',
+                              flightShuttleBuilder:
+                                  (
+                                    flightContext,
+                                    animation,
+                                    flightDirection,
+                                    fromHeroContext,
+                                    toHeroContext,
+                                  ) => FittedBox(child: toHeroContext.widget),
+                              child: CoverArtWidget(
+                                size: 80,
+                                borderRadius: 8,
+                                picture: currentSong?.picture,
+                                useResize: false,
+                              ),
+                            ),
+                            SizedBox(width: 15),
 
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: SizedBox(
-                          height: 28,
-                          child: ValueListenableBuilder(
-                            valueListenable: enableAllNotifier,
-                            builder: (context, value, child) {
-                              final data =
-                                  '${getArtist(currentSong)} - ${getAlbum(currentSong)}';
-                              final textStyle = TextStyle(
-                                fontSize: 14,
-                                color: lyricsPageForegroundColor.value,
-                                overflow: .ellipsis,
-                              );
-                              if (!value) {
-                                return Text(data, style: textStyle);
-                              }
-                              return TextScroll(
-                                textAlign: .center,
-                                data,
-                                velocity: const Velocity(
-                                  pixelsPerSecond: Offset(40, 0),
-                                ),
-                                style: textStyle,
-                                intervalSpaces: 10,
-                                pauseBetween: Duration(seconds: 2),
-                              );
-                            },
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: .start,
+                                children: [
+                                  TextScroll(
+                                    getTitle(currentSong),
+                                    velocity: const Velocity(
+                                      pixelsPerSecond: Offset(40, 0),
+                                    ),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20,
+                                      color: lyricsPageHighlightTextColor.value,
+                                      overflow: .ellipsis,
+                                    ),
+                                    intervalSpaces: 10,
+                                    pauseBetween: Duration(seconds: 2),
+                                  ),
+                                  SizedBox(height: 10),
+                                  TextScroll(
+                                    '${getArtist(currentSong)} - ${getAlbum(currentSong)}',
+                                    velocity: const Velocity(
+                                      pixelsPerSecond: Offset(40, 0),
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: lyricsPageForegroundColor.value,
+                                      overflow: .ellipsis,
+                                    ),
+                                    intervalSpaces: 10,
+                                    pauseBetween: Duration(seconds: 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: 20),
+                          ],
+                        )
+                      else ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: SizedBox(
+                            height: 36,
+                            child: ValueListenableBuilder(
+                              valueListenable: enableAllNotifier,
+                              builder: (context, value, child) {
+                                final data = getTitle(currentSong);
+                                final textStyle = TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  color: lyricsPageHighlightTextColor.value,
+                                  overflow: .ellipsis,
+                                );
+                                if (!value) {
+                                  return Text(data, style: textStyle);
+                                }
+                                return TextScroll(
+                                  textAlign: .center,
+                                  data,
+                                  velocity: const Velocity(
+                                    pixelsPerSecond: Offset(40, 0),
+                                  ),
+                                  style: textStyle,
+                                  intervalSpaces: 10,
+                                  pauseBetween: Duration(seconds: 2),
+                                );
+                              },
+                            ),
                           ),
                         ),
-                      ),
+
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: SizedBox(
+                            height: 28,
+                            child: ValueListenableBuilder(
+                              valueListenable: enableAllNotifier,
+                              builder: (context, value, child) {
+                                final data =
+                                    '${getArtist(currentSong)} - ${getAlbum(currentSong)}';
+                                final textStyle = TextStyle(
+                                  fontSize: 14,
+                                  color: lyricsPageForegroundColor.value,
+                                  overflow: .ellipsis,
+                                );
+                                if (!value) {
+                                  return Text(data, style: textStyle);
+                                }
+                                return TextScroll(
+                                  textAlign: .center,
+                                  data,
+                                  velocity: const Velocity(
+                                    pixelsPerSecond: Offset(40, 0),
+                                  ),
+                                  style: textStyle,
+                                  intervalSpaces: 10,
+                                  pauseBetween: Duration(seconds: 2),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                       SizedBox(height: 10),
 
                       Expanded(
                         child: PageView(
                           children: [
-                            artPage(context, currentSong),
+                            controlsPage(context, currentSong, isShort),
                             ValueListenableBuilder(
                               valueListenable: enableAllNotifier,
                               builder: (context, value, child) {
@@ -278,70 +344,88 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
     );
   }
 
-  Widget artPage(BuildContext context, MyAudioMetadata? currentSong) {
+  Widget lyricWidget(
+    MyAudioMetadata? currentSong,
+    EdgeInsetsGeometry padding,
+    bool expanded,
+  ) {
+    return Expanded(
+      child: Padding(
+        padding: padding,
+        child: ShaderMask(
+          shaderCallback: (rect) {
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent, // fade out at top
+                Colors.grey.shade50, // fully visible
+                Colors.grey.shade50, // fully visible
+                Colors.transparent, // fade out at bottom
+              ],
+              stops: [0.0, 0.1, 0.8, 1.0], // adjust fade height
+            ).createShader(rect);
+          },
+          blendMode: BlendMode.dstIn,
+          // use key to force update
+          child: currentSong == null
+              ? SizedBox()
+              : ValueListenableBuilder(
+                  valueListenable: enableAllNotifier,
+                  builder: (context, value, child) {
+                    if (!value) {
+                      return SizedBox.shrink();
+                    }
+                    return LyricsListView(
+                      key: ValueKey(currentSong),
+                      expanded: expanded,
+                      lines: currentSong.parsedLyrics!.lines,
+                      isKaraoke: currentSong.parsedLyrics!.isKaraoke,
+                    );
+                  },
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget controlsPage(
+    BuildContext context,
+    MyAudioMetadata? currentSong,
+    bool isShort,
+  ) {
     final mobileWidth = MediaQuery.widthOf(context);
 
     return Column(
       children: [
-        Hero(
-          tag: 'cover',
-          flightShuttleBuilder:
-              (
-                flightContext,
-                animation,
-                flightDirection,
-                fromHeroContext,
-                toHeroContext,
-              ) => FittedBox(child: toHeroContext.widget),
-          child: CoverArtWidget(
-            size: mobileWidth * 0.84,
-            borderRadius: mobileWidth * 0.04,
-            picture: currentSong?.picture,
-            elevation: 15,
-            color: colorManager.getSpecificLyricsPageCoverArtBaseColor(),
-            useResize: false,
-          ),
-        ),
-
-        const SizedBox(height: 30),
-
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: ShaderMask(
-              shaderCallback: (rect) {
-                return LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent, // fade out at top
-                    Colors.grey.shade50, // fully visible
-                    Colors.grey.shade50, // fully visible
-                    Colors.transparent, // fade out at bottom
-                  ],
-                  stops: [0.0, 0.1, 0.8, 1.0], // adjust fade height
-                ).createShader(rect);
-              },
-              blendMode: BlendMode.dstIn,
-              // use key to force update
-              child: currentSong == null
-                  ? SizedBox()
-                  : ValueListenableBuilder(
-                      valueListenable: enableAllNotifier,
-                      builder: (context, value, child) {
-                        if (!value) {
-                          return SizedBox.shrink();
-                        }
-                        return LyricsListView(
-                          key: ValueKey(currentSong),
-                          expanded: false,
-                          lines: currentSong.parsedLyrics!.lines,
-                          isKaraoke: currentSong.parsedLyrics!.isKaraoke,
-                        );
-                      },
-                    ),
+        if (!isShort) ...[
+          Hero(
+            tag: 'cover',
+            flightShuttleBuilder:
+                (
+                  flightContext,
+                  animation,
+                  flightDirection,
+                  fromHeroContext,
+                  toHeroContext,
+                ) => FittedBox(child: toHeroContext.widget),
+            child: CoverArtWidget(
+              size: mobileWidth * 0.84,
+              borderRadius: mobileWidth * 0.04,
+              picture: currentSong?.picture,
+              elevation: 15,
+              color: colorManager.getSpecificLyricsPageCoverArtBaseColor(),
+              useResize: false,
             ),
           ),
+
+          const SizedBox(height: 30),
+        ],
+
+        lyricWidget(
+          currentSong,
+          EdgeInsets.symmetric(horizontal: isShort ? 0 : 40),
+          false,
         ),
 
         Row(
@@ -747,32 +831,7 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
       children: [
         Column(
           children: [
-            Expanded(
-              child: ShaderMask(
-                shaderCallback: (rect) {
-                  return LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent, // fade out at top
-                      Colors.grey.shade50, // fully visible
-                      Colors.grey.shade50, // fully visible
-                      Colors.transparent, // fade out at bottom
-                    ],
-                    stops: [0.0, 0.1, 0.7, 1.0], // adjust fade height
-                  ).createShader(rect);
-                },
-                blendMode: BlendMode.dstIn,
-                child: currentSong == null
-                    ? SizedBox()
-                    : LyricsListView(
-                        key: ValueKey(currentSong),
-                        expanded: true,
-                        lines: currentSong.parsedLyrics!.lines,
-                        isKaraoke: currentSong.parsedLyrics!.isKaraoke,
-                      ),
-              ),
-            ),
+            lyricWidget(currentSong, .zero, true),
             SizedBox(height: 50),
           ],
         ),
