@@ -1,6 +1,6 @@
 part of '../../layer/home_layer.dart';
 
-extension HomePage on HomeLayer {
+extension HomePage on HomeLayerState {
   Widget pageView(BuildContext context) {
     return myScaffold(
       context: context,

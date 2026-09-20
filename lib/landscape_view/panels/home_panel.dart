@@ -1,6 +1,6 @@
 part of '../../layer/home_layer.dart';
 
-extension HomePanel on HomeLayer {
+extension HomePanel on HomeLayerState {
   Widget panelView(BuildContext context) {
     return Column(
       children: [
