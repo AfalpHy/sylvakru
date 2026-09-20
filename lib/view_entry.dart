@@ -178,10 +178,10 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
+          constraints: const BoxConstraints(maxWidth: 650),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 600;
+              final isCompact = constraints.maxWidth < 650;
 
               return CustomScrollView(
                 slivers: [
@@ -211,62 +211,26 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
 
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 30),
-                    sliver: isCompact
-                        ? SliverGrid(
-                            delegate: SliverChildListDelegate([
-                              _buildSourceCard(
-                                thisSourceType: .local,
-                                color: iconColor.value,
-                              ),
-                              _buildSourceCard(
-                                thisSourceType: .webdav,
-                                color: iconColor.value,
-                              ),
-                              _buildSourceCard(thisSourceType: .navidrome),
-                              _buildSourceCard(thisSourceType: .emby),
-                              _buildSourceCard(thisSourceType: .feiniu),
-                            ]),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 5,
-                                  crossAxisSpacing: 5,
-                                ),
-                          )
-                        : SliverToBoxAdapter(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildSourceCard(
-                                    thisSourceType: .local,
-                                    color: iconColor.value,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildSourceCard(
-                                    thisSourceType: .webdav,
-
-                                    color: iconColor.value,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildSourceCard(
-                                    thisSourceType: .navidrome,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildSourceCard(
-                                    thisSourceType: .emby,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildSourceCard(
-                                    thisSourceType: .feiniu,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                    sliver: SliverGrid(
+                      delegate: SliverChildListDelegate([
+                        _buildSourceCard(
+                          thisSourceType: .local,
+                          color: iconColor.value,
+                        ),
+                        _buildSourceCard(
+                          thisSourceType: .webdav,
+                          color: iconColor.value,
+                        ),
+                        _buildSourceCard(thisSourceType: .navidrome),
+                        _buildSourceCard(thisSourceType: .emby),
+                        _buildSourceCard(thisSourceType: .feiniu),
+                      ]),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isCompact ? 2 : 4,
+                        mainAxisSpacing: 5,
+                        crossAxisSpacing: 5,
+                      ),
+                    ),
                   ),
 
                   const SliverToBoxAdapter(child: SizedBox(height: 10)),
