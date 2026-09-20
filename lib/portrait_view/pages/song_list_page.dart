@@ -2,26 +2,10 @@ part of '../../base/widgets/song_list.dart';
 
 extension _SongListPage on _SongListState {
   Widget pageView(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          customAppBar(context),
-          Expanded(child: contentWithStack()),
-        ],
-      ),
-    );
-  }
-
-  PreferredSizeWidget customAppBar(BuildContext context) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      leading: customAppBarLeading(context, label: rootLabel),
-      backgroundColor: Colors.transparent,
-      scrolledUnderElevation: 0,
-      systemOverlayStyle: mainPageThemeNotifier.value == .dark ? .light : .dark,
+    return myScaffold(
+      context: context,
+      body: contentWithStack(),
+      label: rootLabel,
       actions: [
         ValueListenableBuilder(
           valueListenable: currentSongListNotifier,

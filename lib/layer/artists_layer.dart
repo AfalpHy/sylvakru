@@ -31,6 +31,9 @@ class _ArtistsLayerState extends CollectionListState {
       AppLocalizations.of(context).artistCount;
 
   @override
+  String get label => 'artists';
+
+  @override
   void updateCurrentList() {
     preparing = !artistAlbumManager.done;
 

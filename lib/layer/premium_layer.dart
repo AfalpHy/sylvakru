@@ -6,11 +6,11 @@ import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/services/iap_service.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
+import 'package:sylvakru/base/widgets/my_scaffold.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
 import 'package:sylvakru/layer/settings_layer.dart';
-import 'package:sylvakru/portrait_view/custom_appbar_leading.dart';
 
 final trialRemainingMinNotifier = ValueNotifier(-1);
 
@@ -47,20 +47,10 @@ class _PremiumLayerState extends State<PremiumLayer> {
   @override
   Widget build(BuildContext context) {
     if (isTooNarrow(context)) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: customAppBarLeading(context, label: 'settings'),
-          backgroundColor: Colors.transparent,
-          systemOverlayStyle: mainPageThemeNotifier.value == .dark
-              ? .light
-              : .dark,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          centerTitle: true,
-        ),
+      return myScaffold(
+        context: context,
         body: premiumContent(context),
+        label: 'settings',
       );
     }
 

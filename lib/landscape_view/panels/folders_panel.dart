@@ -84,7 +84,8 @@ extension FoldersPanel on FoldersLayer {
                             ]),
                             builder: (_, _) {
                               return Hero(
-                                tag: (coverSong?.picture.id ?? '') + folder.id,
+                                tag:
+                                    '${coverSong?.picture.id ?? ''}folders${folder.id}',
                                 child: CoverArtWidget(
                                   size: 50,
                                   borderRadius: 5,

@@ -2,23 +2,8 @@ part of '../../layer/folders_layer.dart';
 
 extension FoldersPage on FoldersLayer {
   Widget pageView(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: customAppBarLeading(context),
-        backgroundColor: Colors.transparent,
-        systemOverlayStyle: mainPageThemeNotifier.value == .dark
-            ? .light
-            : .dark,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(l10n.folders),
-        centerTitle: true,
-      ),
+    return myScaffold(
+      context: context,
       body: ListView.builder(
         itemCount: library.folderList.length,
         itemBuilder: (_, index) {
@@ -32,7 +17,7 @@ extension FoldersPage on FoldersLayer {
                   listenable: Listenable.merge([coverSong?.updateNotifier]),
                   builder: (_, _) {
                     return Hero(
-                      tag: (coverSong?.picture.id ?? '') + folder.id,
+                      tag: '${coverSong?.picture.id ?? ''}folders${folder.id}',
                       transitionOnUserGestures: true,
                       child: CoverArtWidget(
                         size: 50,
@@ -51,6 +36,8 @@ extension FoldersPage on FoldersLayer {
           );
         },
       ),
+
+      title: AppLocalizations.of(context).folders,
     );
   }
 }

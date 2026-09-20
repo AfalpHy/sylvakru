@@ -2,35 +2,15 @@ part of '../../layer/font_picker_layer.dart';
 
 extension _FontPickerPage on _FontPickerLayerState {
   Widget pageView(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          customAppBar(context),
-          Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: fontsNotifier,
-              builder: (context, fonts, child) {
-                return pageContent(fonts);
-              },
-            ),
-          ),
-
-          SizedBox(height: 50),
-        ],
+    return myScaffold(
+      context: context,
+      body: ValueListenableBuilder(
+        valueListenable: fontsNotifier,
+        builder: (context, fonts, child) {
+          return pageContent(fonts);
+        },
       ),
-    );
-  }
-
-  PreferredSizeWidget customAppBar(BuildContext context) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      leading: customAppBarLeading(context, label: 'settings'),
-      backgroundColor: Colors.transparent,
-      systemOverlayStyle: mainPageThemeNotifier.value == .dark ? .light : .dark,
-      scrolledUnderElevation: 0,
+      label: 'settings',
       actions: [
         MySearchField(
           hintText: AppLocalizations.of(context).searchFonts,
