@@ -53,7 +53,7 @@ abstract class StreamClient {
 
   String getStreamUrl(String id);
 
-  Map<String, String> get headers => const {};
+  Map<String, String>? get headers => null;
 
   Future<Uint8List?> getPictureBytes(String songId);
 

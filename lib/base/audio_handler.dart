@@ -10,7 +10,6 @@ import 'package:sylvakru/base/services/my_window_listener.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
 import 'package:sylvakru/base/services/play_queue_logic.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
-import 'package:sylvakru/base/services/feiniu_client.dart';
 import 'package:sylvakru/base/services/taskbar_service.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
@@ -582,6 +581,7 @@ class MyAudioHandler extends BaseAudioHandler {
       } else {
         String? resource;
         Map<String, String>? headers;
+
         switch (sourceType) {
           case .webdav:
             final tmpPath = await covertToRedirectPathIfNeed(currentSong.path!);
@@ -590,20 +590,12 @@ class MyAudioHandler extends BaseAudioHandler {
             } else {
               resource = tmpPath;
             }
-            break;
           case .navidrome:
           case .emby:
-            resource = streamClient?.getStreamUrl(currentSong.id);
-            break;
           case .feiniu:
-            final client = streamClient;
-            final authenticated = client is FeiniuClient && await client.ping();
-            if (!authenticated) {
-              throw StateError('Feiniu music authentication failed');
-            }
-            resource = client.getStreamUrl(currentSong.id);
-            headers = client.headers;
-            break;
+            await streamClient?.ping();
+            resource = streamClient?.getStreamUrl(currentSong.id);
+            headers = streamClient?.headers;
           default:
             break;
         }
