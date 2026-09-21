@@ -65,7 +65,7 @@ class Loader {
 
     audioHandler.loadStates();
 
-    history.load();
+    await history.load();
 
     await playlistManager.load();
 
@@ -112,7 +112,7 @@ class Loader {
 
     audioHandler.sync();
 
-    history.load();
+    await history.load();
 
     await playlistManager.sync();
 
@@ -134,7 +134,7 @@ class Loader {
 
     audioHandler.loadStates();
 
-    history.load();
+    await history.load();
 
     await playlistManager.sync();
 

@@ -69,7 +69,7 @@ class CoverArtWidget extends StatelessWidget {
       image: imageProvider,
       width: size,
       height: size,
-      fit: BoxFit.contain,
+      fit: size != null ? .contain : .cover,
       gaplessPlayback: true,
       errorBuilder: (context, error, stackTrace) {
         return musicNote();

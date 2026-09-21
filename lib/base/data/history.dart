@@ -17,7 +17,7 @@ class History {
   final frequentlyChangeNotifier = ValueNotifier(0);
   final recentlyChangeNotifier = ValueNotifier(0);
 
-  void load() async {
+  Future<void> load() async {
     if (sourceType == .emby) {
       frequentlySongList.addAll(
         await (streamClient as EmbyClient?)?.getFrequentlySongs() ?? [],
