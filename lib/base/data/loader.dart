@@ -55,6 +55,7 @@ class Loader {
 
   static Future<void> load() async {
     if (_needSync && isStreamSource) {
+      _needSync = false;
       await firstSync();
       return;
     }
