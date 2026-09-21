@@ -249,27 +249,15 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   Future<void> _tryPlay() async {
-    if (!_started) {
-      _started = true;
-      if (autoPlayOnStartupNotifier.value) {
-        if (playQueue.isEmpty) {
-          currentIndex = 0;
-          playQueue = List.from(library.songList);
-        }
-        if (playQueue.isNotEmpty) {
-          isPlayingNotifier.value = true;
-        } else {
-          currentIndex = -1;
-        }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (currentSongNotifier.value != null) {
-            globalNavigatorKey.currentState?.push(
-              DynamicLyricsPageRoute(
-                pageBuilder: (_, _, _) => LyricsPageLayer(),
-              ),
-            );
-          }
-        });
+    if (!_started && autoPlayOnStartupNotifier.value) {
+      if (playQueue.isEmpty) {
+        currentIndex = 0;
+        playQueue = List.from(library.songList);
+      }
+      if (playQueue.isNotEmpty) {
+        isPlayingNotifier.value = true;
+      } else {
+        currentIndex = -1;
       }
     }
 
@@ -286,6 +274,21 @@ class MyAudioHandler extends BaseAudioHandler {
       if (isPlayingNotifier.value) {
         _positionTimer ??= Timer.periodic(Duration(seconds: 1), (_) {
           _positionState.writeAsString(getPosition().inMilliseconds.toString());
+        });
+      }
+    }
+
+    if (!_started) {
+      _started = true;
+      if (autoPlayOnStartupNotifier.value) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (currentSongNotifier.value != null) {
+            globalNavigatorKey.currentState?.push(
+              DynamicLyricsPageRoute(
+                pageBuilder: (_, _, _) => LyricsPageLayer(),
+              ),
+            );
+          }
         });
       }
     }
