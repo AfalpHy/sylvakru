@@ -215,7 +215,7 @@ extension _CollectionListPage on CollectionListState {
         return GridView.builder(
           padding: EdgeInsets.symmetric(horizontal: 20),
           gridDelegate: MyGirdDelegate(
-            maxCrossAxisExtent: useLargePicture ? 180 : 120,
+            maxCrossAxisExtent: useLargePicture ? 240 : 120,
             crossAxisSpacing: 10,
             mainAxisSpacing: 5,
             textExtent: 25,
