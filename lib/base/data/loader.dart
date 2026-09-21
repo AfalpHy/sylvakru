@@ -87,7 +87,7 @@ class Loader {
     library = Library();
     artistAlbumManager.clear();
     history.clear();
-    playlistManager.clear();
+    playlistManager.reset();
 
     await load();
   }
@@ -106,7 +106,7 @@ class Loader {
 
     history.clear();
 
-    playlistManager.clear();
+    playlistManager.reset();
 
     await library.sync();
 
@@ -127,6 +127,8 @@ class Loader {
     stateNotifier.value++;
 
     layersManager.switchRootLayer('songs');
+
+    playlistManager.reset();
 
     await library.sync();
 

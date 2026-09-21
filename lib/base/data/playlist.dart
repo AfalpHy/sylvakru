@@ -150,7 +150,7 @@ class PlaylistManager {
     updateNotifier.value++;
   }
 
-  void clear() {
+  void reset() {
     playlists.clear();
     playlistMap.clear();
     addPlaylist(Playlist(name: 'Favorite'));
