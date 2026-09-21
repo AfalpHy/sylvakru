@@ -12,14 +12,17 @@
 Sylvakru is a cross-platform music player for local libraries and self-hosted media services, supporting Android, iOS, Windows, Linux, and macOS.
 
 Currently supports:
-- Local music libraries
+- Local
 - WebDAV
 - Navidrome
 - Emby
+- Feiniu Music (Special thanks to [huya688zdx](https://github.com/huya688zdx) for the contribution)
+
+
 
 > Formerly known as Particle Music.
 
-> [!IMPORTANT]
+> [!Note]
 > **The iOS version is now available on the Apple App Store!**
 
 ## USB Exclusive Mode(Android)

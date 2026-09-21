@@ -1349,7 +1349,7 @@ abstract class AppLocalizations {
   /// No description provided for @feiniuMusic.
   ///
   /// In en, this message translates to:
-  /// **'FnOS Music'**
+  /// **'Feiniu Music'**
   String get feiniuMusic;
 
   /// No description provided for @feiniuConnectionFailed.
