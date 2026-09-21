@@ -16,8 +16,6 @@ import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/my_navigator.dart';
 import 'package:sylvakru/base/widgets/my_scaffold.dart';
-import 'package:sylvakru/base/widgets/playlist_widgets.dart';
-import 'package:sylvakru/base/widgets/song_info.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
@@ -342,8 +340,6 @@ class HomeLayerState extends State<HomeLayer> {
     List<MyAudioMetadata> songList,
     ScrollController scrollController,
   ) {
-    final l10n = AppLocalizations.of(context);
-
     return SizedBox(
       height: 180,
       child: MouseRegion(
@@ -420,104 +416,17 @@ class HomeLayerState extends State<HomeLayer> {
                               ],
                             ),
                           ),
-
-                          GlassMenu(
-                            trigger: Container(
-                              color: Colors.transparent,
-                              width: 40,
-                              height: 40,
-                              child: Icon(Icons.more_vert_rounded, size: 20),
-                            ),
-                            autoAdjustToScreen: true,
-                            settings: LiquidGlassSettings(
-                              glassColor: glassColor.value,
-                            ),
-                            menuWidth: 250,
-                            items: [
-                              GlassMenuItem(
-                                title: l10n.playNow,
-                                icon: const Icon(Icons.play_arrow_rounded),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  audioHandler.singlePlay(song);
-                                  audioHandler.saveAllStates();
-                                },
-                              ),
-
-                              GlassMenuItem(
-                                title: l10n.playNext,
-                                icon: const Icon(Icons.navigate_next_rounded),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  if (playQueue.isEmpty) {
-                                    audioHandler.singlePlay(song);
-                                  } else {
-                                    audioHandler.insert2Next(song);
-                                  }
-                                  audioHandler.saveAllStates();
-                                },
-                              ),
-
-                              GlassMenuItem(
-                                title: l10n.add2Queue,
-                                icon: const Icon(Icons.playlist_add_rounded),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  if (playQueue.isEmpty) {
-                                    audioHandler.singlePlay(song);
-                                  } else {
-                                    audioHandler.add2Last(song);
-                                  }
-                                  audioHandler.saveAllStates();
-                                },
-                              ),
-
-                              GlassMenuItem(
-                                title: l10n.add2Playlist,
-                                icon: const Icon(Icons.add_rounded),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  showAddPlaylistDialog(context, [song]);
-                                },
-                              ),
-
-                              GlassMenuItem(
-                                title: l10n.go2Artist,
-                                icon: const Icon(Icons.people),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  goToArtist(song, context);
-                                },
-                              ),
-
-                              GlassMenuItem(
-                                title: l10n.go2Album,
-                                icon: const Icon(Icons.album_rounded),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  goToAlbum(song);
-                                },
-                              ),
-
-                              GlassMenuItem(
-                                title: l10n.songInfo,
-                                icon: const Icon(Icons.info_outline_rounded),
-                                iconColor: iconColor.value,
-                                iconSize: 24,
-                                onTap: () {
-                                  showAnimationDialog(
-                                    context: context,
-                                    child: SongInfo(song: song),
-                                  );
-                                },
-                              ),
-                            ],
+                          IconButton(
+                            onPressed: () {
+                              showSongOptions(
+                                context: context,
+                                song: song,
+                                includeGoToArtist: true,
+                                includeGoToAlbum: true,
+                                useDialog: !isTooNarrow(context),
+                              );
+                            },
+                            icon: Icon(Icons.more_vert_rounded, size: 20),
                           ),
                         ],
                       ),
