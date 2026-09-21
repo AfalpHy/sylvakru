@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
@@ -184,17 +185,25 @@ class Sidebar extends StatelessWidget {
                       ),
                     ),
 
-                    SliverToBoxAdapter(
-                      child: sidebarItem(
-                        label: 'folders',
+                    ValueListenableBuilder(
+                      valueListenable: Loader.stateNotifier,
+                      builder: (context, value, child) {
+                        if (isNotStreamSource) {
+                          return SliverToBoxAdapter(
+                            child: sidebarItem(
+                              label: 'folders',
 
-                        leading: ImageIcon(folderImage, size: 30),
-                        content: l10n.folders,
+                              leading: ImageIcon(folderImage, size: 30),
+                              content: l10n.folders,
 
-                        onTap: () {
-                          layersManager.switchRootLayer('folders');
-                        },
-                      ),
+                              onTap: () {
+                                layersManager.switchRootLayer('folders');
+                              },
+                            ),
+                          );
+                        }
+                        return SliverToBoxAdapter(child: SizedBox());
+                      },
                     ),
 
                     SliverToBoxAdapter(
