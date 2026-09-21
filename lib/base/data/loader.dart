@@ -14,8 +14,10 @@ import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/data/setting.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/picture_load_scheduler.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
+import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/utils/common_utils.dart';
 import 'package:sylvakru/base/utils/path.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
@@ -28,8 +30,6 @@ class Loader {
   static bool get busy => _busy;
 
   static final stateNotifier = ValueNotifier(0);
-
-  static bool _needSync = false;
 
   static Future<void> init() async {
     if (Platform.isAndroid) {
@@ -54,13 +54,15 @@ class Loader {
   }
 
   static Future<void> load() async {
-    if (_needSync && isStreamSource) {
-      _needSync = false;
-      await firstSync();
-      return;
-    }
     _busy = true;
     stateNotifier.value++;
+
+    if (isStreamSource && streamClient != null) {
+      if (!File(getSyncedFilePath(sourceType)).existsSync()) {
+        await firstSync();
+        return;
+      }
+    }
 
     await library.load();
 
@@ -119,6 +121,18 @@ class Loader {
 
     artistAlbumManager.classify();
 
+    if (isStreamSource) {
+      File syncedFile = File(getSyncedFilePath(sourceType));
+
+      if (streamClient != null && !syncedFile.existsSync()) {
+        syncedFile.createSync(recursive: true);
+      }
+
+      if (streamClient == null && syncedFile.existsSync()) {
+        syncedFile.deleteSync(recursive: true);
+      }
+    }
+
     _busy = false;
     stateNotifier.value++;
   }
@@ -126,6 +140,8 @@ class Loader {
   static Future<void> firstSync() async {
     _busy = true;
     stateNotifier.value++;
+
+    logger.output('${sourceType.name} first sync');
 
     layersManager.switchRootLayer('songs');
 
@@ -140,6 +156,18 @@ class Loader {
     await playlistManager.sync();
 
     artistAlbumManager.classify();
+
+    if (isStreamSource) {
+      File syncedFile = File(getSyncedFilePath(sourceType));
+
+      if (streamClient != null && !syncedFile.existsSync()) {
+        syncedFile.createSync(recursive: true);
+      }
+
+      if (streamClient == null && syncedFile.existsSync()) {
+        syncedFile.deleteSync(recursive: true);
+      }
+    }
 
     _busy = false;
     stateNotifier.value++;
@@ -188,8 +216,6 @@ class Loader {
         if (tmpDir.existsSync()) {
           tmpDir.deleteSync(recursive: true);
         }
-
-        _needSync = true;
       }
     }
     tmp.writeAsStringSync(jsonEncode(versionNumber));

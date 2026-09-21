@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/data/config.dart';
@@ -224,10 +226,13 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
 
     await config.save();
     if (widget.sourceType == sourceType) {
-      if (sourceType == .feiniu) {
-        await Loader.reload();
-      } else {
-        await Loader.sync();
+      await Loader.sync();
+    } else {
+      Directory dir = Directory(
+        '${appSupportDir.path}/${widget.sourceType.name}',
+      );
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
       }
     }
   }
@@ -323,11 +328,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
     if (!firstLaunch &&
         widget.sourceType != .webdav &&
         widget.sourceType == sourceType) {
-      if (sourceType == .feiniu) {
-        await Loader.reload();
-      } else {
-        await Loader.sync();
-      }
+      await Loader.sync();
     }
   }
 }

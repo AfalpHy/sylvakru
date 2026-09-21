@@ -311,7 +311,9 @@ class HomeLayerState extends State<HomeLayer> {
                             SizedBox(
                               width: 140 + extraSize,
                               child: Text(
-                                playlist.name,
+                                playlist.isFavorite
+                                    ? l10n.favorites
+                                    : playlist.name,
                                 style: .new(overflow: .ellipsis, fontSize: 15),
                               ),
                             ),

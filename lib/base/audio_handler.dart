@@ -581,13 +581,12 @@ class MyAudioHandler extends BaseAudioHandler {
         );
       } else {
         String? resource;
-        Map<String, String>? streamHeaders;
-        bool needHeader = false;
+        Map<String, String>? headers;
         switch (sourceType) {
           case .webdav:
             final tmpPath = await covertToRedirectPathIfNeed(currentSong.path!);
             if (tmpPath == null) {
-              needHeader = true;
+              headers = webdavClient?.headers;
             } else {
               resource = tmpPath;
             }
@@ -603,7 +602,7 @@ class MyAudioHandler extends BaseAudioHandler {
               throw StateError('Feiniu music authentication failed');
             }
             resource = client.getStreamUrl(currentSong.id);
-            streamHeaders = client.headers;
+            headers = client.headers;
             break;
           default:
             break;
@@ -611,12 +610,7 @@ class MyAudioHandler extends BaseAudioHandler {
         resource ??= currentSong.path!;
 
         await _player.open(
-          Media(
-            resource,
-            httpHeaders:
-                streamHeaders ?? (needHeader ? webdavClient?.headers : null),
-            start: start,
-          ),
+          Media(resource, httpHeaders: headers, start: start),
           play: isPlayingNotifier.value,
         );
       }

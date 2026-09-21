@@ -120,6 +120,10 @@ String getPicturesPath(SourceType sourceType) {
   return '${appSupportDir.path}/${sourceType.name}/pictures';
 }
 
+String getSyncedFilePath(SourceType sourceType) {
+  return '${appSupportDir.path}/${sourceType.name}/synced.keep';
+}
+
 final _httpClient = http.Client();
 
 Future<String?> covertToRedirectPathIfNeed(String path) async {

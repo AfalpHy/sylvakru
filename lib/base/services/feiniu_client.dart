@@ -184,7 +184,7 @@ class FeiniuClient extends StreamClient {
       query: {'sort': 'title,asc', 'page': 1, 'size': 1},
     );
     final data = response?['data'];
-    return data['total'];
+    return data?['total'] ?? 0;
   }
 
   @override
