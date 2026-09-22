@@ -347,7 +347,7 @@ class _ViewEntryState extends State<ViewEntry> with WidgetsBindingObserver {
                           AppLocalizations.of(context),
                           thisSourceType,
                         ),
-                        style: .new(fontSize: 24),
+                        style: .new(fontSize: 22),
                       ),
                     ],
                   ),
