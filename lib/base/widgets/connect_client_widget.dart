@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/app.dart';
@@ -15,6 +16,7 @@ import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
 import 'package:sylvakru/base/utils/source_type.dart';
 import 'package:sylvakru/base/widgets/custom_text_field.dart';
+import 'package:sylvakru/base/widgets/feiniu_login_widget.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 
 class ConnectClientWidget extends StatefulWidget {
@@ -30,6 +32,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
   final baseUrlTmp = TextEditingController();
   final usernameTmp = TextEditingController();
   final passwordTmp = TextEditingController();
+  bool _connecting = false;
 
   @override
   void initState() {
@@ -64,6 +67,9 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final urlLabel = widget.sourceType == .feiniu
+        ? l10n.feiniuServerAddress
+        : 'Url';
 
     return SizedBox(
       width: 300,
@@ -83,8 +89,8 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
 
             SizedBox(height: 10),
             isTV
-                ? fakeTextField('Url', baseUrlTmp)
-                : CustomTextField('Url', baseUrlTmp, compact: false),
+                ? fakeTextField(urlLabel, baseUrlTmp)
+                : CustomTextField(urlLabel, baseUrlTmp, compact: false),
 
             SizedBox(height: 10),
             isTV
@@ -102,6 +108,14 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
                   ),
 
             SizedBox(height: isMobile ? 10 : 25),
+
+            if (widget.sourceType == .feiniu &&
+                (Platform.isAndroid || Platform.isIOS || Platform.isMacOS))
+              TextButton(
+                onPressed: _connecting ? null : () => onSave(nasLogin: true),
+                style: TextButton.styleFrom(foregroundColor: textColor.value),
+                child: Text(l10n.feiniuNasLogin),
+              ),
 
             buttons(),
           ],
@@ -152,7 +166,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
 
             if (!firstLaunch)
               ElevatedButton(
-                onPressed: () => onDelete(),
+                onPressed: _connecting ? null : () => onDelete(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: firstLaunch ? null : value,
                 ),
@@ -166,7 +180,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
                     clipBehavior: .antiAlias,
                     child: InkWell(
                       mouseCursor: SystemMouseCursors.click,
-                      onTap: onSave,
+                      onTap: _connecting ? null : onSave,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -177,7 +191,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
                     ),
                   )
                 : ElevatedButton(
-                    onPressed: () => onSave(),
+                    onPressed: _connecting ? null : () => onSave(),
                     style: ElevatedButton.styleFrom(backgroundColor: value),
                     child: Text(l10n.save),
                   ),
@@ -216,6 +230,7 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
       config.feiniuBaseUrl = null;
       config.feiniuUsername = null;
       config.feiniuPassword = null;
+      config.feiniuToken = null;
       if (sourceType == widget.sourceType) {
         streamClient = null;
       }
@@ -237,8 +252,26 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
     }
   }
 
-  void onSave() async {
+  Future<bool> loginWithNas(FeiniuClient client) async {
+    final random = Random.secure();
+    final state = List.generate(
+      16,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    final loginUrl = await client.getNasLoginUrl(state: state);
+    if (!mounted || loginUrl == null) return false;
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => FeiniuLoginWidget(loginUrl: loginUrl, state: state),
+    );
+    if (!mounted || code == null || code.isEmpty) return false;
+    return client.loginWithCode(code);
+  }
+
+  void onSave({bool nasLogin = false}) async {
+    if (_connecting) return;
     final l10n = AppLocalizations.of(context);
+    if (widget.sourceType == .feiniu) setState(() => _connecting = true);
     try {
       if (widget.sourceType == .webdav) {
         final tmp = webdavClient;
@@ -292,31 +325,58 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
       } else if (widget.sourceType == .feiniu) {
         final feiniuClient = FeiniuClient(
           baseUrl: baseUrlTmp.text,
-          username: usernameTmp.text,
-          password: passwordTmp.text,
+          username: nasLogin ? '' : usernameTmp.text,
+          password: nasLogin ? '' : passwordTmp.text,
+          token:
+              !nasLogin &&
+                  baseUrlTmp.text == config.feiniuBaseUrl &&
+                  usernameTmp.text == config.feiniuUsername &&
+                  passwordTmp.text == config.feiniuPassword
+              ? config.feiniuToken
+              : null,
         );
-        if (!await feiniuClient.ping()) {
-          showCenterMessage(l10n.feiniuConnectionFailed);
+        if (nasLogin && !await loginWithNas(feiniuClient)) {
+          if (mounted) showCenterMessage(l10n.feiniuNasLoginFailed);
           return;
         }
+        if (!mounted) return;
+        if (!await feiniuClient.ping()) {
+          showCenterMessage(
+            nasLogin ? l10n.feiniuNasLoginFailed : l10n.feiniuConnectionFailed,
+          );
+          return;
+        }
+        if (!mounted) return;
         if (widget.sourceType == sourceType) {
           streamClient = feiniuClient;
         }
-        config.feiniuBaseUrl = baseUrlTmp.text;
-        config.feiniuUsername = usernameTmp.text;
-        config.feiniuPassword = passwordTmp.text;
+        config.feiniuBaseUrl = feiniuClient.baseUrl;
+        config.feiniuUsername = feiniuClient.username;
+        config.feiniuPassword = feiniuClient.password;
+        config.feiniuToken =
+            nasLogin || config.feiniuToken == feiniuClient.token
+            ? feiniuClient.token
+            : null;
       }
     } catch (e) {
       if (context.mounted) {
         showCenterMessage(
           widget.sourceType == .feiniu
-              ? l10n.feiniuConnectionFailed
+              ? (nasLogin
+                    ? l10n.feiniuNasLoginFailed
+                    : l10n.feiniuConnectionFailed)
               : e.toString(),
           duration: 5000,
         );
       }
-      logger.output(e.toString());
+      logger.output(
+        widget.sourceType == .feiniu
+            ? '[FeiniuClient] Connection failed: ${e.runtimeType}'
+            : e.toString(),
+      );
       return;
+    } finally {
+      if (mounted && _connecting) setState(() => _connecting = false);
     }
 
     if (!firstLaunch && mounted) {

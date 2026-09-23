@@ -659,6 +659,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feiniuMusic => 'Feiniu Music';
 
   @override
+  String get feiniuServerAddress => 'URL / FN ID';
+
+  @override
+  String get feiniuNasLogin => 'Sign in with NAS account';
+
+  @override
+  String get feiniuNasLoginFailed =>
+      'NAS authorization was not completed. Check the address and try again.';
+
+  @override
   String get feiniuConnectionFailed =>
       'Unable to connect to FnOS Music. Check the server URL and your music app username and password.';
 

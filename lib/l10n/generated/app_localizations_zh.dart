@@ -652,6 +652,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get feiniuMusic => '飞牛音乐';
 
   @override
+  String get feiniuServerAddress => 'URL / FN ID';
+
+  @override
+  String get feiniuNasLogin => '通过 NAS 账号登录';
+
+  @override
+  String get feiniuNasLoginFailed => 'NAS 授权登录未完成，请检查地址并重试。';
+
+  @override
   String get feiniuConnectionFailed => '无法连接飞牛音乐，请检查服务器地址及音乐应用账号密码';
 
   @override

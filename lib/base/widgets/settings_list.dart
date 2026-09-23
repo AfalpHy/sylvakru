@@ -356,6 +356,7 @@ class _SettingsListState extends State<SettingsList> {
                                 baseUrl: config.feiniuBaseUrl!,
                                 username: config.feiniuUsername!,
                                 password: config.feiniuPassword!,
+                                token: config.feiniuToken,
                               );
                             }
                             setState(() {});

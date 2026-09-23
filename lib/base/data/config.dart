@@ -29,6 +29,7 @@ class Config {
   String? feiniuBaseUrl;
   String? feiniuUsername;
   String? feiniuPassword;
+  String? feiniuToken;
 
   static const _secureStorage = FlutterSecureStorage(
     mOptions: MacOsOptions(usesDataProtectionKeychain: false),
@@ -129,6 +130,12 @@ class Config {
       feiniuPassword = await _trySecureRead('feiniu_password');
       feiniuPassword ??= feiniuMap['password'];
       feiniuPassword ??= '';
+
+      feiniuToken = null;
+      if (feiniuMap['nasLogin'] == true) {
+        feiniuToken = feiniuMap['token'];
+        feiniuToken ??= await _trySecureRead('feiniu_token');
+      }
     }
 
     final tmpSourceType = map['sourceType'] as String?;
@@ -169,10 +176,11 @@ class Config {
         baseUrl: feiniuBaseUrl!,
         username: feiniuUsername!,
         password: feiniuPassword!,
+        token: feiniuToken,
       );
     }
 
-    if (_hasPlainTextPassword(map)) {
+    if (_hasPlainTextCredential(map)) {
       await save();
     }
   }
@@ -192,6 +200,7 @@ class Config {
     bool navidromeSecured = true;
     bool embySecured = true;
     bool feiniuSecured = true;
+    bool feiniuTokenSecured = true;
 
     if (webdavClient != null) {
       webdavSecured = await _trySecureWrite(
@@ -213,6 +222,17 @@ class Config {
 
     if (feiniuPassword != null) {
       feiniuSecured = await _trySecureWrite('feiniu_password', feiniuPassword!);
+    }
+    if (feiniuToken != null && feiniuBaseUrl != null) {
+      feiniuTokenSecured = await _trySecureWrite('feiniu_token', feiniuToken!);
+    } else {
+      try {
+        await _secureStorage.delete(key: 'feiniu_token');
+      } catch (e) {
+        logger.output(
+          'Failed to delete "feiniu_token" from secure storage: $e',
+        );
+      }
     }
 
     await file.writeAsString(
@@ -245,6 +265,9 @@ class Config {
             'baseUrl': feiniuBaseUrl,
             'username': feiniuUsername,
             if (!feiniuSecured) 'password': feiniuPassword,
+            if (feiniuToken != null) 'nasLogin': true,
+            if (feiniuToken != null && !feiniuTokenSecured)
+              'token': feiniuToken,
           },
       }),
     );
@@ -269,12 +292,12 @@ class Config {
     }
   }
 
-  bool _hasPlainTextPassword(Map<String, dynamic> map) {
+  bool _hasPlainTextCredential(Map<String, dynamic> map) {
     for (var key in ['webdav', 'navidrome', 'emby', 'feiniu']) {
       if (map[key] != null && map[key]['password'] != null) {
         return true;
       }
     }
-    return false;
+    return map['feiniu']?['token'] != null;
   }
 }
