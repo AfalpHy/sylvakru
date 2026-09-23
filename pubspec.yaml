@@ -72,6 +72,7 @@ dependencies:
   google_fonts: ^8.0.2
   http: ^1.6.0
   url_launcher: ^6.3.2
+  webview_flutter: ^4.14.1
   dio: ^5.9.2
   crypto: ^3.0.7
   charset: ^2.0.1
