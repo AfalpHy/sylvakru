@@ -13,6 +13,7 @@ import 'package:sylvakru/base/services/stream_client.dart';
 class FeiniuClient extends StreamClient {
   String? _token;
   Future<bool>? _loginFuture;
+  bool _isRelay = false;
   late final String _deviceId;
 
   FeiniuClient({
@@ -25,7 +26,17 @@ class FeiniuClient extends StreamClient {
       16,
       (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
     ).join();
-    var url = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+
+    String url = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+
+    if (!baseUrl.startsWith('http')) {
+      url = 'https://$baseUrl.fnos.net';
+    }
+
+    if (url.contains('fnos.net')) {
+      _isRelay = true;
+    }
+
     if (!url.endsWith('/music/api/v1')) {
       url += url.endsWith('/music') ? '/api/v1' : '/music/api/v1';
     }
@@ -41,7 +52,11 @@ class FeiniuClient extends StreamClient {
 
   @override
   Map<String, String> get headers => {
-    if (_token != null) 'Cookie': 'music-token=$_token',
+    if (_isRelay || _token != null)
+      'Cookie': [
+        if (_isRelay) 'mode=relay',
+        if (_token != null) 'music-token=$_token',
+      ].join('; '),
   };
 
   Future<bool> login() async {
@@ -66,6 +81,7 @@ class FeiniuClient extends StreamClient {
           'password': sha256.convert(utf8.encode(password)).toString(),
           'deviceId': _deviceId,
         },
+        options: Options(headers: headers),
       );
       final body = response.data;
       if (body is! Map || body['code'] != 0) {

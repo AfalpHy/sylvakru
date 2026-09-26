@@ -264,6 +264,6 @@
   "save": "Save",
   "chooseMusicSource": "Choose a Music Source",
   "feiniuMusic": "Feiniu Music",
-  "feiniuConnectionFailed": "Unable to connect to FnOS Music. Check the server URL and your music app username and password.",
+  "feiniuConnectionFailed": "Unable to connect to Feiniu Music. Check the server URL and your music app username and password.",
   "savedSuccessfully": "Saved successfully"
 }

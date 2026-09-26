@@ -1355,7 +1355,7 @@ abstract class AppLocalizations {
   /// No description provided for @feiniuConnectionFailed.
   ///
   /// In en, this message translates to:
-  /// **'Unable to connect to FnOS Music. Check the server URL and your music app username and password.'**
+  /// **'Unable to connect to Feiniu Music. Check the server URL and your music app username and password.'**
   String get feiniuConnectionFailed;
 
   /// No description provided for @savedSuccessfully.

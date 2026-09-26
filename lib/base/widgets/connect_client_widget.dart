@@ -83,8 +83,15 @@ class _ConnectClientWidgetState extends State<ConnectClientWidget> {
 
             SizedBox(height: 10),
             isTV
-                ? fakeTextField('Url', baseUrlTmp)
-                : CustomTextField('Url', baseUrlTmp, compact: false),
+                ? fakeTextField(
+                    widget.sourceType == .feiniu ? 'Url/FN ID' : 'Url',
+                    baseUrlTmp,
+                  )
+                : CustomTextField(
+                    widget.sourceType == .feiniu ? 'Url/FN ID' : 'Url',
+                    baseUrlTmp,
+                    compact: false,
+                  ),
 
             SizedBox(height: 10),
             isTV

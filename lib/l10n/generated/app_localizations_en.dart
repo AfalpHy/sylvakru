@@ -660,7 +660,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feiniuConnectionFailed =>
-      'Unable to connect to FnOS Music. Check the server URL and your music app username and password.';
+      'Unable to connect to Feiniu Music. Check the server URL and your music app username and password.';
 
   @override
   String get savedSuccessfully => 'Saved successfully';
