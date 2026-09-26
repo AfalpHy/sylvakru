@@ -168,8 +168,29 @@ void applyLrcParsing(
     return;
   }
 
-  final lineTimeRegex = RegExp(r'^[\[<](\d{2}):(\d{2})[.:](\d{2,3})[\]>]');
-  final wordRegex = RegExp(r'[\[<](\d{2}):(\d{2})[.:](\d{2,3})[\]>]([^\[<]*)');
+  final lineTimeRegex = RegExp(r'^[\[<](\d{2}):(\d{2})[.:](\d{1,3})[\]>]');
+  final wordRegex = RegExp(r'[\[<](\d{2}):(\d{2})[.:](\d{1,3})[\]>]([^\[<]*)');
+
+  lines.sort((a, b) {
+    final timeA = lineTimeRegex.firstMatch(a);
+    final timeB = lineTimeRegex.firstMatch(b);
+
+    if (timeA == null || timeB == null) return 0;
+
+    final aTime = Duration(
+      minutes: int.parse(timeA.group(1)!),
+      seconds: int.parse(timeA.group(2)!),
+      milliseconds: int.parse(timeA.group(3)!.padRight(3, '0')),
+    );
+
+    final bTime = Duration(
+      minutes: int.parse(timeB.group(1)!),
+      seconds: int.parse(timeB.group(2)!),
+      milliseconds: int.parse(timeB.group(3)!.padRight(3, '0')),
+    );
+
+    return aTime.compareTo(bTime);
+  });
 
   for (var line in lines) {
     final lineMatch = lineTimeRegex.firstMatch(line);
