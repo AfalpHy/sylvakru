@@ -264,9 +264,6 @@
   "save": "Save",
   "chooseMusicSource": "Choose a Music Source",
   "feiniuMusic": "Feiniu Music",
-  "feiniuServerAddress": "URL / FN ID",
-  "feiniuNasLogin": "Sign in with NAS account",
-  "feiniuNasLoginFailed": "NAS authorization was not completed. Check the address and try again.",
   "feiniuConnectionFailed": "Unable to connect to FnOS Music. Check the server URL and your music app username and password.",
   "savedSuccessfully": "Saved successfully"
 }

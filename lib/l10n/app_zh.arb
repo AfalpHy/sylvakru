@@ -208,9 +208,6 @@
   "save": "保存",
   "chooseMusicSource": "选择音乐来源",
   "feiniuMusic": "飞牛音乐",
-  "feiniuServerAddress": "URL / FN ID",
-  "feiniuNasLogin": "通过 NAS 账号登录",
-  "feiniuNasLoginFailed": "NAS 授权登录未完成，请检查地址并重试。",
   "feiniuConnectionFailed": "无法连接飞牛音乐，请检查服务器地址及音乐应用账号密码",
   "savedSuccessfully": "保存成功"
 }
