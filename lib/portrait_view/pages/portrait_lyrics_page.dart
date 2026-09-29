@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +10,7 @@ import 'package:sylvakru/base/asset_images.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/utils/dynamic_lyrics_page_route.dart';
 import 'package:sylvakru/base/widgets/buttons.dart';
+import 'package:sylvakru/base/widgets/blurred_cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
 import 'package:sylvakru/base/widgets/playlist_widgets.dart';
@@ -168,19 +168,18 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
               fit: StackFit.expand,
               children: [
                 if (lyricsPageThemeNotifier.value == .vivid) ...[
-                  CoverArtWidget(
+                  BlurredCoverArtWidget(
                     picture: currentSong?.picture,
                     color: colorManager
                         .getSpecificLyricsPageCoverArtBaseColor(),
+                    sigmaX: 30,
+                    sigmaY: 30,
                   ),
                   RepaintBoundary(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 300),
-                        curve: Curves.easeInOutCubic,
-                        color: currentCoverArtColor.withAlpha(180),
-                      ),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeInOutCubic,
+                      color: currentCoverArtColor.withAlpha(180),
                     ),
                   ),
                 ],

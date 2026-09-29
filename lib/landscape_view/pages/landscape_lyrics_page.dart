@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/audio_handler.dart';
@@ -9,6 +8,7 @@ import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
 import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/widgets/buttons.dart';
+import 'package:sylvakru/base/widgets/blurred_cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/data/setting.dart';
 import 'package:sylvakru/landscape_view/speaker.dart';
@@ -86,21 +86,17 @@ class _LandscapeLyricsPageState extends State<LandscapeLyricsPage> {
             fit: StackFit.expand,
             children: [
               if (lyricsPageThemeNotifier.value == .vivid) ...[
-                CoverArtWidget(
+                BlurredCoverArtWidget(
                   picture: currentSong?.picture,
                   color: colorManager.getSpecificLyricsPageCoverArtBaseColor(),
+                  sigmaX: pageWidth * 0.03,
+                  sigmaY: pageHight * 0.03,
                 ),
                 RepaintBoundary(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: pageWidth * 0.03,
-                      sigmaY: pageHight * 0.03,
-                    ),
-                    child: AnimatedContainer(
-                      duration: Duration(milliseconds: 300),
-                      curve: Curves.easeInOutCubic,
-                      color: currentCoverArtColor.withAlpha(180),
-                    ),
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOutCubic,
+                    color: currentCoverArtColor.withAlpha(180),
                   ),
                 ),
               ],

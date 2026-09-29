@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +15,7 @@ import 'package:sylvakru/base/services/interaction.dart';
 import 'package:sylvakru/base/services/my_window_listener.dart';
 import 'package:sylvakru/base/utils/media_query.dart';
 import 'package:sylvakru/base/widgets/big_play_bar.dart';
-import 'package:sylvakru/base/widgets/cover_art_widget.dart';
+import 'package:sylvakru/base/widgets/blurred_cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/scale_widget.dart';
 import 'package:sylvakru/big_picture_view/panels/big_albums_panel.dart';
 import 'package:sylvakru/big_picture_view/panels/big_artists_panel.dart';
@@ -80,9 +79,11 @@ class _BigPictureViewState extends State<BigPictureView> {
                 if (mainPageThemeNotifier.value != .vivid) {
                   return SizedBox.shrink();
                 }
-                return CoverArtWidget(
+                return BlurredCoverArtWidget(
                   picture: currentSongNotifier.value?.picture,
                   color: currentCoverArtColor,
+                  sigmaX: MediaQuery.widthOf(context) * 0.03,
+                  sigmaY: MediaQuery.heightOf(context) * 0.03,
                 );
               },
             ),
@@ -92,20 +93,12 @@ class _BigPictureViewState extends State<BigPictureView> {
                 if (mainPageThemeNotifier.value != .vivid) {
                   return SizedBox.shrink();
                 }
-                final pageWidth = MediaQuery.widthOf(context);
-                final pageHight = MediaQuery.heightOf(context);
 
                 return RepaintBoundary(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: pageWidth * 0.03,
-                      sigmaY: pageHight * 0.03,
-                    ),
-                    child: AnimatedContainer(
-                      duration: Duration(milliseconds: 500),
-                      curve: Curves.easeInOutCubic,
-                      color: currentCoverArtColor.withAlpha(180),
-                    ),
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 500),
+                    curve: Curves.easeInOutCubic,
+                    color: currentCoverArtColor.withAlpha(180),
                   ),
                 );
               },
