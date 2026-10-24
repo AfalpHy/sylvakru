@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -19,6 +20,7 @@ import 'package:sylvakru/base/widgets/my_scaffold.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/landscape_view/title_bar.dart';
 import 'package:sylvakru/layer/layers_manager.dart';
+import 'package:sylvakru/portrait_view/my_search_field.dart';
 
 part '../landscape_view/panels/home_panel.dart';
 part '../portrait_view/pages/home_page.dart';
@@ -49,8 +51,45 @@ class HomeLayerState extends State<HomeLayer> {
   final recentlyChangeNotifier = ValueNotifier(0);
   final playlistsChangeNotifier = ValueNotifier(0);
 
+  final textController = TextEditingController();
+  final searchChangeNotifier = ValueNotifier(0);
+
+  Timer? searchTimer;
+
+  String get searchValue => textController.text;
+
+  @override
+  void initState() {
+    super.initState();
+    textController.addListener(onSearchChanged);
+  }
+
+  void onSearchChanged() {
+    searchTimer?.cancel();
+    searchTimer = Timer(Duration(milliseconds: 300), () {
+      for (final scrollController in [
+        albumsSC,
+        frequentlySC,
+        recentlySC,
+        playlistsSC,
+      ]) {
+        if (scrollController.hasClients) {
+          scrollController.jumpTo(0);
+        }
+      }
+      albumsChangeNotifier.value++;
+      frequentlyChangeNotifier.value++;
+      recentlyChangeNotifier.value++;
+      playlistsChangeNotifier.value++;
+      searchChangeNotifier.value++;
+    });
+  }
+
   @override
   void dispose() {
+    searchTimer?.cancel();
+    textController.dispose();
+    searchChangeNotifier.dispose();
     albumsSC.dispose();
     frequentlySC.dispose();
     recentlySC.dispose();
@@ -102,13 +141,25 @@ class HomeLayerState extends State<HomeLayer> {
         mouseRegionForScroll(
           child: SizedBox(
             height: 180 + extraSize,
-            child: ValueListenableBuilder(
-              valueListenable: artistAlbumManager.updateNotifier,
-              builder: (context, value, child) {
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                artistAlbumManager.updateNotifier,
+                searchChangeNotifier,
+              ]),
+              builder: (context, child) {
+                final lowerValue = searchValue.toLowerCase();
+                final albumList = searchValue.isEmpty
+                    ? artistAlbumManager.albumList
+                    : artistAlbumManager.albumList
+                          .where(
+                            (album) =>
+                                album.name.toLowerCase().contains(lowerValue),
+                          )
+                          .toList();
                 return ListView.separated(
                   controller: albumsSC,
                   scrollDirection: .horizontal,
-                  itemCount: artistAlbumManager.albumList.length + 1,
+                  itemCount: albumList.length + 1,
                   separatorBuilder: (context, index) {
                     return SizedBox(width: 15);
                   },
@@ -117,7 +168,7 @@ class HomeLayerState extends State<HomeLayer> {
                       return SizedBox(width: 5);
                     }
                     index--;
-                    final album = artistAlbumManager.albumList[index];
+                    final album = albumList[index];
                     return Column(
                       children: [
                         GestureDetector(
@@ -186,10 +237,16 @@ class HomeLayerState extends State<HomeLayer> {
         SizedBox(height: 10),
 
         mouseRegionForScroll(
-          child: ValueListenableBuilder(
-            valueListenable: history.frequentlyChangeNotifier,
-            builder: (context, value, child) {
-              return songListView(history.frequentlySongList, frequentlySC);
+          child: ListenableBuilder(
+            listenable: Listenable.merge([
+              history.frequentlyChangeNotifier,
+              searchChangeNotifier,
+            ]),
+            builder: (context, child) {
+              return songListView(
+                filterSongList(history.frequentlySongList, searchValue),
+                frequentlySC,
+              );
             },
           ),
           scrollController: frequentlySC,
@@ -226,10 +283,16 @@ class HomeLayerState extends State<HomeLayer> {
         SizedBox(height: 10),
 
         mouseRegionForScroll(
-          child: ValueListenableBuilder(
-            valueListenable: history.recentlyChangeNotifier,
-            builder: (context, value, child) {
-              return songListView(history.recentlySongList, recentlySC);
+          child: ListenableBuilder(
+            listenable: Listenable.merge([
+              history.recentlyChangeNotifier,
+              searchChangeNotifier,
+            ]),
+            builder: (context, child) {
+              return songListView(
+                filterSongList(history.recentlySongList, searchValue),
+                recentlySC,
+              );
             },
           ),
           scrollController: recentlySC,
@@ -268,13 +331,28 @@ class HomeLayerState extends State<HomeLayer> {
         mouseRegionForScroll(
           child: SizedBox(
             height: 180 + extraSize,
-            child: ValueListenableBuilder(
-              valueListenable: playlistManager.updateNotifier,
-              builder: (context, value, child) {
+            child: ListenableBuilder(
+              listenable: Listenable.merge([
+                playlistManager.updateNotifier,
+                searchChangeNotifier,
+              ]),
+              builder: (context, child) {
+                final lowerValue = searchValue.toLowerCase();
+                final playlists = searchValue.isEmpty
+                    ? playlistManager.playlists
+                    : playlistManager.playlists
+                          .where(
+                            (playlist) => (playlist.isFavorite
+                                    ? l10n.favorites
+                                    : playlist.name)
+                                .toLowerCase()
+                                .contains(lowerValue),
+                          )
+                          .toList();
                 return ListView.separated(
                   controller: playlistsSC,
                   scrollDirection: .horizontal,
-                  itemCount: playlistManager.playlists.length + 1,
+                  itemCount: playlists.length + 1,
                   separatorBuilder: (context, index) {
                     return SizedBox(width: 15);
                   },
@@ -283,7 +361,7 @@ class HomeLayerState extends State<HomeLayer> {
                       return SizedBox(width: 5);
                     }
                     index--;
-                    final playlist = playlistManager.playlists[index];
+                    final playlist = playlists[index];
                     return ValueListenableBuilder(
                       valueListenable: playlist.changeNotifier,
                       builder: (context, value, child) {

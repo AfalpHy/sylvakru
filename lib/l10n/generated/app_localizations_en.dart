@@ -176,6 +176,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchLicenses => 'Search Licenses';
 
   @override
+  String get searchHome => 'Search albums/songs/playlists';
+
+  @override
   String get ascending => 'Ascending';
 
   @override
