@@ -118,6 +118,60 @@ struct NowPlayingWidgetTimelineProvider: TimelineProvider {
   }
 }
 
+// Flutter joins each lyric line and its translations with U+001F (unit
+// separator): lines stay newline-separated, translations ride inside the
+// line entry so lyricsIndex keeps pointing at the original line.
+private let lyricTranslateSeparator = "\u{1F}"
+
+// Centers the row at centerIndex on the container's midline (shifted by
+// `offset`, negative moves up) while every row keeps its natural height, so
+// long lyric lines wrap to multiple display rows instead of ellipsizing.
+// Rows have variable heights once wrapped, so centering must come from the
+// measured subview sizes rather than a fixed row pitch.
+private struct CenteredLyricsLayout: Layout {
+  let centerIndex: Int
+  let spacing: CGFloat
+  let offset: CGFloat
+
+  func sizeThatFits(
+    proposal: ProposedViewSize,
+    subviews: Subviews,
+    cache: inout ()
+  ) -> CGSize {
+    CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+  }
+
+  func placeSubviews(
+    in bounds: CGRect,
+    proposal: ProposedViewSize,
+    subviews: Subviews,
+    cache: inout ()
+  ) {
+    let sizes = subviews.map {
+      $0.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+    }
+
+    var centerY = bounds.midY
+    var y = bounds.minY
+    for (index, size) in sizes.enumerated() {
+      if index == centerIndex {
+        centerY = y + size.height / 2
+        break
+      }
+      y += size.height + spacing
+    }
+
+    var rowY = bounds.minY + (bounds.midY + offset) - centerY
+    for (index, size) in sizes.enumerated() {
+      subviews[index].place(
+        at: CGPoint(x: bounds.minX, y: rowY),
+        proposal: ProposedViewSize(width: bounds.width, height: size.height)
+      )
+      rowY += size.height + spacing
+    }
+  }
+}
+
 struct NowPlayingWidgetEntryView: View {
   var entry: NowPlayingWidgetTimelineProvider.Entry
 
@@ -158,31 +212,44 @@ struct NowPlayingWidgetEntryView: View {
       let start = entry.lyricsIndex - halfCount
       let end = start + visibleLineCount
 
-      VStack(spacing: 6) {
+      CenteredLyricsLayout(centerIndex: halfCount, spacing: 6, offset: offset) {
         ForEach(start..<end, id: \.self) { index in
           let isValid = index >= 0 && index < lyricsLines.count
-          let lineText = isValid ? lyricsLines[index] : ""
+          let parts = (isValid ? lyricsLines[index] : "")
+            .components(separatedBy: lyricTranslateSeparator)
+          let lineText = parts[0]
+          let translates = Array(parts.dropFirst())
           let isCurrent = index == entry.lyricsIndex
+          let rowFontSize = isCurrent ? fontSize : fontSize - 3
 
-          Text(lineText)
-            .font(
-              .system(
-                size: isCurrent ? fontSize : fontSize - 3,
-                weight: isCurrent ? .bold : .medium
+          VStack(spacing: 2) {
+            Text(lineText)
+              .font(
+                .system(
+                  size: rowFontSize,
+                  weight: isCurrent ? .bold : .medium
+                )
               )
-            )
-            .foregroundColor(
-              Color(argb: entry.foregroundColor)
-                .opacity(isCurrent ? 1.0 : 0.5)
-            )
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .frame(height: lineHeight)
-            .opacity(isValid ? (isCurrent ? 1.0 : 0.5) : 0.0)
+              .foregroundColor(
+                Color(argb: entry.foregroundColor)
+                  .opacity(isCurrent ? 1.0 : 0.5)
+              )
+              .multilineTextAlignment(.center)
+
+            // Translations never take the current-line highlight.
+            ForEach(translates.indices, id: \.self) { translateIndex in
+              Text(translates[translateIndex])
+                .font(.system(size: fontSize - 4, weight: .medium))
+                .foregroundColor(
+                  Color(argb: entry.foregroundColor).opacity(0.5)
+                )
+                .multilineTextAlignment(.center)
+            }
+          }
+          .frame(maxWidth: .infinity, minHeight: rowFontSize + 6)
+          .opacity(isValid ? (isCurrent ? 1.0 : 0.5) : 0.0)
         }
       }
-      .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
-      .offset(y: offset)
       .clipped()
     }
   }

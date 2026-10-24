@@ -60,9 +60,21 @@ class HomeWidgetService {
         song?.isFavoriteNotifier.value,
       );
 
+      // U+001F (unit separator) binds translations to their line: the
+      // widget splits on newline for lines and on U+001F for the
+      // translations following the original text, so lyricsIndex keeps
+      // pointing at the original line without remapping.
       await HomeWidget.saveWidgetData(
         'lyrics',
-        song?.parsedLyrics?.lines.map((e) => e.text).toList().join('\n'),
+        song?.parsedLyrics?.lines
+            .map(
+              (line) => [
+                line.text,
+                ...line.translates.where((t) => t.trim().isNotEmpty),
+              ].join('\u001F'),
+            )
+            .toList()
+            .join('\n'),
       );
 
       await HomeWidget.saveWidgetData(
