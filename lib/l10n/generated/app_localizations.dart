@@ -407,7 +407,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchHome.
   ///
   /// In en, this message translates to:
-  /// **'Search albums/songs/playlists'**
+  /// **'albums/songs/playlists'**
   String get searchHome;
 
   /// No description provided for @ascending.
