@@ -327,7 +327,7 @@ class _ListViewState extends State<_ListView> {
       return SizedBox.shrink();
     }
     double coverSize = isTooNarrow(context) ? 150 : 200;
-    double height = (coverSize + (widget.doubleLine ? 50 : 30)) * 1.1;
+    double height = (coverSize + (widget.doubleLine ? 50 : 30)) * 1.15;
 
     return Column(
       mainAxisSize: .min,
