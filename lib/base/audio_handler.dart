@@ -94,13 +94,11 @@ Future<void> initAudioService() async {
             toggleFavoriteState(currentSongNotifier.value!);
           }
         case 'skipToPrevious':
-          await audioHandler.beginWidgetCommandGrace();
           audioHandler.skipToPrevious();
         case 'togglePlay':
           await audioHandler.beginWidgetCommandGrace();
           audioHandler.togglePlay();
         case 'skipToNext':
-          await audioHandler.beginWidgetCommandGrace();
           audioHandler.skipToNext();
         default:
       }
@@ -158,8 +156,6 @@ class MyAudioHandler extends BaseAudioHandler {
           return;
         }
 
-        bool needPauseTmp = needPause;
-
         if (Loader.busy) {
           await pause();
           return;
@@ -170,15 +166,10 @@ class MyAudioHandler extends BaseAudioHandler {
         } else {
           await skipToNext(); // automatically go to next song
         }
-
-        if (needPauseTmp) {
-          await pause();
-        }
       }
     });
 
     currentSongNotifier.addListener(() {
-      needPause = false;
       if (viewModeNotifier.value == .bigPicture) {
         if (useCurrentSongForBg) {
           colorManager.updateBigPictureRelatedColors(
@@ -254,7 +245,7 @@ class MyAudioHandler extends BaseAudioHandler {
     }
   }
 
-  void updateIsPlaying(bool isPlaying) async {
+  Future<void> updateIsPlaying(bool isPlaying) async {
     if (isPlaying) {
       _playLastSyncTime = DateTime.now();
     } else if (_playLastSyncTime != null) {
@@ -268,7 +259,7 @@ class MyAudioHandler extends BaseAudioHandler {
         setupTaskbar();
       }
     } else if (Platform.isIOS) {
-      HomeWidgetService.updateIsPlaying();
+      await HomeWidgetService.updateIsPlaying();
     }
   }
 
@@ -667,10 +658,15 @@ class MyAudioHandler extends BaseAudioHandler {
       return;
     }
     _loadGraceSawBuffering = false;
-    _loadGraceSub = _player.stream.buffering.listen((buffering) {
+    _loadGraceSub = _player.stream.buffering.listen((buffering) async {
       if (buffering) {
         _loadGraceSawBuffering = true;
       } else if (_loadGraceSawBuffering) {
+        if (needPause) {
+          // ensure widget is updated
+          await Future.delayed(Duration(milliseconds: 500));
+          await pause();
+        }
         _endLoadGrace();
       }
     });
@@ -760,6 +756,12 @@ class MyAudioHandler extends BaseAudioHandler {
 
     currentLyricsIndexNotifier.value = -1;
 
+    if (Platform.isIOS) {
+      await HomeWidgetService.updateNowPlayingWidget();
+      // update colors
+      await HomeWidgetService.reloadPlaylistsWidget();
+    }
+
     try {
       if (currentSong.cacheExist) {
         await _player.open(
@@ -812,12 +814,6 @@ class MyAudioHandler extends BaseAudioHandler {
     }
 
     loadingSong = false;
-
-    if (Platform.isIOS) {
-      HomeWidgetService.updateNowPlayingWidget();
-      // update colors
-      HomeWidgetService.reloadPlaylistsWidget();
-    }
   }
 
   void updateServiceMediaItem(MyAudioMetadata currentSong, {String? lyric}) {
@@ -844,7 +840,7 @@ class MyAudioHandler extends BaseAudioHandler {
     if (playQueue.isEmpty) return;
     _player.play();
 
-    updateIsPlaying(true);
+    await updateIsPlaying(true);
     updatePlaybackState();
 
     _positionTimer ??= Timer.periodic(Duration(seconds: 1), (_) {
@@ -855,7 +851,7 @@ class MyAudioHandler extends BaseAudioHandler {
   @override
   Future<void> pause() async {
     _player.pause();
-    updateIsPlaying(false);
+    await updateIsPlaying(false);
     updatePlaybackState();
     _positionTimer?.cancel();
     _positionTimer = null;
@@ -867,7 +863,7 @@ class MyAudioHandler extends BaseAudioHandler {
     await _endLoadGrace();
     await _endStallGrace();
     _player.stop();
-    updateIsPlaying(false);
+    await updateIsPlaying(false);
     updatePlaybackState(stop: true);
     _positionTimer?.cancel();
     _positionTimer = null;
