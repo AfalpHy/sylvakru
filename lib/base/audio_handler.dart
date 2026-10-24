@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:sylvakru/base/data/loader.dart';
 import 'package:sylvakru/base/data/playlist.dart';
+import 'package:sylvakru/base/services/background_task_service.dart';
 import 'package:sylvakru/base/services/home_widget_service.dart';
 import 'package:sylvakru/base/services/my_window_listener.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
@@ -87,13 +88,19 @@ Future<void> initAudioService() async {
       switch (call.method) {
         case 'toggleFavorite':
           if (currentSongNotifier.value != null) {
+            // iOS only: hold background runtime so the command is not cut off
+            // when the widget tap woke the app in the background.
+            await audioHandler.beginWidgetCommandGrace();
             toggleFavoriteState(currentSongNotifier.value!);
           }
         case 'skipToPrevious':
+          await audioHandler.beginWidgetCommandGrace();
           audioHandler.skipToPrevious();
         case 'togglePlay':
+          await audioHandler.beginWidgetCommandGrace();
           audioHandler.togglePlay();
         case 'skipToNext':
+          await audioHandler.beginWidgetCommandGrace();
           audioHandler.skipToNext();
         default:
       }
@@ -116,6 +123,21 @@ class MyAudioHandler extends BaseAudioHandler {
   late File _positionState;
 
   Timer? _positionTimer;
+
+  // iOS background-execution grace for the current load (see _beginLoadGrace).
+  StreamSubscription<bool>? _loadGraceSub;
+  int? _loadGraceToken;
+  bool _loadGraceSawBuffering = false;
+
+  // iOS background-execution grace for widget-button commands.
+  int? _widgetCommandToken;
+  Timer? _widgetCommandTimer;
+  StreamSubscription<Duration>? _widgetCommandSub;
+
+  // iOS background-execution grace held while mpv is buffering, including
+  // mid-song stalls on weak network.
+  int? _stallGraceToken;
+  bool _stallGraceArming = false;
 
   MyAudioHandler() {
     // avoid reading .lrc files
@@ -169,6 +191,18 @@ class MyAudioHandler extends BaseAudioHandler {
     });
 
     _player.stream.position.listen(_updateCurrentLyricIndex);
+
+    // iOS: hold a background task for the whole buffering phase (including
+    // mid-song stalls on weak network) so the process is not suspended before
+    // buffering completes. core-idle also reports true on stop/pause, so only
+    // arm while a song is actually playing or loading.
+    _player.stream.buffering.listen((buffering) {
+      if (buffering) {
+        _beginStallGrace();
+      } else {
+        _endStallGrace();
+      }
+    });
   }
 
   void _updateCurrentLyricIndex(Duration position) {
@@ -553,6 +587,8 @@ class MyAudioHandler extends BaseAudioHandler {
   }
 
   void justClear() {
+    _endLoadGrace();
+    _endStallGrace();
     _player.stop();
     updateIsPlaying(false);
     updatePlaybackState(stop: true);
@@ -620,7 +656,81 @@ class MyAudioHandler extends BaseAudioHandler {
     }
   }
 
+  // iOS: keeps the app running while a song loads in the background. The
+  // grace ends when buffering settles after MPV_EVENT_START_FILE; the player
+  // reset before that event also emits buffering=false, so only a false
+  // following a true counts as loaded.
+  Future<void> _beginLoadGrace() async {
+    await _endLoadGrace();
+    _loadGraceToken = await BackgroundTaskService.begin();
+    if (_loadGraceToken == null) {
+      return;
+    }
+    _loadGraceSawBuffering = false;
+    _loadGraceSub = _player.stream.buffering.listen((buffering) {
+      if (buffering) {
+        _loadGraceSawBuffering = true;
+      } else if (_loadGraceSawBuffering) {
+        _endLoadGrace();
+      }
+    });
+  }
+
+  Future<void> _endLoadGrace() async {
+    _loadGraceSub?.cancel();
+    _loadGraceSub = null;
+    final token = _loadGraceToken;
+    _loadGraceToken = null;
+    await BackgroundTaskService.end(token);
+  }
+
+  // iOS: a widget tap wakes the app in the background with only a few seconds
+  // of runtime, which can suspend it before playback becomes audible (Dart
+  // ran, but no sound). Holds a background task until the first position tick
+  // (audio flowing) or the timeout, whichever comes first.
+  Future<void> beginWidgetCommandGrace() async {
+    await endWidgetCommandGrace();
+    _widgetCommandToken = await BackgroundTaskService.begin();
+    if (_widgetCommandToken == null) {
+      return;
+    }
+
+    _widgetCommandTimer = Timer(Duration(seconds: 15), endWidgetCommandGrace);
+  }
+
+  Future<void> endWidgetCommandGrace() async {
+    _widgetCommandSub?.cancel();
+    _widgetCommandSub = null;
+    _widgetCommandTimer?.cancel();
+    _widgetCommandTimer = null;
+    final token = _widgetCommandToken;
+    _widgetCommandToken = null;
+    await BackgroundTaskService.end(token);
+  }
+
+  Future<void> _beginStallGrace() async {
+    if (!Platform.isIOS || _stallGraceArming || _stallGraceToken != null) {
+      return;
+    }
+    if (!loadingSong && !isPlayingNotifier.value) {
+      return;
+    }
+    _stallGraceArming = true;
+    _stallGraceToken = await BackgroundTaskService.begin();
+    _stallGraceArming = false;
+  }
+
+  Future<void> _endStallGrace() async {
+    final token = _stallGraceToken;
+    _stallGraceToken = null;
+    await BackgroundTaskService.end(token);
+  }
+
   Future<void> load({Duration? start}) async {
+    // iOS only: request background execution time for the lyrics fetch,
+    // stream ping, player open and buffering below.
+    await _beginLoadGrace();
+
     if (currentSongNotifier.value != null) {
       if (_playLastSyncTime != null) {
         _playedDuration += DateTime.now().difference(_playLastSyncTime!);
@@ -754,6 +864,8 @@ class MyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> stop() async {
+    await _endLoadGrace();
+    await _endStallGrace();
     _player.stop();
     updateIsPlaying(false);
     updatePlaybackState(stop: true);

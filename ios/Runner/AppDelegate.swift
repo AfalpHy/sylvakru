@@ -8,6 +8,11 @@ import home_widget
 
   private var activeBookmarks: [String: URL] = [:]
 
+  // Tracks background tasks begun from Flutter (song downloads/loads) so each
+  // begin/end pair maps to one UIBackgroundTaskIdentifier.
+  private var flutterBackgroundTasks: [Int: UIBackgroundTaskIdentifier] = [:]
+  private var nextFlutterBackgroundTaskId = 1
+
   private weak var flutterView: UIView?
   private var currentMenuActions: [[String: Any]] = []
   private var menuChannel: FlutterMethodChannel?
@@ -19,6 +24,17 @@ import home_widget
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+
+    // Retries the context-menu attachment whenever the app becomes active,
+    // covering cold starts performed in the background by widget taps.
+    // (Notification-based: FlutterAppDelegate does not expose
+    // applicationDidBecomeActive for a Swift super call.)
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(onDidBecomeActive),
+      name: UIApplication.didBecomeActiveNotification,
+      object: nil
+    )
 
     let registrar = self.registrar(forPlugin: "NativeBridge")
 
@@ -102,21 +118,11 @@ import home_widget
 
       switch call.method {
       case "initNativeMenu":
-        // Global Initialization: Attach interaction to FlutterView at startup to ensure immediate response on first long press.
-        guard
-          let windowScene = UIApplication.shared.connectedScenes
-            .first(where: { $0.activationState == .foregroundActive })
-            as? UIWindowScene,
-          let window = windowScene.windows.first(where: { $0.isKeyWindow }),
-          let rootVC = window.rootViewController,
-          let flutterView = rootVC.view
-        else {
-          result(nil)
-          return
-        }
-
-        self.flutterView = flutterView
-        flutterView.addInteraction(UIContextMenuInteraction(delegate: self))
+        // Attach interaction to FlutterView when possible. A background start
+        // (widget tap) has no foreground-active scene yet, so Dart's startup
+        // call lands before the UI is active; the retry on every activation
+        // below registers it once the app is actually opened.
+        self.attachContextMenuInteraction()
         result(nil)
       case "showNativeMenu":
         guard let args = call.arguments as? [String: Any],
@@ -182,8 +188,82 @@ import home_widget
       }
     })
 
+    // Grants extra CPU time when the app is backgrounded (e.g. while a song
+    // download or load is in flight) so iOS does not suspend it mid-operation.
+    // Each "begin" returns a token that the matching "end" must pass back; the
+    // expiration handler ends the task itself or iOS terminates the app.
+    let backgroundTaskChannel = FlutterMethodChannel(
+      name: "com.afalphy.background_task",
+      binaryMessenger: registrar!.messenger())
+
+    backgroundTaskChannel.setMethodCallHandler({
+      [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+      guard let self = self else {
+        result(nil)
+        return
+      }
+
+      switch call.method {
+      case "begin":
+        let taskId = self.nextFlutterBackgroundTaskId
+        self.nextFlutterBackgroundTaskId += 1
+        self.flutterBackgroundTasks[taskId] = UIApplication.shared.beginBackgroundTask(
+          withName: "flutter_\(taskId)"
+        ) {
+          DispatchQueue.main.async {
+            self.endFlutterBackgroundTask(taskId: taskId)
+          }
+        }
+        result(taskId)
+
+      case "end":
+        guard let args = call.arguments as? [String: Any],
+          let taskId = args["taskId"] as? Int
+        else {
+          result(FlutterError(code: "ARG_ERROR", message: "taskId is required", details: nil))
+          return
+        }
+        self.endFlutterBackgroundTask(taskId: taskId)
+        result(nil)
+
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    })
+
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // Idempotently attaches the long-press context menu to the Flutter view.
+  // Widget taps can start the app in the background, where Dart startup still
+  // runs but no scene is foreground-active yet; without the activation retry
+  // the menu would stay unregistered for that process lifetime.
+  private func attachContextMenuInteraction() {
+    guard flutterView == nil else { return }
+
+    guard
+      let windowScene = UIApplication.shared.connectedScenes
+        .first(where: { $0.activationState == .foregroundActive })
+        as? UIWindowScene,
+      let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+      let rootVC = window.rootViewController,
+      let flutterView = rootVC.view
+    else { return }
+
+    self.flutterView = flutterView
+    flutterView.addInteraction(UIContextMenuInteraction(delegate: self))
+  }
+
+  @objc private func onDidBecomeActive() {
+    attachContextMenuInteraction()
+  }
+
+  private func endFlutterBackgroundTask(taskId: Int) {
+    guard let identifier = flutterBackgroundTasks.removeValue(forKey: taskId) else { return }
+    if identifier != .invalid {
+      UIApplication.shared.endBackgroundTask(identifier)
+    }
   }
 
   func contextMenuInteraction(
