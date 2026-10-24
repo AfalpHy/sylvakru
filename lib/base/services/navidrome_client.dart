@@ -352,7 +352,7 @@ class NavidromeClient extends StreamClient {
   Future<String> getLyricsById(String songId) async {
     final response = await safeRequest(
       '/rest/getLyricsBySongId.view',
-      query: {'id': songId},
+      query: {'id': songId, 'enhanced': true},
     );
 
     if (response == null) {
@@ -365,41 +365,7 @@ class NavidromeClient extends StreamClient {
       final List structured = lyricsList['structuredLyrics'];
 
       if (structured.isNotEmpty) {
-        int best = 0;
-        int maxLength = 0;
-
-        for (int i = 0; i < structured.length; i++) {
-          final item = structured[i];
-          final lines = item['line'];
-
-          if (lines is List && lines.isNotEmpty) {
-            final value = lines.first['value'];
-
-            if (value is String && value.length > maxLength) {
-              best = i;
-              maxLength = value.length;
-            }
-          }
-        }
-
-        final List lines = structured[best]['line'] ?? [];
-
-        final buffer = StringBuffer();
-
-        for (final line in lines) {
-          final start = line['start'] ?? 0;
-          final value = line['value'] ?? '';
-
-          final minute = (start ~/ 60000).toString().padLeft(2, '0');
-
-          final second = ((start % 60000) ~/ 1000).toString().padLeft(2, '0');
-
-          final milli = (start % 1000).toString().padLeft(3, '0');
-
-          buffer.writeln('[$minute:$second.$milli]$value');
-        }
-
-        return buffer.toString();
+        return structuredLyricsToLrc(structured);
       }
     }
 
@@ -437,3 +403,180 @@ class NavidromeClient extends StreamClient {
         null;
   }
 }
+
+/// Formats milliseconds as `MM:SS.mmm`, the timestamp shape the LRC parser
+/// understands for both line and angle-bracket word timestamps.
+String _formatLrcTime(int milliseconds) {
+  final minute = (milliseconds ~/ 60000).toString().padLeft(2, '0');
+  final second = ((milliseconds % 60000) ~/ 1000).toString().padLeft(2, '0');
+  final milli = (milliseconds % 1000).toString().padLeft(3, '0');
+  return '$minute:$second.$milli';
+}
+
+/// Converts OpenSubsonic structured lyrics into LRC text: plain entries
+/// become `[mm:ss.mmm]line` lines (as before), while entries carrying the
+/// v2 karaoke extension (`cueLine`/`cue`, served by Navidrome 0.63+ for
+/// TTML sidecars) keep their word timing as angle-bracket word timestamps.
+/// `kind=translation` entries are emitted as same-timestamp lines so they
+/// show up as translations.
+@visibleForTesting
+String structuredLyricsToLrc(List structured) {
+  final entries = structured.whereType<Map>().toList();
+  if (entries.isEmpty) {
+    return '';
+  }
+
+  Map? cuedEntry;
+  Map? plainEntry;
+  var maxLength = 0;
+
+  for (final entry in entries) {
+    final kind = entry['kind'];
+    final cueLines = entry['cueLine'];
+    final lines = entry['line'];
+
+    if (cuedEntry == null &&
+        cueLines is List &&
+        cueLines.isNotEmpty &&
+        (kind == null || kind == 'main')) {
+      cuedEntry = entry;
+    }
+
+    if (lines is List && lines.isNotEmpty) {
+      final value = lines.first['value'];
+      if (value is String && value.length > maxLength) {
+        plainEntry = entry;
+        maxLength = value.length;
+      }
+    }
+  }
+
+  final buffer = StringBuffer();
+
+  if (cuedEntry != null) {
+    _writeCuedEntry(buffer, cuedEntry, entries);
+  } else if (plainEntry != null) {
+    _writePlainEntry(buffer, plainEntry, entries);
+  }
+
+  return buffer.toString();
+}
+
+void _writeCuedEntry(StringBuffer buffer, Map entry, List entries) {
+  final offset = _intOf(entry['offset']);
+  final translations = _translationLines(entries);
+
+  // Agent layers (background vocals etc.) share one index; the main layer
+  // comes first per the spec, so its start timestamps the line.
+  final layers = <int, List<Map>>{};
+  for (final cueLine in (entry['cueLine'] as List).whereType<Map>()) {
+    final index = cueLine['index'];
+    if (index is num) {
+      layers.putIfAbsent(index.toInt(), () => []).add(cueLine);
+    }
+  }
+
+  final lines = entry['line'] is List ? entry['line'] as List : const [];
+
+  for (final index in layers.keys.toList()..sort()) {
+    final cueLines = layers[index]!;
+    final lineMeta = index >= 0 && index < lines.length ? lines[index] : null;
+    final fallbackStart =
+        lineMeta is Map && lineMeta['start'] is num ? lineMeta['start'] as num : null;
+    final startRaw = cueLines.first['start'];
+    final start = startRaw is num ? startRaw : fallbackStart;
+    if (start == null) {
+      continue;
+    }
+    final lineStart = start.toInt() + offset;
+
+    final cues = <(int, String)>[];
+    for (final cueLine in cueLines) {
+      for (final cue in ((cueLine['cue'] ?? const []) as List).whereType<Map>()) {
+        final cueStart = cue['start'];
+        if (cueStart is! num) {
+          continue;
+        }
+        final text = _cueText(cueLine, cue);
+        if (text.isEmpty) {
+          continue;
+        }
+        cues.add((cueStart.toInt() + offset, text));
+      }
+    }
+    cues.sort((a, b) => a.$1.compareTo(b.$1));
+
+    buffer.write('[${_formatLrcTime(lineStart)}]');
+    for (final (cueStart, text) in cues) {
+      buffer.write('<${_formatLrcTime(cueStart)}>$text');
+    }
+    buffer.write('\n');
+
+    _writeTranslations(buffer, translations, lineStart);
+  }
+}
+
+void _writePlainEntry(StringBuffer buffer, Map entry, List entries) {
+  final offset = _intOf(entry['offset']);
+  final translations = _translationLines(entries);
+
+  for (final line in ((entry['line'] ?? const []) as List).whereType<Map>()) {
+    final start = line['start'];
+    final lineStart = (start is num ? start.toInt() : 0) + offset;
+    buffer.write('[${_formatLrcTime(lineStart)}]${line['value'] ?? ''}\n');
+    _writeTranslations(buffer, translations, lineStart);
+  }
+}
+
+Map<int, List<String>> _translationLines(List entries) {
+  final translations = <int, List<String>>{};
+  for (final entry in entries.whereType<Map>()) {
+    if (entry['kind'] != 'translation') {
+      continue;
+    }
+    final offset = _intOf(entry['offset']);
+    final lines = entry['line'];
+    if (lines is! List) {
+      continue;
+    }
+    for (final line in lines.whereType<Map>()) {
+      final start = line['start'];
+      final value = line['value'];
+      if (start is num && value is String && value.trim().isNotEmpty) {
+        translations.putIfAbsent(start.toInt() + offset, () => []).add(value);
+      }
+    }
+  }
+  return translations;
+}
+
+void _writeTranslations(
+  StringBuffer buffer,
+  Map<int, List<String>> translations,
+  int lineStart,
+) {
+  for (final text in translations[lineStart] ?? const <String>[]) {
+    buffer.write('[${_formatLrcTime(lineStart)}]$text\n');
+  }
+}
+
+/// Resolves a cue's text: byte offsets into the cueLine value are
+/// authoritative and inclusive on both ends per the v2 spec (they preserve
+/// exact spacing, e.g. between CJK words), falling back to the cue's own
+/// value.
+String _cueText(Map cueLine, Map cue) {
+  final value = cueLine['value'];
+  final byteStart = cue['byteStart'];
+  final byteEnd = cue['byteEnd'];
+  if (value is String && byteStart is num && byteEnd is num) {
+    final bytes = utf8.encode(value);
+    final start = byteStart.toInt();
+    final end = byteEnd.toInt();
+    if (start >= 0 && end < bytes.length && start <= end) {
+      return utf8.decode(bytes.sublist(start, end + 1), allowMalformed: true);
+    }
+  }
+  return cue['value'] is String ? cue['value'] as String : '';
+}
+
+int _intOf(dynamic raw) => raw is num ? raw.toInt() : 0;
