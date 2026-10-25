@@ -60,6 +60,7 @@ class EmbyClient extends StreamClient {
     T? Function(Response response)? parser,
     String errorMessage = '',
     bool showRealError = false,
+    bool ignoreMessage = false,
   }) async {
     try {
       if (accessToken == null && userId == null) {
@@ -82,6 +83,9 @@ class EmbyClient extends StreamClient {
 
       return null;
     } on DioException catch (e) {
+      if (ignoreMessage) {
+        return null;
+      }
       logger.output(
         '\n[$runtimeType]\n[error]Dio: ${e.message} (${e.response?.statusCode}\n[data]${e.response?.data.toString()})',
       );
@@ -92,6 +96,9 @@ class EmbyClient extends StreamClient {
 
       return null;
     } catch (e) {
+      if (ignoreMessage) {
+        return null;
+      }
       logger.output('\n[$runtimeType]\n[error]$e');
 
       if (errorMessage.isNotEmpty) {
@@ -395,6 +402,7 @@ class EmbyClient extends StreamClient {
         options: Options(responseType: ResponseType.bytes),
       ),
       parser: (res) => Uint8List.fromList(res.data as List<int>),
+      ignoreMessage: true,
     );
   }
 

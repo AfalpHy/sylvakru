@@ -223,6 +223,8 @@ Future<void> setParsedLyrics(MyAudioMetadata song) async {
         await lycFile.writeAsString(lyrics);
       }
     }
+  } else if (sourceType == .emby) {
+    lyrics = song.lyrics ?? '';
   } else {
     if (song.lyrics == null || song.lyrics!.isEmpty) {
       lyrics = await _readSidecarLyrics(song);
