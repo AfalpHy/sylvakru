@@ -29,6 +29,15 @@ class $MetadataItemsTable extends MetadataItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _modifiedMeta = const VerificationMeta(
     'modified',
   );
@@ -204,6 +213,7 @@ class $MetadataItemsTable extends MetadataItems
   List<GeneratedColumn> get $columns => [
     id,
     coverId,
+    path,
     modified,
     format,
     title,
@@ -243,6 +253,12 @@ class $MetadataItemsTable extends MetadataItems
       context.handle(
         _coverIdMeta,
         coverId.isAcceptableOrUnknown(data['cover_id']!, _coverIdMeta),
+      );
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
       );
     }
     if (data.containsKey('modified')) {
@@ -370,6 +386,10 @@ class $MetadataItemsTable extends MetadataItems
         DriftSqlType.string,
         data['${effectivePrefix}cover_id'],
       ),
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      ),
       modified: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}modified'],
@@ -450,6 +470,7 @@ class $MetadataItemsTable extends MetadataItems
 class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   final String id;
   final String? coverId;
+  final String? path;
   final int? modified;
   final String? format;
   final String? title;
@@ -470,6 +491,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   const MetadataItem({
     required this.id,
     this.coverId,
+    this.path,
     this.modified,
     this.format,
     this.title,
@@ -494,6 +516,9 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     map['id'] = Variable<String>(id);
     if (!nullToAbsent || coverId != null) {
       map['cover_id'] = Variable<String>(coverId);
+    }
+    if (!nullToAbsent || path != null) {
+      map['path'] = Variable<String>(path);
     }
     if (!nullToAbsent || modified != null) {
       map['modified'] = Variable<int>(modified);
@@ -551,6 +576,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       coverId: coverId == null && nullToAbsent
           ? const Value.absent()
           : Value(coverId),
+      path: path == null && nullToAbsent ? const Value.absent() : Value(path),
       modified: modified == null && nullToAbsent
           ? const Value.absent()
           : Value(modified),
@@ -605,6 +631,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     return MetadataItem(
       id: serializer.fromJson<String>(json['id']),
       coverId: serializer.fromJson<String?>(json['coverId']),
+      path: serializer.fromJson<String?>(json['path']),
       modified: serializer.fromJson<int?>(json['modified']),
       format: serializer.fromJson<String?>(json['format']),
       title: serializer.fromJson<String?>(json['title']),
@@ -630,6 +657,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'coverId': serializer.toJson<String?>(coverId),
+      'path': serializer.toJson<String?>(path),
       'modified': serializer.toJson<int?>(modified),
       'format': serializer.toJson<String?>(format),
       'title': serializer.toJson<String?>(title),
@@ -653,6 +681,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   MetadataItem copyWith({
     String? id,
     Value<String?> coverId = const Value.absent(),
+    Value<String?> path = const Value.absent(),
     Value<int?> modified = const Value.absent(),
     Value<String?> format = const Value.absent(),
     Value<String?> title = const Value.absent(),
@@ -673,6 +702,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   }) => MetadataItem(
     id: id ?? this.id,
     coverId: coverId.present ? coverId.value : this.coverId,
+    path: path.present ? path.value : this.path,
     modified: modified.present ? modified.value : this.modified,
     format: format.present ? format.value : this.format,
     title: title.present ? title.value : this.title,
@@ -695,6 +725,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     return MetadataItem(
       id: data.id.present ? data.id.value : this.id,
       coverId: data.coverId.present ? data.coverId.value : this.coverId,
+      path: data.path.present ? data.path.value : this.path,
       modified: data.modified.present ? data.modified.value : this.modified,
       format: data.format.present ? data.format.value : this.format,
       title: data.title.present ? data.title.value : this.title,
@@ -728,6 +759,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
     return (StringBuffer('MetadataItem(')
           ..write('id: $id, ')
           ..write('coverId: $coverId, ')
+          ..write('path: $path, ')
           ..write('modified: $modified, ')
           ..write('format: $format, ')
           ..write('title: $title, ')
@@ -753,6 +785,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
   int get hashCode => Object.hash(
     id,
     coverId,
+    path,
     modified,
     format,
     title,
@@ -777,6 +810,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
       (other is MetadataItem &&
           other.id == this.id &&
           other.coverId == this.coverId &&
+          other.path == this.path &&
           other.modified == this.modified &&
           other.format == this.format &&
           other.title == this.title &&
@@ -799,6 +833,7 @@ class MetadataItem extends DataClass implements Insertable<MetadataItem> {
 class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   final Value<String> id;
   final Value<String?> coverId;
+  final Value<String?> path;
   final Value<int?> modified;
   final Value<String?> format;
   final Value<String?> title;
@@ -820,6 +855,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   const MetadataItemsCompanion({
     this.id = const Value.absent(),
     this.coverId = const Value.absent(),
+    this.path = const Value.absent(),
     this.modified = const Value.absent(),
     this.format = const Value.absent(),
     this.title = const Value.absent(),
@@ -842,6 +878,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   MetadataItemsCompanion.insert({
     required String id,
     this.coverId = const Value.absent(),
+    this.path = const Value.absent(),
     this.modified = const Value.absent(),
     this.format = const Value.absent(),
     this.title = const Value.absent(),
@@ -864,6 +901,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   static Insertable<MetadataItem> custom({
     Expression<String>? id,
     Expression<String>? coverId,
+    Expression<String>? path,
     Expression<int>? modified,
     Expression<String>? format,
     Expression<String>? title,
@@ -886,6 +924,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (coverId != null) 'cover_id': coverId,
+      if (path != null) 'path': path,
       if (modified != null) 'modified': modified,
       if (format != null) 'format': format,
       if (title != null) 'title': title,
@@ -910,6 +949,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
   MetadataItemsCompanion copyWith({
     Value<String>? id,
     Value<String?>? coverId,
+    Value<String?>? path,
     Value<int?>? modified,
     Value<String?>? format,
     Value<String?>? title,
@@ -932,6 +972,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     return MetadataItemsCompanion(
       id: id ?? this.id,
       coverId: coverId ?? this.coverId,
+      path: path ?? this.path,
       modified: modified ?? this.modified,
       format: format ?? this.format,
       title: title ?? this.title,
@@ -961,6 +1002,9 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     }
     if (coverId.present) {
       map['cover_id'] = Variable<String>(coverId.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
     }
     if (modified.present) {
       map['modified'] = Variable<int>(modified.value);
@@ -1024,6 +1068,7 @@ class MetadataItemsCompanion extends UpdateCompanion<MetadataItem> {
     return (StringBuffer('MetadataItemsCompanion(')
           ..write('id: $id, ')
           ..write('coverId: $coverId, ')
+          ..write('path: $path, ')
           ..write('modified: $modified, ')
           ..write('format: $format, ')
           ..write('title: $title, ')
@@ -1062,6 +1107,7 @@ typedef $$MetadataItemsTableCreateCompanionBuilder =
     MetadataItemsCompanion Function({
       required String id,
       Value<String?> coverId,
+      Value<String?> path,
       Value<int?> modified,
       Value<String?> format,
       Value<String?> title,
@@ -1085,6 +1131,7 @@ typedef $$MetadataItemsTableUpdateCompanionBuilder =
     MetadataItemsCompanion Function({
       Value<String> id,
       Value<String?> coverId,
+      Value<String?> path,
       Value<int?> modified,
       Value<String?> format,
       Value<String?> title,
@@ -1121,6 +1168,11 @@ class $$MetadataItemsTableFilterComposer
 
   ColumnFilters<String> get coverId => $composableBuilder(
     column: $table.coverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1229,6 +1281,11 @@ class $$MetadataItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get modified => $composableBuilder(
     column: $table.modified,
     builder: (column) => ColumnOrderings(column),
@@ -1330,6 +1387,9 @@ class $$MetadataItemsTableAnnotationComposer
   GeneratedColumn<String> get coverId =>
       $composableBuilder(column: $table.coverId, builder: (column) => column);
 
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
   GeneratedColumn<int> get modified =>
       $composableBuilder(column: $table.modified, builder: (column) => column);
 
@@ -1423,6 +1483,7 @@ class $$MetadataItemsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String?> coverId = const Value.absent(),
+                Value<String?> path = const Value.absent(),
                 Value<int?> modified = const Value.absent(),
                 Value<String?> format = const Value.absent(),
                 Value<String?> title = const Value.absent(),
@@ -1444,6 +1505,7 @@ class $$MetadataItemsTableTableManager
               }) => MetadataItemsCompanion(
                 id: id,
                 coverId: coverId,
+                path: path,
                 modified: modified,
                 format: format,
                 title: title,
@@ -1467,6 +1529,7 @@ class $$MetadataItemsTableTableManager
               ({
                 required String id,
                 Value<String?> coverId = const Value.absent(),
+                Value<String?> path = const Value.absent(),
                 Value<int?> modified = const Value.absent(),
                 Value<String?> format = const Value.absent(),
                 Value<String?> title = const Value.absent(),
@@ -1488,6 +1551,7 @@ class $$MetadataItemsTableTableManager
               }) => MetadataItemsCompanion.insert(
                 id: id,
                 coverId: coverId,
+                path: path,
                 modified: modified,
                 format: format,
                 title: title,

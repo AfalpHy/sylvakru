@@ -11,6 +11,8 @@ class MetadataItems extends Table {
   TextColumn get id => text()();
   TextColumn get coverId => text().nullable()();
 
+  TextColumn get path => text().nullable()();
+
   IntColumn get modified => integer().nullable()();
 
   TextColumn get format => text().nullable()();
@@ -46,7 +48,7 @@ class MetadataDB extends _$MetadataDB {
   MetadataDB(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -69,6 +71,10 @@ class MetadataDB extends _$MetadataDB {
 
         if (from < 5) {
           await m.addColumn(metadataItems, metadataItems.lyricsTimeOffset);
+        }
+
+        if (from < 6) {
+          await m.addColumn(metadataItems, metadataItems.path);
         }
       },
     );
