@@ -18,6 +18,7 @@ import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/base/utils/zoom_page_route.dart';
 import 'package:sylvakru/base/widgets/cover_art_widget.dart';
 import 'package:sylvakru/base/widgets/custom_text_field.dart';
+import 'package:sylvakru/base/widgets/edit_metadata.dart';
 import 'package:sylvakru/base/widgets/my_divider.dart';
 import 'package:sylvakru/base/widgets/my_sheet.dart';
 import 'package:sylvakru/base/widgets/playlist_widgets.dart';
@@ -917,7 +918,7 @@ void showSongOptions({
                       Navigator.pop(context);
                       showAnimationDialog(
                         context: context,
-                        child: SongInfo(song: song),
+                        child: EditMetadata(song: song),
                       );
                     },
                   ),
