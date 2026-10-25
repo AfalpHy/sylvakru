@@ -160,10 +160,8 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
                 shape: SmoothRectangleBorder(
                   smoothness: 0.6,
                   borderRadius: .only(
-                    topLeft: Radius.circular(value ? screenRadius.topLeft : 0),
-                    topRight: Radius.circular(
-                      value ? screenRadius.topRight : 0,
-                    ),
+                    topLeft: Radius.circular(value ? screenTopLeftRadius : 0),
+                    topRight: Radius.circular(value ? screenTopRightRadius : 0),
                   ),
                 ),
                 clipBehavior: value ? .antiAliasWithSaveLayer : .antiAlias,

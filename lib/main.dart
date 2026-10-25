@@ -54,7 +54,13 @@ Future<void> main() async {
   await logger.init();
 
   if (isMobile) {
-    screenRadius = await CornerRadiusPlugin.init();
+    final screenRadius = await CornerRadiusPlugin.init();
+    screenTopLeftRadius = screenRadius.topLeft;
+    screenTopRightRadius = screenRadius.topRight;
+    CornerRadiusPlugin.screenRadiusStream.listen((radius) {
+      screenTopLeftRadius = radius.topLeft;
+      screenTopRightRadius = radius.topRight;
+    });
     await HomeWidget.setAppGroupId('group.com.afalphy.sylvakru');
   } else {
     if (kReleaseMode) {
