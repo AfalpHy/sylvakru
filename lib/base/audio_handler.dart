@@ -78,6 +78,8 @@ Future<void> initAudioService() async {
   _session.interruptionEventStream.listen((event) {
     if (event.begin) {
       audioHandler.pause();
+    } else {
+      audioHandler.play();
     }
   });
 
@@ -140,6 +142,10 @@ class MyAudioHandler extends BaseAudioHandler {
   MyAudioHandler() {
     // avoid reading .lrc files
     (_player.platform as NativePlayer).setProperty('sub-auto', 'no');
+
+    if (Platform.isIOS) {
+      (_player.platform as NativePlayer).setProperty('audio-exclusive', 'yes');
+    }
 
     _player.stream.error.listen((onData) {
       logger.output("player error:$onData");
