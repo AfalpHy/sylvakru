@@ -57,6 +57,7 @@ class MyPicture {
     color = null;
     lowerLuminance = null;
     pictureLoadScheduler.resetPicture(this);
+    changeNotifier.value++;
   }
 }
 
