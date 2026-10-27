@@ -52,7 +52,6 @@ class StreamRelay {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
 
     _baseUrl = 'http://127.0.0.1:${server.port}';
-    logger.output('[StreamRelay] listening on $_baseUrl');
 
     server.listen(
       (request) {

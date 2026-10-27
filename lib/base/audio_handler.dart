@@ -813,7 +813,6 @@ class MyAudioHandler extends BaseAudioHandler {
 
         if (isRemote) {
           final relayUrl = await streamRelay.register(resource, headers);
-          logger.output('[stream] mpv <- $relayUrl');
           resource = relayUrl;
           headers = null;
         }

@@ -54,8 +54,6 @@ Future<void> main() async {
 
   await logger.init();
 
-  await initSystemProxy();
-
   if (isMobile) {
     final screenRadius = await CornerRadiusPlugin.init();
     screenTopLeftRadius = screenRadius.topLeft;
@@ -77,6 +75,8 @@ Future<void> main() async {
   }
 
   _registerLicenses();
+
+  await initSystemProxy();
 
   await initAudioService();
 
