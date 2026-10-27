@@ -1,3 +1,4 @@
+import CFNetwork
 import Flutter
 import UIKit
 import WidgetKit
@@ -231,8 +232,51 @@ import home_widget
       }
     })
 
+    // Reports the system HTTP proxy (e.g. a Wi-Fi/global HTTP proxy set by a
+    // proxy app); Dart reads it via the com.afalphy.system_proxy channel to
+    // route Dio and libmpv. VPN-mode (TUN) proxies capture traffic
+    // transparently without setting these keys, so this returns nil then.
+    let systemProxyChannel = FlutterMethodChannel(
+      name: "com.afalphy.system_proxy",
+      binaryMessenger: registrar!.messenger())
+
+    systemProxyChannel.setMethodCallHandler({
+      (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+      switch call.method {
+      case "getProxy":
+        result(Self.getSystemProxy())
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    })
+
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // HTTPEnable/HTTPProxy/HTTPPort mirror the global HTTP proxy in the system
+  // proxy settings (CFNetworkCopySystemProxySettings aggregate dictionary).
+  private static func getSystemProxy() -> String? {
+    guard
+      let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue()
+        as? [String: Any]
+    else { return nil }
+
+    let candidates: [(enable: String, host: String, port: String)] = [
+      ("HTTPEnable", "HTTPProxy", "HTTPPort"),
+      ("HTTPSEnable", "HTTPSProxy", "HTTPSPort"),
+    ]
+
+    for candidate in candidates {
+      if (settings[candidate.enable] as? NSNumber)?.intValue == 1,
+        let host = settings[candidate.host] as? String,
+        let port = (settings[candidate.port] as? NSNumber)?.intValue
+      {
+        return "http://\(host):\(port)"
+      }
+    }
+
+    return nil
   }
 
   // Idempotently attaches the long-press context menu to the Flutter view.

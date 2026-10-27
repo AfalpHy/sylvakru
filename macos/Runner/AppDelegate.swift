@@ -1,3 +1,4 @@
+import CFNetwork
 import Cocoa
 import FlutterMacOS
 
@@ -47,7 +48,48 @@ class AppDelegate: FlutterAppDelegate {
       }
     }
 
+    // Reports the system HTTP proxy (written by proxy apps' "System Proxy"
+    // toggle); Dart reads it via the com.afalphy.system_proxy channel to
+    // route Dio and libmpv.
+    let systemProxyChannel = FlutterMethodChannel(
+      name: "com.afalphy.system_proxy",
+      binaryMessenger: controller!.engine.binaryMessenger
+    )
+
+    systemProxyChannel.setMethodCallHandler { (call, result) in
+      if call.method == "getProxy" {
+        result(Self.getSystemProxy())
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     super.applicationDidFinishLaunching(notification)
+  }
+
+  // HTTPEnable/HTTPProxy/HTTPPort mirror the global HTTP proxy in the system
+  // proxy settings (CFNetworkCopySystemProxySettings aggregate dictionary).
+  private static func getSystemProxy() -> String? {
+    guard
+      let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue()
+        as? [String: Any]
+    else { return nil }
+
+    let candidates: [(enable: String, host: String, port: String)] = [
+      ("HTTPEnable", "HTTPProxy", "HTTPPort"),
+      ("HTTPSEnable", "HTTPSProxy", "HTTPSPort"),
+    ]
+
+    for candidate in candidates {
+      if (settings[candidate.enable] as? NSNumber)?.intValue == 1,
+        let host = settings[candidate.host] as? String,
+        let port = (settings[candidate.port] as? NSNumber)?.intValue
+      {
+        return "http://\(host):\(port)"
+      }
+    }
+
+    return nil
   }
 
   func showNativeMenu(items: [[String: Any]]) {

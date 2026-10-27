@@ -13,6 +13,7 @@ import 'package:sylvakru/base/services/home_widget_service.dart';
 import 'package:sylvakru/base/services/my_window_listener.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
 import 'package:sylvakru/base/services/play_queue_logic.dart';
+import 'package:sylvakru/base/services/stream_relay.dart';
 import 'package:sylvakru/base/services/stream_client.dart';
 import 'package:sylvakru/base/services/taskbar_service.dart';
 import 'package:sylvakru/base/services/webdav_client.dart';
@@ -796,6 +797,26 @@ class MyAudioHandler extends BaseAudioHandler {
             break;
         }
         resource ??= currentSong.path!;
+
+        // libmpv's bundled ffmpeg does TLS with macOS Secure Transport, which
+        // cannot negotiate TLS 1.3 - servers requiring it kill the handshake
+        // regardless of any proxy setting. Dart's HttpClient handles TLS 1.3
+        // and the system proxy, so remote streams are re-served to mpv over
+        // plain localhost HTTP (see StreamRelay).
+        final uri = Uri.tryParse(resource);
+        final isRemote =
+            uri != null &&
+            (uri.scheme == 'https' || uri.scheme == 'http') &&
+            uri.host != '127.0.0.1' &&
+            uri.host != 'localhost' &&
+            uri.host != '::1';
+
+        if (isRemote) {
+          final relayUrl = await streamRelay.register(resource, headers);
+          logger.output('[stream] mpv <- $relayUrl');
+          resource = relayUrl;
+          headers = null;
+        }
 
         await _player.open(
           Media(resource, httpHeaders: headers, start: start),

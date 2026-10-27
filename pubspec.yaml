@@ -73,6 +73,8 @@ dependencies:
   http: ^1.6.0
   url_launcher: ^6.3.2
   dio: ^5.9.2
+  ffi: ^2.2.0
+  win32: ^6.4.0
   crypto: ^3.0.7
   charset: ^2.0.1
   pool: ^1.5.2
