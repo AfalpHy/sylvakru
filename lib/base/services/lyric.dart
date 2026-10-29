@@ -169,22 +169,46 @@ String _elementText(XmlElement element) {
 List<LyricToken> _collectTimedTokens(XmlElement node) {
   final tokens = <LyricToken>[];
 
-  for (final child in node.children.whereType<XmlElement>()) {
+  // Untimed text between spans (spaces, punctuation, bare text nodes) is
+  // buffered and merged into the head of the next token or the tail of the
+  // last one: the karaoke renderer builds the visible line from tokens alone,
+  // so dropping it would render "Hello world" as "Helloworld".
+  var pendingText = '';
+
+  for (final child in node.children) {
+    if (child is XmlText) {
+      pendingText += child.value;
+      continue;
+    }
+    if (child is! XmlElement) {
+      continue;
+    }
     if (child.name.local == 'br') {
+      pendingText += ' ';
       continue;
     }
     final beginAttr = child.getAttribute('begin');
     if (child.name.local == 'span' && beginAttr != null) {
       final begin = parseTtmlTime(beginAttr);
       if (begin == null) {
+        pendingText += _elementText(child);
         continue;
       }
       final nested = _collectTimedTokens(child);
       if (nested.isNotEmpty) {
+        if (pendingText.isNotEmpty) {
+          final first = nested.first;
+          nested[0] = LyricToken(
+            first.start,
+            _normalizeWhitespace(pendingText + first.text),
+            first.end,
+          );
+          pendingText = '';
+        }
         tokens.addAll(nested);
         continue;
       }
-      final text = _normalizeWhitespace(_elementText(child));
+      final text = _normalizeWhitespace(pendingText + _elementText(child));
       if (text.trim().isEmpty) {
         continue;
       }
@@ -196,9 +220,35 @@ List<LyricToken> _collectTimedTokens(XmlElement node) {
           endAttr != null ? parseTtmlTime(endAttr) : null,
         ),
       );
+      pendingText = '';
     } else {
-      tokens.addAll(_collectTimedTokens(child));
+      final nested = _collectTimedTokens(child);
+      if (nested.isNotEmpty) {
+        if (pendingText.isNotEmpty) {
+          final first = nested.first;
+          nested[0] = LyricToken(
+            first.start,
+            _normalizeWhitespace(pendingText + first.text),
+            first.end,
+          );
+          pendingText = '';
+        }
+        tokens.addAll(nested);
+      } else {
+        pendingText += _elementText(child);
+      }
     }
+  }
+
+  if (pendingText.isNotEmpty && tokens.isNotEmpty) {
+    final last = tokens.removeLast();
+    tokens.add(
+      LyricToken(
+        last.start,
+        _normalizeWhitespace(last.text + pendingText),
+        last.end,
+      ),
+    );
   }
 
   return tokens;
@@ -209,6 +259,11 @@ Future<void> setParsedLyrics(MyAudioMetadata song) async {
     return;
   }
   ParsedLyrics result = ParsedLyrics();
+  // load() does not await this function: attach the placeholder before the
+  // first await so callers dereferencing parsedLyrics while a sidecar lookup
+  // is in flight still see a non-null object (the local path used to complete
+  // synchronously via existsSync and had no such window).
+  song.parsedLyrics = result;
 
   String lyrics = '';
 
@@ -252,8 +307,6 @@ Future<void> setParsedLyrics(MyAudioMetadata song) async {
       songDuration: song.duration,
     );
   }
-
-  song.parsedLyrics = result;
 }
 
 /// Reads the lyric sidecar for a local/WebDAV song, trying `.lrc`, `.ttml`
@@ -287,6 +340,15 @@ Future<String> _readSidecarLyrics(MyAudioMetadata song) async {
     final lyrics = await _readFileWithEncodingFallback(file);
     if (lyrics.trim().isNotEmpty) {
       return lyrics;
+    }
+    // Treat an empty sidecar as a miss: all extensions share the same WebDAV
+    // cache file, so leaving it in place makes every later iteration skip the
+    // download and re-read the same empty content. Local files are the user's
+    // own sidecars and are left untouched.
+    if (sourceType == .webdav) {
+      try {
+        await file.delete();
+      } catch (_) {}
     }
   }
 
