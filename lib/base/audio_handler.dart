@@ -76,10 +76,18 @@ Future<void> initAudioService() async {
     audioHandler.pause();
   });
 
+  // Only resume playback that this app itself paused for the interruption: a
+  // manual pause while the interruption is active must survive its end, and
+  // the end event must never start playback on its own.
+  var interruptionPausedByUs = false;
   _session.interruptionEventStream.listen((event) {
     if (event.begin) {
-      audioHandler.pause();
-    } else {
+      if (isPlayingNotifier.value) {
+        interruptionPausedByUs = true;
+        audioHandler.pause();
+      }
+    } else if (interruptionPausedByUs) {
+      interruptionPausedByUs = false;
       audioHandler.play();
     }
   });
@@ -163,6 +171,13 @@ class MyAudioHandler extends BaseAudioHandler {
           return;
         }
 
+        // Sleep-timer "pause after the current track": on iOS this is handled
+        // when the buffering subscription in _beginLoadGrace sees the next
+        // load settle (so widgets update after the pause). Everywhere else
+        // BackgroundTaskService is a no-op and no subscription is installed,
+        // so the pause must happen here.
+        final needPauseTmp = Platform.isIOS ? false : needPause;
+
         if (Loader.busy) {
           await pause();
           return;
@@ -172,6 +187,10 @@ class MyAudioHandler extends BaseAudioHandler {
           await load();
         } else {
           await skipToNext(); // automatically go to next song
+        }
+
+        if (needPauseTmp) {
+          await pause();
         }
       }
     });
