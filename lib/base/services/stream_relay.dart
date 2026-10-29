@@ -108,9 +108,11 @@ class StreamRelay {
         return;
       }
 
-      await for (final chunk in response) {
-        request.response.add(chunk);
-      }
+      // add() only queues writes synchronously: when the upstream downloads
+      // faster than mpv consumes, the rest of the file accumulates in the
+      // heap. addStream waits for the downstream to drain (backpressure) and
+      // cancels the upstream transfer when the client disconnects.
+      await request.response.addStream(response);
       await request.response.close();
     } catch (e) {
       // mpv aborts requests mid-stream when seeking or switching tracks;
