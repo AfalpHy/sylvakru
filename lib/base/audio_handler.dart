@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +32,7 @@ import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/my_audio_metadata.dart';
 import 'package:sylvakru/base/utils/metadata_utils.dart';
 import 'package:sylvakru/layer/lyrics_page_layer.dart';
+
 import 'dart:async';
 
 import 'package:sylvakru/portrait_view/sleep_timer.dart';
@@ -78,12 +80,10 @@ Future<void> initAudioService() async {
   _session.interruptionEventStream.listen((event) {
     if (event.begin) {
       audioHandler.pause();
-    } else {
-      audioHandler.play();
     }
   });
 
-  if (isMobile) {
+  if (Platform.isIOS) {
     const channel = MethodChannel('com.afalphy.audio_control');
 
     channel.setMethodCallHandler((call) async {
@@ -166,6 +166,11 @@ class MyAudioHandler extends BaseAudioHandler {
           await pause();
           return;
         }
+
+        if (needPause) {
+          await pause();
+        }
+
         if (playModeNotifier.value == 2) {
           // repeat
           await load();
@@ -176,6 +181,7 @@ class MyAudioHandler extends BaseAudioHandler {
     });
 
     currentSongNotifier.addListener(() {
+      needPause = false;
       if (viewModeNotifier.value == .bigPicture) {
         if (useCurrentSongForBg) {
           colorManager.updateBigPictureRelatedColors(
@@ -668,11 +674,6 @@ class MyAudioHandler extends BaseAudioHandler {
       if (buffering) {
         _loadGraceSawBuffering = true;
       } else if (_loadGraceSawBuffering) {
-        if (needPause) {
-          // ensure widget is updated
-          await Future.delayed(Duration(milliseconds: 500));
-          await pause();
-        }
         _endLoadGrace();
       }
     });
