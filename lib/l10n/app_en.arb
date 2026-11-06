@@ -200,6 +200,8 @@
   "randomizePermanent": "Randomize(Permanent)",
   "modifiedTimeAscending": "Modified Time Ascending",
   "modifiedTimedescending": "Modified Time Descending",
+  "addedTimeAscending": "Added Time Ascending",
+  "addedTimeDescending": "Added Time Descending",
   "cannotBeUndone": "Cannot be Undone",
   "clearCache": "Clear Cache",
   "tapAgain": "Tap Again to Exit",

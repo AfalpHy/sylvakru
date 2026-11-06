@@ -479,6 +479,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modifiedTimedescending => 'Modified Time Descending';
 
   @override
+  String get addedTimeAscending => 'Added Time Ascending';
+
+  @override
+  String get addedTimeDescending => 'Added Time Descending';
+
+  @override
   String get cannotBeUndone => 'Cannot be Undone';
 
   @override

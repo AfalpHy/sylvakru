@@ -1010,6 +1010,18 @@ abstract class AppLocalizations {
   /// **'Modified Time Descending'**
   String get modifiedTimedescending;
 
+  /// No description provided for @addedTimeAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'Added Time Ascending'**
+  String get addedTimeAscending;
+
+  /// No description provided for @addedTimeDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Added Time Descending'**
+  String get addedTimeDescending;
+
   /// No description provided for @cannotBeUndone.
   ///
   /// In en, this message translates to:

@@ -151,6 +151,8 @@
   "randomizePermanent": "随机(永久)",
   "modifiedTimeAscending": "修改时间升序",
   "modifiedTimedescending": "修改时间降序",
+  "addedTimeAscending": "添加时间升序",
+  "addedTimeDescending": "添加时间降序",
   "cannotBeUndone": "不可撤销",
   "clearCache": "清除缓存",
   "tapAgain": "再按一次退出",

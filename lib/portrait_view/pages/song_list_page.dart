@@ -124,26 +124,27 @@ extension _SongListPage on _SongListState {
                   isScrollControlled: true,
                   useRootNavigator: true,
                   builder: (context) {
-                    List<String> orderText = [
-                      l10n.defaultText,
-                      l10n.titleAscending,
-                      l10n.titleDescending,
-                      l10n.artistAscending,
-                      l10n.artistDescending,
-                      l10n.albumAscending,
-                      l10n.albumDescending,
-                      l10n.durationAscending,
-                      l10n.durationDescending,
+                    List<(String, int)> orderOptions = [
+                      (l10n.defaultText, 0),
+                      (l10n.titleAscending, 1),
+                      (l10n.titleDescending, 2),
+                      (l10n.artistAscending, 3),
+                      (l10n.artistDescending, 4),
+                      (l10n.albumAscending, 5),
+                      (l10n.albumDescending, 6),
+                      (l10n.durationAscending, 7),
+                      (l10n.durationDescending, 8),
+                      (l10n.addedTimeAscending, 13),
+                      (l10n.addedTimeDescending, 14),
                     ];
-                    if (isLibrary && (isNotStreamSource) || folder != null) {
-                      orderText.add(l10n.modifiedTimeAscending);
-                      orderText.add(l10n.modifiedTimedescending);
-                      orderText.add(l10n.randomizeTemp);
-                      orderText.add(l10n.randomizePermanent);
+                    if (isLibrary && isNotStreamSource || folder != null) {
+                      orderOptions.add((l10n.modifiedTimeAscending, 9));
+                      orderOptions.add((l10n.modifiedTimedescending, 10));
+                      orderOptions.add((l10n.randomizeTemp, 11));
+                      orderOptions.add((l10n.randomizePermanent, 12));
                     }
                     List<Widget> orderWidget = [];
-                    for (int i = 0; i < orderText.length; i++) {
-                      String text = orderText[i];
+                    for (final (text, type) in orderOptions) {
                       orderWidget.add(
                         ValueListenableBuilder(
                           valueListenable: sortTypeNotifier,
@@ -151,7 +152,7 @@ extension _SongListPage on _SongListState {
                             return ListTile(
                               title: Text(text),
                               onTap: () async {
-                                if (i == 12) {
+                                if (type == 12) {
                                   if (!await showConfirmDialog(
                                     context,
                                     l10n.cannotBeUndone,
@@ -165,13 +166,14 @@ extension _SongListPage on _SongListState {
                                     folder!.shuffle();
                                   }
                                 } else {
-                                  if (i == 11 && sortTypeNotifier.value == 11) {
+                                  if (type == 11 &&
+                                      sortTypeNotifier.value == 11) {
                                     updateSongList();
                                   }
-                                  sortTypeNotifier.value = i;
+                                  sortTypeNotifier.value = type;
                                 }
                               },
-                              trailing: value == i ? Icon(Icons.check) : null,
+                              trailing: value == type ? Icon(Icons.check) : null,
                               visualDensity: VisualDensity(
                                 horizontal: 0,
                                 vertical: -4,
@@ -302,30 +304,90 @@ extension _SongListPage on _SongListState {
             SizedBox(width: 20),
             mainCover(isPhone ? 120 : 160),
             Expanded(
-              child: ListTile(
-                title: AutoSizeText(
-                  getTitleText(l10n),
-                  maxLines: 1,
-                  minFontSize: 20,
-                  maxFontSize: 20,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: ValueListenableBuilder(
-                  valueListenable: currentSongListNotifier,
-                  builder: (context, currentSongList, child) {
-                    String prefix = getSourceTypeDisplayName(l10n, sourceType);
-                    return Text(
-                      "$prefix: ${l10n.songCount(currentSongList.length)}",
-                    );
-                  },
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: AutoSizeText(
+                      getTitleText(l10n),
+                      maxLines: 1,
+                      minFontSize: 20,
+                      maxFontSize: 20,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: ValueListenableBuilder(
+                      valueListenable: currentSongListNotifier,
+                      builder: (context, currentSongList, child) {
+                        String prefix = getSourceTypeDisplayName(
+                          l10n,
+                          sourceType,
+                        );
+                        return Text(
+                          "$prefix: ${l10n.songCount(currentSongList.length)}",
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: playAllButton(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
         SizedBox(height: 20),
       ],
+    );
+  }
+
+  Widget playAllButton() {
+    final l10n = AppLocalizations.of(context);
+    return ValueListenableBuilder(
+      valueListenable: currentSongListNotifier,
+      builder: (context, currentSongList, child) {
+        return ListenableBuilder(
+          listenable: buttonColor.valueNotifier,
+          builder: (_, _) {
+            final enabled = currentSongList.isNotEmpty;
+            return SizedBox(
+              height: 40,
+              child: ElevatedButton.icon(
+                onPressed: enabled
+                    ? () {
+                        tryVibrate();
+                        audioHandler.setPlayQueue(currentSongList, 0);
+                      }
+                    : null,
+                onLongPress: enabled
+                    ? () {
+                        tryVibrate();
+                        audioHandler.setPlayQueue(currentSongList, 1);
+                      }
+                    : null,
+                icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                label: Text(l10n.playAll),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: buttonColor.value,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  visualDensity: const VisualDensity(
+                    horizontal: 0,
+                    vertical: -2,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

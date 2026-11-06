@@ -479,6 +479,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modifiedTimedescending => '修改时间降序';
 
   @override
+  String get addedTimeAscending => '添加时间升序';
+
+  @override
+  String get addedTimeDescending => '添加时间降序';
+
+  @override
   String get cannotBeUndone => '不可撤销';
 
   @override

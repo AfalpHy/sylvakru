@@ -227,14 +227,34 @@ void sortSongList(int sortType, List<MyAudioMetadata> songList) {
       break;
     case 9: // modified time Ascending
       songList.sort((a, b) {
-        return a.modified!.compareTo(b.modified!);
+        return (a.modified ?? DateTime(1970)).compareTo(
+          b.modified ?? DateTime(1970),
+        );
       });
+      break;
     case 10: // modified time Descending
       songList.sort((a, b) {
-        return b.modified!.compareTo(a.modified!);
+        return (b.modified ?? DateTime(1970)).compareTo(
+          a.modified ?? DateTime(1970),
+        );
       });
+      break;
     case 11:
       songList.shuffle();
+      break;
+    case 13: // added time Ascending
+      songList.sort((a, b) {
+        return (a.created ?? DateTime(1970)).compareTo(
+          b.created ?? DateTime(1970),
+        );
+      });
+      break;
+    case 14: // added time Descending
+      songList.sort((a, b) {
+        return (b.created ?? DateTime(1970)).compareTo(
+          a.created ?? DateTime(1970),
+        );
+      });
       break;
     default:
       break;

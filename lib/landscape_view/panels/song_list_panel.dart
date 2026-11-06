@@ -237,8 +237,7 @@ extension _SongListPanel on _SongListState {
                               ),
                             ],
 
-                            if (isLibrary && isNotStreamSource ||
-                                folder != null) ...[
+                            if (isLibrary || folder != null || playlist != null) ...[
                               SizedBox(width: 15),
                               ElevatedButton(
                                 onPressed: () {
@@ -267,71 +266,104 @@ extension _SongListPanel on _SongListState {
                                                 ),
                                                 ListTile(
                                                   title: Text(
-                                                    l10n.modifiedTimeAscending,
+                                                    l10n.addedTimeAscending,
                                                   ),
                                                   onTap: () {
                                                     Navigator.pop(context);
-                                                    sortTypeNotifier.value = 9;
+                                                    sortTypeNotifier.value = 13;
                                                   },
                                                   trailing:
                                                       sortTypeNotifier.value ==
-                                                          9
+                                                          13
                                                       ? Icon(Icons.check)
                                                       : null,
                                                 ),
                                                 ListTile(
                                                   title: Text(
-                                                    l10n.modifiedTimedescending,
+                                                    l10n.addedTimeDescending,
                                                   ),
                                                   onTap: () {
                                                     Navigator.pop(context);
-                                                    sortTypeNotifier.value = 10;
+                                                    sortTypeNotifier.value = 14;
                                                   },
                                                   trailing:
                                                       sortTypeNotifier.value ==
-                                                          10
+                                                          14
                                                       ? Icon(Icons.check)
                                                       : null,
                                                 ),
-                                                ListTile(
-                                                  title: Text(
-                                                    l10n.randomizeTemp,
+                                                if (isLibrary && isNotStreamSource ||
+                                                    folder != null) ...[
+                                                  ListTile(
+                                                    title: Text(
+                                                      l10n
+                                                          .modifiedTimeAscending,
+                                                    ),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      sortTypeNotifier.value = 9;
+                                                    },
+                                                    trailing:
+                                                        sortTypeNotifier.value ==
+                                                            9
+                                                        ? Icon(Icons.check)
+                                                        : null,
                                                   ),
-                                                  onTap: () {
-                                                    Navigator.pop(context);
-                                                    sortTypeNotifier.value = 11;
-                                                  },
-                                                  trailing:
-                                                      sortTypeNotifier.value ==
-                                                          11
-                                                      ? Icon(Icons.check)
-                                                      : null,
-                                                ),
-                                                ListTile(
-                                                  title: Text(
-                                                    l10n.randomizePermanent,
+                                                  ListTile(
+                                                    title: Text(
+                                                      l10n
+                                                          .modifiedTimedescending,
+                                                    ),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      sortTypeNotifier.value = 10;
+                                                    },
+                                                    trailing:
+                                                        sortTypeNotifier.value ==
+                                                            10
+                                                        ? Icon(Icons.check)
+                                                        : null,
                                                   ),
-                                                  onTap: () async {
-                                                    Navigator.pop(context);
-                                                    if (!await showConfirmDialog(
-                                                      context,
-                                                      l10n.cannotBeUndone,
-                                                    )) {
-                                                      return;
-                                                    }
-                                                    sortTypeNotifier.value = 0;
-                                                    if (isLibrary) {
-                                                      library.shuffle();
-                                                    } else {
-                                                      folder!.shuffle();
-                                                    }
-                                                  },
-                                                  trailing:
-                                                      sortTypeNotifier.value ==
-                                                          12
-                                                      ? Icon(Icons.check)
-                                                      : null,
-                                                ),
+                                                  ListTile(
+                                                    title: Text(
+                                                      l10n.randomizeTemp,
+                                                    ),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      sortTypeNotifier.value = 11;
+                                                    },
+                                                    trailing:
+                                                        sortTypeNotifier.value ==
+                                                            11
+                                                        ? Icon(Icons.check)
+                                                        : null,
+                                                  ),
+                                                  ListTile(
+                                                    title: Text(
+                                                      l10n.randomizePermanent,
+                                                    ),
+                                                    onTap: () async {
+                                                      Navigator.pop(context);
+                                                      if (!await showConfirmDialog(
+                                                        context,
+                                                        l10n.cannotBeUndone,
+                                                      )) {
+                                                        return;
+                                                      }
+                                                      sortTypeNotifier.value = 0;
+                                                      if (isLibrary) {
+                                                        library.shuffle();
+                                                      } else {
+                                                        folder!.shuffle();
+                                                      }
+                                                    },
+                                                    trailing:
+                                                        sortTypeNotifier.value ==
+                                                            12
+                                                        ? Icon(Icons.check)
+                                                        : null,
+                                                  ),
+                                                ],
                                               ],
                                             );
                                           },

@@ -19,6 +19,10 @@ class MyAudioMetadata {
   String? path;
   DateTime? modified;
 
+  /// When the song was added to the server library (`created` in Navidrome),
+  /// used by the "added time" sort orders.
+  DateTime? created;
+
   final AudioMetadata _audioMetadata;
 
   late MyPicture picture;
@@ -48,6 +52,7 @@ class MyAudioMetadata {
     this.coverId,
     this.path,
     this.modified,
+    this.created,
     this.playCount = 0,
     this.lastPlayed,
     this.lyricsTimeOffset = 0,
@@ -124,6 +129,9 @@ class MyAudioMetadata {
           ),
           id: song['id'],
           path: song['path'],
+          created: song['created'] != null
+              ? DateTime.tryParse(song['created'])
+              : null,
           playCount: song['playCount'] as int? ?? 0,
           lastPlayed: song['played'] != null
               ? DateTime.parse(song['played'])
