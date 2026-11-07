@@ -105,6 +105,14 @@ class Setting {
         json['lyricsFontSizeOffset'] as double? ??
         lyricsFontSizeOffsetNotifier.value;
 
+    final fontWeightValue = json['lyricsFontWeight'] as int?;
+    if (fontWeightValue != null) {
+      lyricsFontWeightNotifier.value = FontWeight.values.firstWhere(
+        (weight) => weight.value == fontWeightValue,
+        orElse: () => lyricsFontWeightNotifier.value,
+      );
+    }
+
     exitOnCloseNotifier.value =
         json['exitOnClose'] as bool? ?? exitOnCloseNotifier.value;
 
@@ -145,6 +153,7 @@ class Setting {
         'lyricsPageTheme': lyricsPageThemeNotifier.value.name,
 
         'lyricsFontSizeOffset': lyricsFontSizeOffsetNotifier.value,
+        'lyricsFontWeight': lyricsFontWeightNotifier.value.value,
         'exitOnClose': exitOnCloseNotifier.value,
 
         'recursiveScan': recursiveScanNotifier.value,

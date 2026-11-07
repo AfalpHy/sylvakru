@@ -35,6 +35,11 @@ class Library {
   List<Folder> folderList = [];
   final folderListChangeNotifier = ValueNotifier(0);
 
+  /// Sort mode of the all-songs list, persisted per source type so every
+  /// music source remembers its own ordering.
+  final sortTypeNotifier = ValueNotifier(0);
+  late final File _sortTypeFile;
+
   bool canModify = false;
 
   Library() {
@@ -46,6 +51,23 @@ class Library {
       );
       initFile(_folderIdListFile!, true);
     }
+    _sortTypeFile = File("${getLibraryConfigPath(sourceType)}/sort_type.json");
+    initFile(_sortTypeFile, false);
+    _loadSortType();
+    sortTypeNotifier.addListener(_saveSortType);
+  }
+
+  void _loadSortType() {
+    final value = readJsonMapFileSync(_sortTypeFile)['sortType'];
+    if (value is int) {
+      sortTypeNotifier.value = value;
+    }
+  }
+
+  void _saveSortType() {
+    _sortTypeFile.writeAsStringSync(
+      jsonEncode({'sortType': sortTypeNotifier.value}),
+    );
   }
 
   Future<bool> updateFolders(List<String> idList) async {

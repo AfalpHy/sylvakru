@@ -157,8 +157,6 @@ class Artist extends ArtistAlbumBase {
 
   List<Album> albumList = [];
 
-  final changeNotifier = ValueNotifier(0);
-
   void combineAlbums() {
     albumSet.removeWhere((album) => album.isEmpty);
     albumList = albumSet.toList();

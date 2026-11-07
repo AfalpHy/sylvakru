@@ -108,6 +108,10 @@ String getFolderConfigPath(SourceType sourceType) {
   return '${appSupportDir.path}/${sourceType.name}/folder_config';
 }
 
+String getLibraryConfigPath(SourceType sourceType) {
+  return '${appSupportDir.path}/${sourceType.name}/library_config';
+}
+
 String getPlaylistConfigPath(SourceType sourceType) {
   return '${appSupportDir.path}/${sourceType.name}/playlist_config';
 }

@@ -243,7 +243,6 @@ class _SongListState extends State<SongList> {
         layersManager.popDetail('artists');
       };
       rootLabel = 'artists';
-      changeNotifier = artist!.changeNotifier;
     } else if (album != null) {
       title = album!.name;
       songList = album!.songList;
@@ -264,14 +263,15 @@ class _SongListState extends State<SongList> {
       rootLabel = 'folders';
     } else if (isFrequently) {
       songList = history.frequentlySongList;
-      history.frequentlyChangeNotifier.addListener(updateSongList);
+      changeNotifier = history.frequentlyChangeNotifier;
     } else if (isRecently) {
       songList = history.recentlySongList;
-      history.recentlyChangeNotifier.addListener(updateSongList);
+      changeNotifier = history.recentlyChangeNotifier;
     } else {
       isLibrary = true;
       songList = library.songList;
-      library.changeNotifier.addListener(updateSongList);
+      sortTypeNotifier = library.sortTypeNotifier;
+      changeNotifier = library.changeNotifier;
     }
 
     if (widget.isHomeDetail) {
@@ -283,7 +283,7 @@ class _SongListState extends State<SongList> {
     }
     rootVisibleNotifier?.addListener(updateHideOthers);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       updateSongList();
     });
 

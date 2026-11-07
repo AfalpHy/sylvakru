@@ -142,6 +142,7 @@ class PlaylistManager {
 
   Future<void> deletePlaylist(Playlist playlist) async {
     playlist.songListFile.deleteSync();
+    playlist.sortFile.deleteSync();
 
     if (playlist.id != null && streamClient != null) {
       if (!await streamClient!.deletePlaylist(playlist.id!)) {
@@ -200,12 +201,34 @@ class Playlist {
 
   bool canModify = true;
 
+  // Each playlist's sort type lives in its own file under sorts/, fully
+  // decoupled from the playlist index and song list files.
+  late final File sortFile;
+
   Playlist({required this.name, this.id}) {
     songListFile = File("${getPlaylistConfigPath(sourceType)}/$name.json");
     initFile(songListFile, true);
 
+    sortFile = File("${getPlaylistConfigPath(sourceType)}/sorts/$name.json");
+    initFile(sortFile, false);
+    _loadSortType();
+    sortTypeNotifier.addListener(_saveSortType);
+
     isFavorite = name == 'Favorite';
     isNotFavorite = !isFavorite;
+  }
+
+  void _loadSortType() {
+    final value = readJsonMapFileSync(sortFile)['sortType'];
+    if (value is int) {
+      sortTypeNotifier.value = value;
+    }
+  }
+
+  void _saveSortType() {
+    sortFile.writeAsStringSync(
+      jsonEncode({'sortType': sortTypeNotifier.value}),
+    );
   }
 
   MyPicture? get picture => getFirstSong(songList)?.picture;

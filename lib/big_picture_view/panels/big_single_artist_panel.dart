@@ -37,12 +37,6 @@ class _BigSingleArtistPanelState extends State<BigSingleArtistPanel> {
   late final MyPicture? backgroundPictureTmp;
   final _scrollController = ScrollController();
 
-  void update() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
   @override
   void initState() {
     useCurrentSongForBgTmp = useCurrentSongForBg;
@@ -61,9 +55,6 @@ class _BigSingleArtistPanelState extends State<BigSingleArtistPanel> {
   @override
   void dispose() {
     useCurrentSongForBg = useCurrentSongForBgTmp;
-    if (isStreamSource) {
-      widget.artist.changeNotifier.removeListener(update);
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       colorManager.updateBigPictureRelatedColors(
         useCurrentSongForBg
