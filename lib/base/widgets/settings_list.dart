@@ -616,7 +616,10 @@ class _SettingsListState extends State<SettingsList> {
 
   Widget lyricsWaveListTile(AppLocalizations l10n) {
     return ListTile(
-      leading: Icon(Icons.waves_rounded, size: iconSize),
+      leading: Transform.scale(
+        scale: 0.9,
+        child: Icon(Icons.waves_rounded, size: iconSize),
+      ),
       title: Text(l10n.lyricsWave),
       trailing: SizedBox(
         width: 50,
