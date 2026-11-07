@@ -539,25 +539,31 @@ void _assignVoiceAligns(
 }
 
 /// Gives every line an [LyricLine.end] so the UI knows how long the line
-/// stays active: an explicit end wins, then the last token's end, then the
-/// next line's start, and the final line holds until [songDuration]. A
-/// malformed end before the line's start falls back the same way; a line
-/// sharing its begin with the next one ends together with its simultaneous
-/// siblings at the next later start.
+/// stays active: an explicit end wins, then the last token's end. A line
+/// keeps its active look until the next line starts — even when its own
+/// (word-timed) end comes earlier — while an overlapping next line (duet)
+/// still cuts the window at the line's own end, so simultaneous windows
+/// are untouched. The final line holds until [songDuration], and a
+/// malformed end before the line's start falls back the same way.
 void _finalizeLineEnds(ParsedLyrics result, Duration? songDuration) {
   for (var i = 0; i < result.lines.length; i++) {
     final line = result.lines[i];
     var end =
         line.end ??
         (line.tokens.isNotEmpty ? line.tokens.last.end : null);
-    if (end == null || end <= line.start) {
-      Duration? nextStart;
-      for (var j = i + 1; j < result.lines.length; j++) {
-        if (result.lines[j].start > line.start) {
-          nextStart = result.lines[j].start;
-          break;
-        }
+
+    Duration? nextStart;
+    for (var j = i + 1; j < result.lines.length; j++) {
+      if (result.lines[j].start > line.start) {
+        nextStart = result.lines[j].start;
+        break;
       }
+    }
+    if (nextStart != null && (end == null || nextStart > end)) {
+      end = nextStart;
+    }
+
+    if (end == null || end <= line.start) {
       end = nextStart ?? songDuration;
       if (end != null && end <= line.start) {
         end = null;
@@ -568,10 +574,10 @@ void _finalizeLineEnds(ParsedLyrics result, Duration? songDuration) {
 }
 
 /// Lines whose activity window contains [position] — the simultaneous set
-/// (a duet pair, a solo line, or nothing during a gap) that highlights
-/// together, e.g. in the iOS home widget. Applies the same window rule as
-/// [LyricLineWidget]: `start <= position` and `end` not yet reached, where
-/// a null end stays active until replaced.
+/// (a duet pair, or the solo line holding through an instrumental gap)
+/// that highlights together, e.g. in the iOS home widget. Applies the same
+/// window rule as [LyricLineWidget]: `start <= position` and `end` not yet
+/// reached, where a null end stays active until replaced.
 List<int> activeLyricIndices(List<LyricLine> lines, Duration position) {
   final active = <int>[];
   for (var i = 0; i < lines.length; i++) {

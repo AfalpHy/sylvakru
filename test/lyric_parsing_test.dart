@@ -732,8 +732,8 @@ void main() {
       expect(activeLyricIndices(lines, const Duration(seconds: 5)), [0, 1]);
       // After the first line ends only the second stays active.
       expect(activeLyricIndices(lines, const Duration(seconds: 7)), [1]);
-      // Gap between lines: nothing active.
-      expect(activeLyricIndices(lines, const Duration(seconds: 10)), isEmpty);
+      // Gap between lines: the previous line holds until the next starts.
+      expect(activeLyricIndices(lines, const Duration(seconds: 10)), [1]);
       expect(activeLyricIndices(lines, const Duration(seconds: 13)), [2]);
     });
 
