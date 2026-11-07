@@ -796,6 +796,7 @@ class _PortraitLyricsPageState extends State<PortraitLyricsPage> {
                                 onChanged: (value) {
                                   lyricsFontWeightNotifier.value =
                                       fontWeights[value.round()];
+                                  setting.save();
                                 },
                               ),
                             );
