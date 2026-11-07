@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
@@ -53,10 +54,10 @@ final autoPlayOnStartupNotifier = ValueNotifier(false);
 
 final currentLyricsIndexNotifier = ValueNotifier(-1);
 
-/// Offset-applied playback position, updated alongside
-/// [currentLyricsIndexNotifier] so each lyric line can decide on its own
-/// whether it is inside its active window (simultaneous duet lines).
-final lyricsPositionNotifier = ValueNotifier(Duration.zero);
+/// Indices of the simultaneously active lyric lines, updated alongside
+/// [currentLyricsIndexNotifier] but only when the set actually changes (a
+/// line boundary), so the rows don't rebuild on every position tick.
+final lyricsActiveIndicesNotifier = ValueNotifier<List<int>>(const []);
 
 final controlCenterLyricsNotifier = ValueNotifier(false);
 
@@ -230,13 +231,16 @@ class MyAudioHandler extends BaseAudioHandler {
 
     position += Duration(milliseconds: currentSong.lyricsTimeOffset);
 
-    lyricsPositionNotifier.value = position;
-
-    // The iOS widget highlights every simultaneously active line (duet), so
-    // track that set independently of the primary index — with overlapping
-    // lines its boundaries differ from the index's. Computed before the
-    // fast path below so a set change is never swallowed by it.
+    // The rows and the iOS widget both highlight every simultaneously
+    // active line (duet), so track that set independently of the primary
+    // index — with overlapping lines its boundaries differ from the index's.
+    // Computed before the fast path below so a set change is never swallowed
+    // by it, and pushed only when it actually changes (line boundaries),
+    // never on every position tick.
     final active = activeLyricIndices(lines, position);
+    if (!listEquals(active, lyricsActiveIndicesNotifier.value)) {
+      lyricsActiveIndicesNotifier.value = active;
+    }
     final widgetActive = active.isEmpty ? '-1' : active.join(',');
     final widgetActiveChanged = widgetActive != _lastWidgetLyricsActive;
     _lastWidgetLyricsActive = widgetActive;
@@ -784,7 +788,7 @@ class MyAudioHandler extends BaseAudioHandler {
     currentSongNotifier.value = currentSong;
 
     currentLyricsIndexNotifier.value = -1;
-    lyricsPositionNotifier.value = Duration.zero;
+    lyricsActiveIndicesNotifier.value = const [];
     _lastWidgetLyricsActive = '-1';
 
     if (Platform.isIOS) {

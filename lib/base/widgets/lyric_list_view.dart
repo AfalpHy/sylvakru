@@ -446,10 +446,11 @@ class LyricsListViewState extends State<LyricsListView>
   }
 }
 
-/// Each lyric line listens to lyricsPositionNotifier and stays lit for its
-/// own activity window, so simultaneous duet lines light up together. During
-/// the glide it also hangs behind the rigid motion by its distance from the
-/// anchor line ([LyricGlideWave]), producing the line-by-line wave.
+/// Each lyric line listens to lyricsActiveIndicesNotifier (updated only on
+/// line boundaries) and stays lit while its index is in the active set, so
+/// simultaneous duet lines light up together. During the glide it also hangs
+/// behind the rigid motion by its distance from the anchor line
+/// ([LyricGlideWave]), producing the line-by-line wave.
 class LyricLineWidget extends StatelessWidget {
   final int index;
   final LyricLine line;
@@ -499,15 +500,14 @@ class LyricLineWidget extends StatelessWidget {
             listenable: Listenable.merge([
               lyricsFontSizeOffsetNotifier,
               lyricsFontWeightNotifier,
-              lyricsPositionNotifier,
+              lyricsActiveIndicesNotifier,
             ]),
             builder: (context, _) {
               // A line stays lit for its whole activity window, so
               // simultaneous duet lines highlight and sweep together.
-              final position = lyricsPositionNotifier.value;
-              final isCurrent =
-                  position >= line.start &&
-                  (line.end == null || position < line.end!);
+              final isCurrent = lyricsActiveIndicesNotifier.value.contains(
+                index,
+              );
 
               double fontSize = 16 + lyricsFontSizeOffsetNotifier.value;
 
