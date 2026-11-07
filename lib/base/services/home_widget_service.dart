@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:sylvakru/base/audio_handler.dart';
 import 'package:sylvakru/base/data/playlist.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
+import 'package:sylvakru/base/services/lyric.dart';
 import 'package:sylvakru/base/services/logger.dart';
 import 'package:sylvakru/base/services/picture_service.dart';
 import 'package:sylvakru/base/utils/common_utils.dart';
@@ -64,6 +65,9 @@ class HomeWidgetService {
       // widget splits on newline for lines and on U+001F for the
       // translations following the original text, so lyricsIndex keeps
       // pointing at the original line without remapping.
+      // lyricsAligns rides in parallel (l/r/c per line, newline-joined) so
+      // duet lines align left/right in the widget too; missing key on the
+      // widget side means an older app and falls back to all-centered.
       await HomeWidget.saveWidgetData(
         'lyrics',
         song?.parsedLyrics?.lines
@@ -76,6 +80,21 @@ class HomeWidgetService {
             .toList()
             .join('\n'),
       );
+
+      await HomeWidget.saveWidgetData(
+        'lyricsAligns',
+        song?.parsedLyrics?.lines
+            .map(
+              (line) => switch (line.align) {
+                LyricAlign.left => 'l',
+                LyricAlign.right => 'r',
+                LyricAlign.center => 'c',
+              },
+            )
+            .join('\n'),
+      );
+
+      await HomeWidget.saveWidgetData('lyricsActive', '-1');
 
       await HomeWidget.saveWidgetData(
         'lyricsIndex',
@@ -112,11 +131,20 @@ class HomeWidgetService {
     await reloadNowPlayingWidget();
   }
 
-  static Future<void> updateLyricsIndex() async {
+  /// Pushes the current lyric position to the widget: [activeIndices] is
+  /// the set of simultaneously active lines (a duet pair, a solo line, or
+  /// empty during a gap) so the widget can highlight them together; -1
+  /// encodes "none" so an absent key still means "older app, fall back to
+  /// lyricsIndex alone".
+  static Future<void> updateLyricsIndex(List<int> activeIndices) async {
     try {
       await HomeWidget.saveWidgetData(
         'lyricsIndex',
         currentLyricsIndexNotifier.value,
+      );
+      await HomeWidget.saveWidgetData(
+        'lyricsActive',
+        activeIndices.isEmpty ? '-1' : activeIndices.join(','),
       );
     } catch (error) {
       logger.output("widget save error: $error");

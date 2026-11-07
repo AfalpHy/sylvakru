@@ -32,6 +32,12 @@ struct NowPlayingWidgetEntry: TimelineEntry {
   let duration: Double
   let lyrics: String
   let lyricsIndex: Int
+  // Per-line alignment ('l'/'r'/'c', newline-joined, parallel to `lyrics`)
+  // and the set of simultaneously active line indices, both computed by the
+  // app: duet lines highlight and align together. The widget is a static
+  // snapshot (timeline policy .never), so it never derives these itself.
+  let lyricsAligns: [String]
+  let lyricsActiveIndices: Set<Int>
   let family: WidgetFamily
   let isPremium: Bool
 
@@ -54,6 +60,8 @@ private func placeholderEntry(family: WidgetFamily) -> NowPlayingWidgetEntry {
     duration: 0,
     lyrics: String(localized: "Lyrics"),
     lyricsIndex: 0,
+    lyricsAligns: [],
+    lyricsActiveIndices: [0],
     family: family,
     isPremium: widgetIsPremium()
   )
@@ -77,6 +85,22 @@ struct NowPlayingWidgetTimelineProvider: TimelineProvider {
       return placeholderEntry(family: context.family)
     }
 
+    let lyricsIndex = sharedDefaults?.integer(forKey: "lyricsIndex") ?? 0
+
+    // 'lyricsActive' lists every simultaneously active line ("12,13" for a
+    // duet pair); '-1' means none (a gap between lines). A missing key
+    // means the payload came from an older app version — fall back to the
+    // single lyricsIndex so the widget still highlights one line.
+    let activeRaw = sharedDefaults?.string(forKey: "lyricsActive")
+    let lyricsActiveIndices: Set<Int>
+    if let activeRaw {
+      lyricsActiveIndices = Set(
+        activeRaw.components(separatedBy: ",").compactMap { Int($0) }.filter { $0 >= 0 }
+      )
+    } else {
+      lyricsActiveIndices = lyricsIndex >= 0 ? [lyricsIndex] : []
+    }
+
     return NowPlayingWidgetEntry(
       date: Date(),
       title: sharedDefaults?.string(forKey: "title") ?? "",
@@ -90,7 +114,11 @@ struct NowPlayingWidgetTimelineProvider: TimelineProvider {
       postion: 0,
       duration: 0,
       lyrics: sharedDefaults?.string(forKey: "lyrics") ?? "",
-      lyricsIndex: sharedDefaults?.integer(forKey: "lyricsIndex") ?? 0,
+      lyricsIndex: lyricsIndex,
+      lyricsAligns: (sharedDefaults?.string(forKey: "lyricsAligns") ?? "")
+        .components(separatedBy: "\n")
+        .filter { !$0.isEmpty },
+      lyricsActiveIndices: lyricsActiveIndices,
       family: context.family,
       isPremium: widgetIsPremium()
     )
@@ -201,6 +229,28 @@ struct NowPlayingWidgetEntryView: View {
     }
   }
 
+  // Per-line alignment from the parallel lyricsAligns payload ('l'/'r'/'c',
+  // duet voices alternate left/right); unknown or missing entries center.
+  private func rowAlignChar(_ index: Int) -> String {
+    index >= 0 && index < entry.lyricsAligns.count ? entry.lyricsAligns[index] : "c"
+  }
+
+  private func rowTextAlignment(_ index: Int) -> TextAlignment {
+    switch rowAlignChar(index) {
+    case "l": return .leading
+    case "r": return .trailing
+    default: return .center
+    }
+  }
+
+  private func rowFrameAlignment(_ index: Int) -> Alignment {
+    switch rowAlignChar(index) {
+    case "l": return .leading
+    case "r": return .trailing
+    default: return .center
+    }
+  }
+
   func lyricsView(fontSize: CGFloat, offset: CGFloat) -> some View {
     GeometryReader { geometry in
       let lineHeight = fontSize + 6
@@ -219,7 +269,9 @@ struct NowPlayingWidgetEntryView: View {
             .components(separatedBy: lyricTranslateSeparator)
           let lineText = parts[0]
           let translates = Array(parts.dropFirst())
-          let isCurrent = index == entry.lyricsIndex
+          // Simultaneous duet lines are all active at once, so more than
+          // one row can take the current-line highlight.
+          let isCurrent = entry.lyricsActiveIndices.contains(index)
           let rowFontSize = isCurrent ? fontSize : fontSize - 3
 
           VStack(spacing: 2) {
@@ -234,7 +286,7 @@ struct NowPlayingWidgetEntryView: View {
                 Color(argb: entry.foregroundColor)
                   .opacity(isCurrent ? 1.0 : 0.5)
               )
-              .multilineTextAlignment(.center)
+              .multilineTextAlignment(rowTextAlignment(index))
 
             // Translations never take the current-line highlight.
             ForEach(translates.indices, id: \.self) { translateIndex in
@@ -243,13 +295,20 @@ struct NowPlayingWidgetEntryView: View {
                 .foregroundColor(
                   Color(argb: entry.foregroundColor).opacity(0.5)
                 )
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(rowTextAlignment(index))
             }
           }
-          .frame(maxWidth: .infinity, minHeight: rowFontSize + 6)
+          .frame(
+            maxWidth: .infinity,
+            minHeight: rowFontSize + 6,
+            alignment: rowFrameAlignment(index)
+          )
           .opacity(isValid ? (isCurrent ? 1.0 : 0.5) : 0.0)
         }
       }
+      // .contentMarginsDisabled() turns the system margins off; this keeps
+      // left/right-aligned duet lines off the widget edges.
+      .padding(.horizontal, 10)
       .clipped()
     }
   }

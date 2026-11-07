@@ -155,7 +155,8 @@ class LyricsListViewState extends State<LyricsListView>
   }
 }
 
-/// Each lyric line listens to currentIndexNotifier
+/// Each lyric line listens to lyricsPositionNotifier and stays lit for its
+/// own activity window, so simultaneous duet lines light up together.
 class LyricLineWidget extends StatelessWidget {
   final int index;
   final LyricLine line;
@@ -203,10 +204,15 @@ class LyricLineWidget extends StatelessWidget {
             listenable: Listenable.merge([
               lyricsFontSizeOffsetNotifier,
               lyricsFontWeightNotifier,
-              currentLyricsIndexNotifier,
+              lyricsPositionNotifier,
             ]),
             builder: (context, _) {
-              final isCurrent = currentLyricsIndexNotifier.value == index;
+              // A line stays lit for its whole activity window, so
+              // simultaneous duet lines highlight and sweep together.
+              final position = lyricsPositionNotifier.value;
+              final isCurrent =
+                  position >= line.start &&
+                  (line.end == null || position < line.end!);
 
               double fontSize = 16 + lyricsFontSizeOffsetNotifier.value;
 
@@ -220,12 +226,32 @@ class LyricLineWidget extends StatelessWidget {
                   ? miniViewForegroundColor.value
                   : lyricsPageForegroundColor.value;
 
+              // Duet voices align left/right in every view; ordinary lines
+              // keep the view's default placement.
+              final crossAlign = switch (line.align) {
+                LyricAlign.left => CrossAxisAlignment.start,
+                LyricAlign.right => CrossAxisAlignment.end,
+                LyricAlign.center =>
+                  expanded ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+              };
+              final textAlign = switch (line.align) {
+                LyricAlign.left => TextAlign.left,
+                LyricAlign.right => TextAlign.right,
+                LyricAlign.center => expanded ? TextAlign.left : TextAlign.center,
+              };
+              final scaleAlignment = switch (line.align) {
+                LyricAlign.left => Alignment.centerLeft,
+                LyricAlign.right => Alignment.centerRight,
+                LyricAlign.center =>
+                  expanded ? Alignment.centerLeft : Alignment.center,
+              };
+
               return AnimatedScale(
                 scale: isCurrent ? 1.05 : 0.95,
                 duration: Duration(milliseconds: 300),
-                alignment: expanded ? .centerLeft : .center,
+                alignment: scaleAlignment,
                 child: Column(
-                  crossAxisAlignment: expanded ? .start : .center,
+                  crossAxisAlignment: crossAlign,
                   children: [
                     if (isCurrent && isKaraoke)
                       ValueListenableBuilder(
@@ -236,6 +262,7 @@ class LyricLineWidget extends StatelessWidget {
                             line: line,
                             position: audioHandler.getPosition(),
                             fontSize: fontSize,
+                            align: line.align,
                             expanded: expanded,
                           );
                         },
@@ -243,7 +270,7 @@ class LyricLineWidget extends StatelessWidget {
                     else
                       Text(
                         line.text,
-                        textAlign: expanded ? .start : .center,
+                        textAlign: textAlign,
                         style: TextStyle(
                           fontSize: fontSize,
                           fontWeight: lyricsFontWeightNotifier.value,
@@ -255,7 +282,7 @@ class LyricLineWidget extends StatelessWidget {
                     for (final translate in line.translates)
                       Text(
                         translate,
-                        textAlign: expanded ? .start : .center,
+                        textAlign: textAlign,
                         style: TextStyle(
                           fontSize: fontSize - (expanded ? 8 : 4),
                           fontWeight: lyricsFontWeightNotifier.value,
@@ -278,6 +305,7 @@ class KaraokeText extends StatefulWidget {
   final Duration position;
   final double fontSize;
   final bool expanded;
+  final LyricAlign align;
   final bool isDesktopLyrics;
 
   const KaraokeText({
@@ -286,6 +314,7 @@ class KaraokeText extends StatefulWidget {
     required this.position,
     required this.fontSize,
     required this.expanded,
+    this.align = LyricAlign.center,
     this.isDesktopLyrics = false,
   });
 
@@ -351,8 +380,13 @@ class KaraokeTextState extends State<KaraokeText>
 
   @override
   Widget build(BuildContext context) {
+    final textAlign = switch (widget.align) {
+      LyricAlign.left => TextAlign.left,
+      LyricAlign.right => TextAlign.right,
+      LyricAlign.center => widget.expanded ? TextAlign.left : TextAlign.center,
+    };
     return RichText(
-      textAlign: widget.expanded ? TextAlign.left : TextAlign.center,
+      textAlign: textAlign,
       text: TextSpan(children: widget.line.tokens.map(buildTokenSpan).toList()),
     );
   }

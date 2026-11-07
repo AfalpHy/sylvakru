@@ -35,12 +35,28 @@ class LyricToken {
   }
 }
 
+/// Horizontal placement of a lyric line: duet voices alternate left/right
+/// by their TTML agent, everything else stays centered.
+enum LyricAlign { left, right, center }
+
 class LyricLine {
   final Duration start;
   final String text;
   final List<LyricToken> tokens;
 
   List<String> translates = [];
+
+  /// Raw `ttm:agent` id(s) (space separated) this line is sung by, when the
+  /// TTML declares them; used to derive [align].
+  String? agent;
+
+  /// When this line stops being active; null means "until replaced".
+  Duration? end;
+
+  /// Whether the paragraph was a background vocal (`ttm:role="x-bg"`).
+  bool isBackground = false;
+
+  LyricAlign align = LyricAlign.center;
 
   LyricLine(this.start, this.text, this.tokens);
 
@@ -50,6 +66,10 @@ class LyricLine {
       'text': text,
       'tokens': tokens.map((t) => t.toMap()).toList(),
       'translates': translates,
+      'agent': agent,
+      'end': end?.inMilliseconds,
+      'isBackground': isBackground,
+      'align': align.index,
     };
   }
 
@@ -61,6 +81,14 @@ class LyricLine {
       (map['tokens'] as List).map((e) => LyricToken.fromMap(e as Map)).toList(),
     );
     lyricLine.translates = List<String>.from(map['translates']);
+    lyricLine.agent = map['agent'] as String?;
+    lyricLine.end = map['end'] != null
+        ? Duration(milliseconds: map['end'] as int)
+        : null;
+    lyricLine.isBackground = map['isBackground'] as bool? ?? false;
+    lyricLine.align = map['align'] != null
+        ? LyricAlign.values[map['align'] as int]
+        : LyricAlign.center;
     return lyricLine;
   }
 }
@@ -414,15 +442,157 @@ void applyLrcParsing(
       result.lines.last.tokens.last.end = songDuration;
     }
   }
+  _finalizeLineEnds(result, songDuration);
+}
+
+/// Returns the first attribute of [element] whose local name (ignoring any
+/// namespace prefix such as `ttm:` or `tts:`) matches [localName].
+String? _localAttr(XmlElement element, String localName) {
+  for (final attribute in element.attributes) {
+    if (attribute.name.local == localName) {
+      return attribute.value;
+    }
+  }
+  return null;
+}
+
+/// Maps a TTML alignment attribute value (`tts:textAlign`,
+/// `itunes:alignment`) to a [LyricAlign]; null for unknown values.
+LyricAlign? _parseTtmlAlign(String? raw) {
+  switch (raw?.trim().toLowerCase()) {
+    case 'left':
+    case 'start':
+      return LyricAlign.left;
+    case 'right':
+    case 'end':
+      return LyricAlign.right;
+    case 'center':
+    case 'justify':
+      return LyricAlign.center;
+    default:
+      return null;
+  }
+}
+
+/// Collects the `ttm:agent` metadata declarations (id -> type) so voice
+/// lines can be told apart from group/chorus lines. Only local element and
+/// attribute names are matched so both plain and prefixed forms are found.
+Map<String, String> _collectTtmlAgents(XmlDocument document) {
+  final agents = <String, String>{};
+  for (final element in document.findAllElements('agent', namespaceUri: '*')) {
+    final id = _localAttr(element, 'id');
+    if (id == null || id.isEmpty) {
+      continue;
+    }
+    agents[id] = _localAttr(element, 'type') ?? '';
+  }
+  return agents;
+}
+
+/// Assigns per-line [LyricAlign]: person agents alternate left/right in
+/// order of first appearance, lines sung by multiple voices or by a
+/// group/chorus stay centered, a solo voice stays centered as well, and an
+/// explicit paragraph alignment (`tts:textAlign`/`itunes:alignment`) always
+/// wins. [alignOverrides] holds the per-line explicit alignment in
+/// [lines] order (null when the paragraph declared none).
+void _assignVoiceAligns(
+  List<LyricLine> lines,
+  Map<String, String> agentTypes,
+  List<LyricAlign?> alignOverrides,
+) {
+  final personOrder = <String>[];
+  for (final line in lines) {
+    if (line.agent == null) continue;
+    final ids = line.agent!
+        .split(RegExp(r'\s+'))
+        .where((id) => id.isNotEmpty)
+        .toList();
+    if (ids.length != 1) continue;
+    final type = agentTypes[ids.first];
+    if (type != null && type != 'person') continue;
+    if (!personOrder.contains(ids.first)) personOrder.add(ids.first);
+  }
+
+  final sideOf = <String, LyricAlign>{};
+  if (personOrder.length >= 2) {
+    for (var i = 0; i < personOrder.length; i++) {
+      sideOf[personOrder[i]] = i.isEven ? LyricAlign.left : LyricAlign.right;
+    }
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    final override = i < alignOverrides.length ? alignOverrides[i] : null;
+    if (override != null) {
+      line.align = override;
+      continue;
+    }
+    final ids = line.agent
+        ?.split(RegExp(r'\s+'))
+        .where((id) => id.isNotEmpty)
+        .toList();
+    line.align =
+        ids != null && ids.length == 1
+        ? sideOf[ids.first] ?? LyricAlign.center
+        : LyricAlign.center;
+  }
+}
+
+/// Gives every line an [LyricLine.end] so the UI knows how long the line
+/// stays active: an explicit end wins, then the last token's end, then the
+/// next line's start, and the final line holds until [songDuration]. A
+/// malformed end before the line's start falls back the same way; a line
+/// sharing its begin with the next one ends together with its simultaneous
+/// siblings at the next later start.
+void _finalizeLineEnds(ParsedLyrics result, Duration? songDuration) {
+  for (var i = 0; i < result.lines.length; i++) {
+    final line = result.lines[i];
+    var end =
+        line.end ??
+        (line.tokens.isNotEmpty ? line.tokens.last.end : null);
+    if (end == null || end <= line.start) {
+      Duration? nextStart;
+      for (var j = i + 1; j < result.lines.length; j++) {
+        if (result.lines[j].start > line.start) {
+          nextStart = result.lines[j].start;
+          break;
+        }
+      }
+      end = nextStart ?? songDuration;
+      if (end != null && end <= line.start) {
+        end = null;
+      }
+    }
+    line.end = end;
+  }
+}
+
+/// Lines whose activity window contains [position] — the simultaneous set
+/// (a duet pair, a solo line, or nothing during a gap) that highlights
+/// together, e.g. in the iOS home widget. Applies the same window rule as
+/// [LyricLineWidget]: `start <= position` and `end` not yet reached, where
+/// a null end stays active until replaced.
+List<int> activeLyricIndices(List<LyricLine> lines, Duration position) {
+  final active = <int>[];
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (position >= line.start &&
+        (line.end == null || position < line.end!)) {
+      active.add(i);
+    }
+  }
+  return active;
 }
 
 /// Fills in [result] from raw TTML text: each `<p>` becomes a line, timed
 /// `<span>` children become word tokens (nested spans are flattened to
-/// their timed leaves), lines sharing a `begin` become translations of the
-/// line before them, and the same [noLyricsMessage]/[parseFailedMessage]
-/// placeholders apply as in [applyLrcParsing]. Split out from
-/// [setParsedLyrics] so the parsing itself can be unit tested without a
-/// network/file round trip.
+/// their timed leaves), and lines sharing a `begin` become translations of
+/// the line before them unless they carry voice information of their own
+/// (`ttm:agent`, word timing) — those become simultaneous duet lines laid
+/// out left/right per agent. The same [noLyricsMessage]/
+/// [parseFailedMessage] placeholders apply as in [applyLrcParsing]. Split
+/// out from [setParsedLyrics] so the parsing itself can be unit tested
+/// without a network/file round trip.
 void applyTtmlParsing(
   ParsedLyrics result,
   String rawTtml, {
@@ -445,25 +615,45 @@ void applyTtmlParsing(
 
   // Local-name matching so both plain <p> and prefixed <tt:p> are found.
   final paragraphs = document.findAllElements('p', namespaceUri: '*').toList();
+  final agentTypes = _collectTtmlAgents(document);
 
   final parsedParagraphs =
       <
-        ({Duration begin, Duration? end, String text, List<LyricToken> tokens})
+        ({
+          Duration begin,
+          Duration? end,
+          String text,
+          List<LyricToken> tokens,
+          String? agent,
+          Set<String> roles,
+          LyricAlign? alignOverride,
+        })
       >[];
   for (final paragraph in paragraphs) {
     final tokens = _collectTimedTokens(paragraph);
-    final beginAttr = paragraph.getAttribute('begin');
+    final beginAttr = _localAttr(paragraph, 'begin');
     var begin = beginAttr != null ? parseTtmlTime(beginAttr) : null;
     begin ??= tokens.isNotEmpty ? tokens.first.start : null;
     if (begin == null) {
       continue;
     }
-    final endAttr = paragraph.getAttribute('end');
+    final endAttr = _localAttr(paragraph, 'end');
+    final roles =
+        (_localAttr(paragraph, 'role') ?? '')
+            .split(RegExp(r'\s+'))
+            .where((role) => role.isNotEmpty)
+            .toSet();
     parsedParagraphs.add((
       begin: begin,
       end: endAttr != null ? parseTtmlTime(endAttr) : null,
       text: _normalizeWhitespace(_elementText(paragraph)).trim(),
       tokens: tokens,
+      agent: _localAttr(paragraph, 'agent')?.trim(),
+      roles: roles,
+      alignOverride: _parseTtmlAlign(
+        _localAttr(paragraph, 'textAlign') ??
+            _localAttr(paragraph, 'alignment'),
+      ),
     ));
   }
 
@@ -481,6 +671,7 @@ void applyTtmlParsing(
     return a.compareTo(b);
   });
 
+  final alignOverrides = <LyricAlign?>[];
   for (final i in order) {
     final paragraph = parsedParagraphs[i];
     if (paragraph.text.isEmpty) {
@@ -488,7 +679,16 @@ void applyTtmlParsing(
     }
 
     final lastLyric = result.lines.isNotEmpty ? result.lines.last : null;
-    final isTranslate = lastLyric?.start == paragraph.begin;
+    // A paragraph sharing the previous line's begin is a translation when
+    // marked as one, or when it carries no voice information of its own
+    // (no agent and no word timing); otherwise it is a simultaneous
+    // second voice of a duet.
+    final isTranslate =
+        lastLyric?.start == paragraph.begin &&
+        (paragraph.roles.contains('x-translation') ||
+            (paragraph.agent == null &&
+                lastLyric?.agent == null &&
+                paragraph.tokens.length <= 1));
 
     if (!isTranslate && lastLyric?.tokens.last.end == null) {
       lastLyric?.tokens.last.end = paragraph.begin;
@@ -513,7 +713,12 @@ void applyTtmlParsing(
     if (isTranslate) {
       lastLyric!.translates.add(paragraph.text);
     } else {
-      result.lines.add(LyricLine(paragraph.begin, paragraph.text, tokens));
+      final line =
+          LyricLine(paragraph.begin, paragraph.text, tokens)
+            ..agent = paragraph.agent
+            ..isBackground = paragraph.roles.contains('x-bg');
+      result.lines.add(line);
+      alignOverrides.add(paragraph.alignOverride);
     }
   }
 
@@ -523,5 +728,7 @@ void applyTtmlParsing(
     if (result.lines.last.tokens.last.end == null) {
       result.lines.last.tokens.last.end = songDuration;
     }
+    _assignVoiceAligns(result.lines, agentTypes, alignOverrides);
   }
+  _finalizeLineEnds(result, songDuration);
 }

@@ -53,6 +53,11 @@ final autoPlayOnStartupNotifier = ValueNotifier(false);
 
 final currentLyricsIndexNotifier = ValueNotifier(-1);
 
+/// Offset-applied playback position, updated alongside
+/// [currentLyricsIndexNotifier] so each lyric line can decide on its own
+/// whether it is inside its active window (simultaneous duet lines).
+final lyricsPositionNotifier = ValueNotifier(Duration.zero);
+
 final controlCenterLyricsNotifier = ValueNotifier(false);
 
 bool loadingSong = false;
@@ -116,6 +121,10 @@ class MyAudioHandler extends BaseAudioHandler {
   int _tmpPlayMode = 0;
   DateTime? _playLastSyncTime;
   Duration _playedDuration = Duration.zero;
+
+  // Last active-line set pushed to the iOS widget ('-1' = none), so the
+  // widget only reloads when the simultaneous-lyric set actually changes.
+  String _lastWidgetLyricsActive = '-1';
 
   File? _playQueueState;
   late File _playState;
@@ -221,10 +230,22 @@ class MyAudioHandler extends BaseAudioHandler {
 
     position += Duration(milliseconds: currentSong.lyricsTimeOffset);
 
+    lyricsPositionNotifier.value = position;
+
+    // The iOS widget highlights every simultaneously active line (duet), so
+    // track that set independently of the primary index — with overlapping
+    // lines its boundaries differ from the index's. Computed before the
+    // fast path below so a set change is never swallowed by it.
+    final active = activeLyricIndices(lines, position);
+    final widgetActive = active.isEmpty ? '-1' : active.join(',');
+    final widgetActiveChanged = widgetActive != _lastWidgetLyricsActive;
+    _lastWidgetLyricsActive = widgetActive;
+
     if (tmp >= 0 &&
         tmp + 1 < lines.length &&
         position >= lines[tmp].start &&
-        position <= lines[tmp + 1].start) {
+        position <= lines[tmp + 1].start &&
+        !widgetActiveChanged) {
       return;
     }
 
@@ -243,17 +264,18 @@ class MyAudioHandler extends BaseAudioHandler {
       }
     }
 
-    if (current != currentLyricsIndexNotifier.value) {
+    final indexChanged = current != currentLyricsIndexNotifier.value;
+    if (indexChanged) {
       currentLyricsIndexNotifier.value = current;
 
       if (controlCenterLyricsNotifier.value) {
         updateServiceMediaItem(currentSong, lyric: lines[current].text);
         updatePlaybackState();
       }
+    }
 
-      if (Platform.isIOS) {
-        HomeWidgetService.updateLyricsIndex();
-      }
+    if ((indexChanged || widgetActiveChanged) && Platform.isIOS) {
+      HomeWidgetService.updateLyricsIndex(active);
     }
   }
 
@@ -762,6 +784,8 @@ class MyAudioHandler extends BaseAudioHandler {
     currentSongNotifier.value = currentSong;
 
     currentLyricsIndexNotifier.value = -1;
+    lyricsPositionNotifier.value = Duration.zero;
+    _lastWidgetLyricsActive = '-1';
 
     if (Platform.isIOS) {
       await HomeWidgetService.updateNowPlayingWidget();
