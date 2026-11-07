@@ -22,14 +22,15 @@ final updateLyricsNotifier = ValueNotifier(0);
 
 /// Delayed-signal wave behind the Apple-Music-style staggered line motion:
 /// the viewport spring glides rigidly, and each row additionally hangs
-/// behind by its distance from the anchor line — its visual offset is the
-/// anchor's traveled distance sampled `distance * stagger` ago minus the
-/// current one, i.e. how far the wave has yet to reach this row. The signal
-/// (cumulative travel) is continuous across retargets, so rapid line
-/// changes never snap the rows. The lag is a pure function of time and row
-/// distance (no per-row state), so rows entering the viewport mid-glide are
-/// consistent automatically and every lag decays to zero once the glide
-/// settles.
+/// behind by its distance from the FIRST VISIBLE row — the top of the
+/// screen leads and the motion cascades downward, so the space above the
+/// current line opens up instead of the line above being squeezed. A row's
+/// visual offset is the traveled distance sampled `distance * stagger` ago
+/// minus the current one. The signal (cumulative travel) is continuous
+/// across retargets, so rapid line changes never snap the rows. The lag is
+/// a pure function of time and row distance (no per-row state), so rows
+/// entering the viewport mid-glide are consistent automatically and every
+/// lag decays to zero once the glide settles.
 class LyricGlideWave extends ChangeNotifier {
   static const int staggerMs = 40;
   static const int maxDelayMs = 600;
@@ -37,7 +38,7 @@ class LyricGlideWave extends ChangeNotifier {
 
   final List<(Duration, double)> _samples = [];
   bool active = false;
-  int anchorItemIndex = -1;
+  int firstVisibleIndex = 0;
 
   void begin() {
     if (active) {
@@ -48,7 +49,8 @@ class LyricGlideWave extends ChangeNotifier {
     notifyListeners();
   }
 
-  void sample(Duration elapsed, double traveled) {
+  void sample(Duration elapsed, double traveled, int firstVisibleIndex) {
+    this.firstVisibleIndex = firstVisibleIndex;
     _samples.add((elapsed, traveled));
     if (_samples.length > _maxSamples) {
       _samples.removeAt(0);
@@ -72,7 +74,10 @@ class LyricGlideWave extends ChangeNotifier {
       return 0;
     }
     final (now, current) = _samples.last;
-    var delayMs = (itemIndex - anchorItemIndex).abs() * staggerMs;
+    var delayMs = (itemIndex - firstVisibleIndex) * staggerMs;
+    if (delayMs < 0) {
+      delayMs = 0;
+    }
     if (delayMs > maxDelayMs) {
       delayMs = maxDelayMs;
     }
@@ -193,7 +198,6 @@ class LyricsListViewState extends State<LyricsListView>
     _springActive = true;
     _waveHandedOff = false;
     if (_waveOn) {
-      _wave.anchorItemIndex = itemIndex;
       _wave.begin();
     } else {
       _wave.end(); // rigid mode: no per-row lag at all
@@ -230,10 +234,13 @@ class LyricsListViewState extends State<LyricsListView>
     }
 
     ItemPosition? target;
+    int? firstVisible;
     for (final position in itemPositionsListener.itemPositions.value) {
+      if (firstVisible == null || position.index < firstVisible) {
+        firstVisible = position.index;
+      }
       if (position.index == _glideTargetIndex) {
         target = position;
-        break;
       }
     }
     if (target == null) {
@@ -325,7 +332,7 @@ class LyricsListViewState extends State<LyricsListView>
       _lastMotionElapsed = elapsed;
     }
     if (_waveOn && _wave.active) {
-      _wave.sample(elapsed, waveSignal);
+      _wave.sample(elapsed, waveSignal, firstVisible ?? _wave.firstVisibleIndex);
     }
     final drained =
         _waveOn && _wave.active
