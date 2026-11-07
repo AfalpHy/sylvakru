@@ -685,6 +685,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get controlCenterLyrics => 'Control Center Lyrics';
 
   @override
+  String get lyricsWave => 'Wave Scroll Effect';
+
+  @override
   String get connect => 'Connect';
 
   @override

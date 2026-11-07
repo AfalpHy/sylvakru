@@ -33,6 +33,7 @@ import 'package:sylvakru/portrait_view/portrait_view.dart';
 import 'package:sylvakru/portrait_view/sleep_timer.dart';
 import 'package:sylvakru/l10n/generated/app_localizations.dart';
 import 'package:sylvakru/base/widgets/my_switch.dart';
+import 'package:sylvakru/base/widgets/lyric_list_view.dart';
 import 'package:smooth_corner/smooth_corner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -77,10 +78,10 @@ class _SettingsListState extends State<SettingsList> {
                   subtitle: Text(
                     l10n.settingCount(
                       (Platform.isAndroid
-                              ? 16
+                              ? 17
                               : Platform.isIOS
-                              ? 15
-                              : 14) +
+                              ? 16
+                              : 15) +
                           (isNotStreamSource ? 1 : 0),
                     ),
                     style: TextStyle(fontSize: 12),
@@ -141,6 +142,8 @@ class _SettingsListState extends State<SettingsList> {
         sliverBox(
           paddingIfNeed(isLandscape, controlCenterLyricsListTile(l10n)),
         ),
+
+        sliverBox(paddingIfNeed(isLandscape, lyricsWaveListTile(l10n))),
 
         if (Platform.isIOS &&
             !isLandscape &&
@@ -605,6 +608,22 @@ class _SettingsListState extends State<SettingsList> {
                 currentSongNotifier.value != null) {
               audioHandler.updateServiceMediaItem(currentSongNotifier.value!);
             }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget lyricsWaveListTile(AppLocalizations l10n) {
+    return ListTile(
+      leading: Icon(Icons.waves_rounded, size: iconSize),
+      title: Text(l10n.lyricsWave),
+      trailing: SizedBox(
+        width: 50,
+        child: MySwitch(
+          valueNotifier: lyricWaveEnabledNotifier,
+          onToggleCallBack: () {
+            setting.save();
           },
         ),
       ),

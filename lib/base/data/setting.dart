@@ -112,6 +112,9 @@ class Setting {
 
     controlCenterLyricsNotifier.value =
         json['controlCenterLyrics'] as bool? ?? false;
+
+    lyricWaveEnabledNotifier.value =
+        json['lyricsWave'] as bool? ?? lyricWaveEnabledNotifier.value;
   }
 
   void save() {
@@ -147,6 +150,8 @@ class Setting {
         'recursiveScan': recursiveScanNotifier.value,
 
         'controlCenterLyrics': controlCenterLyricsNotifier.value,
+
+        'lyricsWave': lyricWaveEnabledNotifier.value,
       }),
     );
   }

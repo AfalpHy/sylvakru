@@ -216,6 +216,7 @@
   "feiniuConnectionFailed": "无法连接飞牛音乐，请检查服务器地址及音乐应用账号密码",
   "savedSuccessfully": "保存成功",
   "controlCenterLyrics": "控制中心歌词",
+  "lyricsWave": "歌词波浪滚动",
   "connect": "连接",
   "notConnected": "未连接"
 }

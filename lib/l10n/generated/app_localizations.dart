@@ -1400,6 +1400,12 @@ abstract class AppLocalizations {
   /// **'Control Center Lyrics'**
   String get controlCenterLyrics;
 
+  /// No description provided for @lyricsWave.
+  ///
+  /// In en, this message translates to:
+  /// **'Wave Scroll Effect'**
+  String get lyricsWave;
+
   /// No description provided for @connect.
   ///
   /// In en, this message translates to:
