@@ -104,32 +104,36 @@ Future<Map<String, dynamic>> readJsonMapFile(File file) async {
   }
 }
 
+String getDirPathFrom(SourceType sourceType) {
+  return '${appSupportDir.path}/${sourceType.name}';
+}
+
 String getFolderConfigPath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/folder_config';
+  return '${getDirPathFrom(sourceType)}/folder_config';
 }
 
 String getLibraryConfigPath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/library_config';
+  return '${getDirPathFrom(sourceType)}/library_config';
 }
 
 String getPlaylistConfigPath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/playlist_config';
+  return '${getDirPathFrom(sourceType)}/playlist_config';
 }
 
 String getCachesPath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/caches';
+  return '${getDirPathFrom(sourceType)}/caches';
 }
 
 String getPicturesPath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/pictures';
+  return '${getDirPathFrom(sourceType)}/pictures';
 }
 
 String getLrcPath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/lyrics';
+  return '${getDirPathFrom(sourceType)}/lyrics';
 }
 
 String getSyncedFilePath(SourceType sourceType) {
-  return '${appSupportDir.path}/${sourceType.name}/synced.keep';
+  return '${getDirPathFrom(sourceType)}/synced.keep';
 }
 
 final _httpClient = http.Client();

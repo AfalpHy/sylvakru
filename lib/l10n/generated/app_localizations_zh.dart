@@ -683,4 +683,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notConnected => '未连接';
+
+  @override
+  String get edit => '编辑';
 }

@@ -218,5 +218,6 @@
   "controlCenterLyrics": "控制中心歌词",
   "lyricsWave": "歌词波浪滚动",
   "connect": "连接",
-  "notConnected": "未连接"
+  "notConnected": "未连接",
+  "edit": "编辑"
 }

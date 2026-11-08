@@ -692,4 +692,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notConnected => 'is Not Connected';
+
+  @override
+  String get edit => 'Edit';
 }

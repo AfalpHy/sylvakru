@@ -274,5 +274,6 @@
   "controlCenterLyrics": "Control Center Lyrics",
   "lyricsWave": "Wave Scroll Effect",
   "connect": "Connect",
-  "notConnected": "is Not Connected"
+  "notConnected": "is Not Connected",
+  "edit": "Edit"
 }

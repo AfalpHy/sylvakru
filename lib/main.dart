@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gamepads/flutter_gamepads.dart';
 import 'package:liquid_glass_widgets/liquid_glass_setup.dart';
+import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/logger.dart';
@@ -83,7 +84,7 @@ Future<void> main() async {
     FocusManager.instance.highlightStrategy =
         FocusHighlightStrategy.alwaysTraditional;
   } else if (viewModeNotifier.value != .bigPicture && !firstLaunch) {
-    layersManager.switchRootLayer('home');
+    layersManager.switchRootLayer(sidebarDefaultItemNotifier.value);
   }
 
   runApp(

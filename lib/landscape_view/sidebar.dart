@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:sylvakru/base/data/loader.dart';
+import 'package:sylvakru/base/data/library.dart';
 import 'package:sylvakru/base/services/color_manager.dart';
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/asset_images.dart';
@@ -161,76 +161,16 @@ class Sidebar extends StatelessWidget {
                     context,
                   ).copyWith(scrollbars: false),
                   slivers: [
-                    SliverToBoxAdapter(
-                      child: sidebarItem(
-                        label: 'artists',
-                        leading: ImageIcon(artistImage, size: 30),
-                        content: l10n.artists,
-
-                        onTap: () {
-                          layersManager.switchRootLayer('artists');
-                        },
-                      ),
-                    ),
-
-                    SliverToBoxAdapter(
-                      child: sidebarItem(
-                        label: 'albums',
-
-                        leading: ImageIcon(albumImage, size: 30),
-                        content: l10n.albums,
-
-                        onTap: () {
-                          layersManager.switchRootLayer('albums');
-                        },
-                      ),
-                    ),
-
                     ValueListenableBuilder(
-                      valueListenable: Loader.stateNotifier,
-                      builder: (context, value, child) {
-                        if (isNotStreamSource) {
-                          return SliverToBoxAdapter(
-                            child: sidebarItem(
-                              label: 'folders',
-
-                              leading: ImageIcon(folderImage, size: 30),
-                              content: l10n.folders,
-
-                              onTap: () {
-                                layersManager.switchRootLayer('folders');
-                              },
-                            ),
-                          );
-                        }
-                        return SliverToBoxAdapter(child: SizedBox());
+                      valueListenable: sidebarItemsNotifier,
+                      builder: (context, sidebarItems, child) {
+                        return SliverMainAxisGroup(
+                          slivers: [
+                            for (final item in sidebarItems)
+                              SliverToBoxAdapter(child: commonItem(item)),
+                          ],
+                        );
                       },
-                    ),
-
-                    SliverToBoxAdapter(
-                      child: sidebarItem(
-                        label: 'home',
-
-                        leading: ImageIcon(homeImage, size: 30),
-                        content: l10n.home,
-
-                        onTap: () {
-                          layersManager.switchRootLayer('home');
-                        },
-                      ),
-                    ),
-
-                    SliverToBoxAdapter(
-                      child: sidebarItem(
-                        label: 'songs',
-
-                        leading: ImageIcon(songsImage, size: 30),
-                        content: l10n.songs,
-
-                        onTap: () {
-                          layersManager.switchRootLayer('songs');
-                        },
-                      ),
                     ),
 
                     SliverToBoxAdapter(child: SizedBox(height: 5)),
@@ -455,6 +395,128 @@ class Sidebar extends StatelessWidget {
     );
   }
 
+  Widget commonItem(String item) {
+    return Builder(
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+
+        late Widget child;
+        if (item == 'artists') {
+          child = sidebarItem(
+            label: 'artists',
+            leading: ImageIcon(artistImage, size: 30),
+            content: l10n.artists,
+
+            onTap: () {
+              layersManager.switchRootLayer('artists');
+            },
+          );
+        } else if (item == 'albums') {
+          child = sidebarItem(
+            label: 'albums',
+
+            leading: ImageIcon(albumImage, size: 30),
+            content: l10n.albums,
+
+            onTap: () {
+              layersManager.switchRootLayer('albums');
+            },
+          );
+        } else if (item == 'folders') {
+          child = sidebarItem(
+            label: 'folders',
+
+            leading: ImageIcon(folderImage, size: 30),
+            content: l10n.folders,
+
+            onTap: () {
+              layersManager.switchRootLayer('folders');
+            },
+          );
+        } else if (item == 'home') {
+          child = sidebarItem(
+            label: 'home',
+
+            leading: ImageIcon(homeImage, size: 30),
+            content: l10n.home,
+
+            onTap: () {
+              layersManager.switchRootLayer('home');
+            },
+          );
+        } else if (item == 'songs') {
+          child = sidebarItem(
+            label: 'songs',
+
+            leading: ImageIcon(songsImage, size: 30),
+            content: l10n.songs,
+
+            onTap: () {
+              layersManager.switchRootLayer('songs');
+            },
+          );
+        } else {
+          child = SizedBox();
+        }
+
+        return GestureDetector(
+          child: child,
+          onSecondaryTapUp: (details) {
+            final menuItems = <MenuItem>[];
+
+            menuItems.add(
+              MenuItem(
+                iconData: Icons.edit_rounded,
+                text: l10n.edit,
+                callback: () {
+                  showAdjustSidebarDialog(context);
+                },
+              ),
+            );
+
+            showContextMenu(context, menuItems, details.globalPosition);
+          },
+          onTapDown: (details) {
+            if (Platform.isIOS) {
+              final menuItems = <MenuItem>[];
+
+              menuItems.add(
+                MenuItem(
+                  iconData: Icons.edit_rounded,
+                  text: l10n.edit,
+                  callback: () {
+                    showAdjustSidebarDialog(context);
+                  },
+                ),
+              );
+
+              showContextMenu(context, menuItems, details.globalPosition);
+            }
+          },
+          onLongPressStart: (details) {
+            if (Platform.isAndroid) {
+              tryVibrate();
+
+              final menuItems = <MenuItem>[];
+
+              menuItems.add(
+                MenuItem(
+                  iconData: Icons.edit_rounded,
+                  text: l10n.edit,
+                  callback: () {
+                    showAdjustSidebarDialog(context);
+                  },
+                ),
+              );
+
+              showContextMenu(context, menuItems, details.globalPosition);
+            }
+          },
+        );
+      },
+    );
+  }
+
   Widget playlistItem(int index) {
     final playlist = playlistManager.getPlaylistByIndex(index);
 
@@ -576,4 +638,106 @@ class Sidebar extends StatelessWidget {
       },
     );
   }
+}
+
+void showAdjustSidebarDialog(BuildContext context) async {
+  final l10n = AppLocalizations.of(context);
+  List<String> sidebarItems = sidebarItemsNotifier.value;
+
+  await showAnimationDialog(
+    context: context,
+    child: OrientationBuilder(
+      builder: (context, orientation) {
+        final size = MediaQuery.of(context).size;
+        final shortSide = size.shortestSide;
+
+        bool isPhone = shortSide < 600;
+        return SizedBox(
+          width: isPhone ? 300 : 400,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: ListenableBuilder(
+              listenable: Listenable.merge([sidebarDefaultItemNotifier]),
+              builder: (context, child) {
+                return ReorderableListView.builder(
+                  shrinkWrap: true,
+                  buildDefaultDragHandles: false,
+                  proxyDecorator:
+                      (Widget child, int index, Animation<double> animation) {
+                        return Material(
+                          color: Colors.transparent,
+                          child: child,
+                        );
+                      },
+                  itemBuilder: (_, index) {
+                    final item = sidebarItems[index];
+                    late Widget imageIcon;
+                    late String text;
+                    if (item == 'artists') {
+                      imageIcon = ImageIcon(artistImage, size: 30);
+                      text = l10n.artists;
+                    } else if (item == 'albums') {
+                      imageIcon = ImageIcon(albumImage, size: 30);
+                      text = l10n.albums;
+                    } else if (item == 'folders') {
+                      imageIcon = ImageIcon(folderImage, size: 30);
+                      text = l10n.folders;
+                    } else if (item == 'home') {
+                      imageIcon = ImageIcon(homeImage, size: 30);
+                      text = l10n.home;
+                    } else {
+                      imageIcon = ImageIcon(songsImage, size: 30);
+                      text = l10n.songs;
+                    }
+                    return SizedBox(
+                      key: ValueKey(index),
+                      height: 50,
+                      child: Row(
+                        children: [
+                          imageIcon,
+                          SizedBox(width: 10),
+                          Text(text),
+                          Spacer(),
+                          if (item != sidebarDefaultItemNotifier.value)
+                            IconButton(
+                              onPressed: () {
+                                sidebarDefaultItemNotifier.value = item;
+                                library.saveSidebarItem();
+                              },
+                              icon: Icon(Icons.check_rounded),
+                            ),
+
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: Container(
+                              // must set color to make area valid
+                              color: Colors.transparent,
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: ImageIcon(
+                                  reorderImage,
+                                  color: iconColor.value,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  itemCount: sidebarItems.length,
+                  onReorderItem: (oldIndex, newIndex) {
+                    final item = sidebarItems.removeAt(oldIndex);
+                    sidebarItems.insert(newIndex, item);
+                    sidebarItemsNotifier.value = List.from(sidebarItems);
+                    library.saveSidebarItem();
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
