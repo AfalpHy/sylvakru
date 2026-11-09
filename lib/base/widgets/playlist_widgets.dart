@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:material_ui/material_ui.dart';
@@ -155,7 +156,9 @@ Widget reorderablePlaylistsView(BuildContext context) {
       final item = playlistManager.playlists.removeAt(oldIndex + 1);
       playlistManager.playlists.insert(newIndex + 1, item);
       playlistManager.update();
-      HomeWidgetService.updatePlaylistsWidget();
+      if (Platform.isIOS) {
+        HomeWidgetService.updatePlaylistsWidget();
+      }
     },
     onReorderStart: (_) {
       tryVibrate();

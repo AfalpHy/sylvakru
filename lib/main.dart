@@ -58,11 +58,13 @@ Future<void> main() async {
     final screenRadius = await CornerRadiusPlugin.init();
     screenTopLeftRadius = screenRadius.topLeft;
     screenTopRightRadius = screenRadius.topRight;
-    CornerRadiusPlugin.screenRadiusStream.listen((radius) {
-      screenTopLeftRadius = radius.topLeft;
-      screenTopRightRadius = radius.topRight;
-    });
-    await HomeWidget.setAppGroupId('group.com.afalphy.sylvakru');
+    if (Platform.isIOS) {
+      CornerRadiusPlugin.screenRadiusStream.listen((radius) {
+        screenTopLeftRadius = radius.topLeft;
+        screenTopRightRadius = radius.topRight;
+      });
+      await HomeWidget.setAppGroupId('group.com.afalphy.sylvakru');
+    }
   } else {
     if (kReleaseMode) {
       await SingleInstance.start();
