@@ -6,7 +6,7 @@ import 'dart:ui' as ui;
 
 import 'package:audio_tags_lofty/audio_tags_lofty.dart';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:image/image.dart' as img;
 import 'package:sylvakru/base/app.dart';
 import 'package:sylvakru/base/services/logger.dart';
