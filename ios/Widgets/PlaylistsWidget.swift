@@ -869,6 +869,7 @@ struct GridView: View {
             uiImage: image
           )
           .resizable()
+          .fullColorRendering()
           .scaledToFit()
         }
         .clipShape(

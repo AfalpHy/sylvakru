@@ -353,6 +353,7 @@ struct NowPlayingWidgetEntryView: View {
           if let uiImage = WidgetImageCache.shared.image(at: entry.coverPath, maxPixels: 600) {
             Image(uiImage: uiImage)
               .resizable()
+              .fullColorRendering()
               .aspectRatio(contentMode: .fit)
           } else {
             Image(systemName: "music.note")
@@ -416,6 +417,7 @@ struct NowPlayingWidgetEntryView: View {
         if let uiImage = WidgetImageCache.shared.image(at: entry.coverPath, maxPixels: 600) {
           Image(uiImage: uiImage)
             .resizable()
+            .fullColorRendering()
             .aspectRatio(contentMode: .fit)
         } else {
           Image(systemName: "music.note")

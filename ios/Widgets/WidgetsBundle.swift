@@ -17,6 +17,23 @@ struct WidgetsBundle: WidgetBundle {
   }
 }
 
+// iOS 26's Clear/Tinted widget appearance renders content in accented mode:
+// bitmaps flatten to a white silhouette, which turned the covers solid
+// white. Covers opt out via .fullColor so they keep their real colors; SF
+// Symbols are monochrome by design and look correct accented, so they stay.
+// The modifier is Image-only, so call it right after .resizable() and
+// before aspect-fitting. No-op before iOS 18, where it doesn't exist.
+extension Image {
+  @ViewBuilder
+  func fullColorRendering() -> some View {
+    if #available(iOS 18.0, *) {
+      self.widgetAccentedRenderingMode(.fullColor)
+    } else {
+      self
+    }
+  }
+}
+
 // Premium state is written by the app on every launch and on purchase
 // (config.dart syncWidgetPremium). A missing key means the app never ran yet
 // (widget gallery, fresh install) - show the full design in that case.
