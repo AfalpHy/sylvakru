@@ -8,7 +8,11 @@ extension HomePage on HomeLayerState {
       body: content(context),
       title: l10n.home,
       actions: [
-        MySearchField(hintText: l10n.searchHome, textController: textController),
+        MySearchField(
+          hintText: l10n.searchHome,
+          textController: textController,
+          rightPadding: true,
+        ),
       ],
     );
   }

@@ -12,12 +12,14 @@ class MySearchField extends StatefulWidget {
 
   final bool useCurrentSong;
 
+  final bool rightPadding;
   const MySearchField({
     super.key,
     required this.hintText,
     required this.textController,
     this.onSearchTextChanged,
     this.useCurrentSong = true,
+    this.rightPadding = false,
   });
 
   @override
@@ -60,7 +62,12 @@ class _MySearchFieldState extends State<MySearchField> {
         }
         return Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(50, 0, 0, 0),
+            padding: EdgeInsets.fromLTRB(
+              50,
+              0,
+              widget.rightPadding ? 10 : 0,
+              0,
+            ),
             child: SizedBox(
               height: 30,
               child: ListenableBuilder(
