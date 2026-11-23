@@ -190,8 +190,6 @@ icons_launcher:
       enable: true
       adaptive_background_image: "app_icons/background.png"
       adaptive_foreground_image: "app_icons/android.png"
-    macos:
-      enable: true
     linux:
       image_path: "app_icons/win_linux.png"
       enable: true
