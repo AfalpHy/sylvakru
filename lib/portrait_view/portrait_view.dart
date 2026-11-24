@@ -140,6 +140,14 @@ class _PortraitViewState extends State<PortraitView>
           ),
 
           Positioned(left: 20, right: 20, bottom: 40, child: PlayBar()),
+
+          // prevent unexpected sliding
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(height: 40, color: Colors.transparent),
+          ),
         ],
       ),
     );
